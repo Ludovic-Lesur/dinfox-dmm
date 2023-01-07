@@ -1,0 +1,6 @@
+r
+loadfile HW1_0/DMM.hex
+verifyfile HW1_0/DMM.hex
+r
+g
+qc

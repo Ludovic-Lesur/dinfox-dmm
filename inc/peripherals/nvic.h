@@ -1,0 +1,62 @@
+/*
+ * nvic.h
+ *
+ *  Created on: 18 apr. 2020
+ *      Author: Ludo
+ */
+
+#ifndef __NVIC_H__
+#define __NVIC_H__
+
+#include "types.h"
+
+/*** NVIC interrupts vector ***/
+
+typedef enum {
+	NVIC_INTERRUPT_WWDG = 0,
+	NVIC_INTERRUPT_PVD = 1,
+	NVIC_INTERRUPT_RTC = 2,
+	NVIC_INTERRUPT_FLASH = 3,
+	NVIC_INTERRUPT_RCC_CRS = 4,
+	NVIC_INTERRUPT_EXTI_0_1 = 5,
+	NVIC_INTERRUPT_EXTI_2_3 = 6,
+	NVIC_INTERRUPT_EXTI_4_15 = 7,
+	NVIC_INTERRUPT_RESERVED0 = 8,
+	NVIC_INTERRUPT_DMA1_CHA1 = 9,
+	NVIC_INTERRUPT_DMA1_CH_2_3 = 10,
+	NVIC_INTERRUPT_DMA1_CH_4_7 = 11,
+	NVIC_INTERRUPT_ADC_COMP = 12,
+	NVIC_INTERRUPT_LPTIM1 = 13,
+	NVIC_INTERRUPT_USART4_USART5 = 14,
+	NVIC_INTERRUPT_TIM2 = 15,
+	NVIC_INTERRUPT_TIM3 = 16,
+	NVIC_INTERRUPT_TIM6 = 17,
+	NVIC_INTERRUPT_TIM7 = 18,
+	NVIC_INTERRUPT_RESERVED1 = 19,
+	NVIC_INTERRUPT_TIM21 = 20,
+	NVIC_INTERRUPT_I2C3 = 21,
+	NVIC_INTERRUPT_TIM22 = 22,
+	NVIC_INTERRUPT_I2C1 = 23,
+	NVIC_INTERRUPT_I2C2 = 24,
+	NVIC_INTERRUPT_SPI1 = 25,
+	NVIC_INTERRUPT_SPI2 = 26,
+	NVIC_INTERRUPT_USART1 = 27,
+	NVIC_INTERRUPT_USART2 = 28,
+	NVIC_INTERRUPT_LPUART1 = 29,
+	NVIC_INTERRUPT_LAST
+} NVIC_interrupt_t;
+
+typedef enum {
+	NVIC_PRIORITY_MAX = 0,
+	NVIC_PRIORITY_MIN = 3,
+	NVIC_PRIORITY_LAST
+} NVIC_priority_t;
+
+/*** NVIC functions ***/
+
+void NVIC_init(void);
+void NVIC_enable_interrupt(NVIC_interrupt_t irq_index);
+void NVIC_disable_interrupt(NVIC_interrupt_t irq_index);
+void NVIC_set_priority(NVIC_interrupt_t irq_index, uint8_t priority);
+
+#endif /* __NVIC_H__ */

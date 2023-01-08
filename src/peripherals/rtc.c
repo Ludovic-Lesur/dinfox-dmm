@@ -1,7 +1,7 @@
 /*
  * rtc.c
  *
- *  Created on: 18 apr. 2020
+ *  Created on: 25 oct. 2020
  *      Author: Ludo
  */
 

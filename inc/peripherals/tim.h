@@ -12,28 +12,43 @@
 
 /*** TIM structures ***/
 
+typedef enum {
+	TIM_SUCCESS = 0,
+	TIM_ERROR_NULL_PARAMETER,
+	TIM_ERROR_INTERRUPT_TIMEOUT,
+	TIM_ERROR_BASE_LAST = 0x0100
+} TIM_status_t;
+
 // Color bit masks defined as 0b<CH4><CH3><CH2><CH1>
 typedef enum {
-	TIM2_CHANNEL_MASK_OFF = 0b0000,
-	TIM2_CHANNEL_MASK_RED = 0b0100,
-	TIM2_CHANNEL_MASK_GREEN = 0b0010,
-	TIM2_CHANNEL_MASK_YELLOW = 0b0110,
-	TIM2_CHANNEL_MASK_BLUE = 0b0001,
-	TIM2_CHANNEL_MASK_MAGENTA = 0b0101,
-	TIM2_CHANNEL_MASK_CYAN = 0b0011,
-	TIM2_CHANNEL_MASK_WHITE	= 0b0111
-} TIM2_channel_mask_t;
+	TIM3_CHANNEL_MASK_OFF = 0b0000,
+	TIM3_CHANNEL_MASK_RED = 0b0010,
+	TIM3_CHANNEL_MASK_GREEN = 0b0100,
+	TIM3_CHANNEL_MASK_YELLOW = 0b0110,
+	TIM3_CHANNEL_MASK_BLUE = 0b1000,
+	TIM3_CHANNEL_MASK_MAGENTA = 0b1010,
+	TIM3_CHANNEL_MASK_CYAN = 0b1100,
+	TIM3_CHANNEL_MASK_WHITE	= 0b1110
+} TIM3_channel_mask_t;
 
 /*** TIM functions ***/
 
-void TIM2_init(void);
-void TIM2_set_color_mask(TIM2_channel_mask_t led_color);
-void TIM2_start(void);
-void TIM2_stop(void);
+void TIM3_init(void);
+void TIM3_set_color_mask(TIM3_channel_mask_t led_color);
+void TIM3_start(void);
+void TIM3_stop(void);
+
+void TIM22_init(void);
+void TIM22_start(uint32_t led_blink_period_ms);
+void TIM22_stop(void);
+uint8_t TIM22_is_single_blink_done(void);
 
 void TIM21_init(void);
-void TIM21_start(uint32_t led_blink_period_ms);
-void TIM21_stop(void);
-uint8_t TIM21_is_single_blink_done(void);
+TIM_status_t TIM21_get_lsi_frequency(uint32_t* lsi_frequency_hz);
+void TIM21_disable(void);
+
+#define TIM21_status_check(error_base) { if (tim21_status != TIM_SUCCESS) { status = error_base + tim21_status; goto errors; }}
+#define TIM21_error_check() { ERROR_status_check(tim21_status, TIM_SUCCESS, ERROR_BASE_TIM21); }
+#define TIM21_error_check_print() { ERROR_status_check_print(tim21_status, TIM_SUCCESS, ERROR_BASE_TIM21); }
 
 #endif /* __TIM_H__ */

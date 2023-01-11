@@ -34,8 +34,7 @@ typedef enum {
 /*** TIM functions ***/
 
 void TIM3_init(void);
-void TIM3_set_color_mask(TIM3_channel_mask_t led_color);
-void TIM3_start(void);
+void TIM3_start(TIM3_channel_mask_t led_color);
 void TIM3_stop(void);
 
 void TIM22_init(void);

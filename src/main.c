@@ -147,6 +147,8 @@ void _DMM_init_hw(void) {
 #endif
 	// Init peripherals.
 	LPTIM1_init(dmm_ctx.lsi_frequency_hz);
+	TIM3_init();
+	TIM22_init();
 	adc1_status = ADC1_init();
 	ADC1_error_check();
 #ifdef AM
@@ -155,6 +157,7 @@ void _DMM_init_hw(void) {
 #else
 	LPUART1_init();
 #endif
+	I2C1_init();
 	// Init components.
 	LED_init();
 	RS485_init();
@@ -172,12 +175,28 @@ int main(void) {
 	_DMM_init_hw();
 	// Local variables.
 	LED_status_t led_status = LED_SUCCESS;
+	LED_color_t led_color = LED_COLOR_RED;
 	// Main loop.
 	while (1) {
-		led_status = LED_start_single_blink(1000, LED_COLOR_GREEN);
+		led_status = LED_start_single_blink(2000, led_color);
 		LED_error_check();
 		while (LED_is_single_blink_done() == 0);
 		LED_stop_blink();
+		switch (led_color) {
+		case LED_COLOR_RED:
+			led_color = LED_COLOR_GREEN;
+			break;
+		case LED_COLOR_GREEN:
+			led_color = LED_COLOR_BLUE;
+			break;
+		case LED_COLOR_BLUE:
+			led_color = LED_COLOR_RED;
+			break;
+		default:
+			led_color = LED_COLOR_WHITE;
+			break;
+		}
+		LPTIM1_delay_milliseconds(1000, 1);
 	}
 	return 0;
 }

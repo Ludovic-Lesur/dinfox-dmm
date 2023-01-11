@@ -8,9 +8,11 @@
 #include "rs485.h"
 
 #include "dinfox.h"
+#include "gpio.h"
 #include "iwdg.h"
 #include "lptim.h"
 #include "lpuart.h"
+#include "mapping.h"
 #include "mode.h"
 #include "rs485_common.h"
 #include "string.h"
@@ -134,7 +136,7 @@ void RS485_init(void) {
 	// Reset parser.
 	_RS485_reset_replies();
 	// Enable receiver.
-	LPUART1_enable_rx();
+	GPIO_configure(&GPIO_TRX_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 }
 
 #ifdef AM

@@ -45,10 +45,8 @@ LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t colo
 		status = LED_ERROR_COLOR;
 		goto errors;
 	}
-	// Set color according to thresholds.
-	TIM3_set_color_mask(color);
 	// Start blink.
-	TIM3_start();
+	TIM3_start(color);
 	TIM22_start(blink_duration_ms);
 errors:
 	return status;

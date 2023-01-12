@@ -74,7 +74,7 @@ I2C_status_t I2C1_power_on(void) {
 	// Turn sensors and pull-up resistors on.
 	GPIO_write(&GPIO_HMI_POWER_ENABLE, 1);
 	// Warm-up delay.
-	lptim1_status = LPTIM1_delay_milliseconds(100, 1);
+	lptim1_status = LPTIM1_delay_milliseconds(200, 1);
 	LPTIM1_status_check(I2C_ERROR_BASE_LPTIM);
 errors:
 	return status;

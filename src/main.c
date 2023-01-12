@@ -26,6 +26,7 @@
 #include "led.h"
 #include "rs485.h"
 #include "rs485_common.h"
+#include "sh1106.h"
 // Utils.
 #include "types.h"
 // Applicative.
@@ -176,6 +177,9 @@ int main(void) {
 	// Local variables.
 	LED_status_t led_status = LED_SUCCESS;
 	LED_color_t led_color = LED_COLOR_RED;
+	// OLED test.
+	I2C1_power_on();
+	SH1106_init();
 	// Main loop.
 	while (1) {
 		led_status = LED_start_single_blink(2000, led_color);

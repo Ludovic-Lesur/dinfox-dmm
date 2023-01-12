@@ -19,6 +19,7 @@
 #define TIM_TIMEOUT_COUNT			1000000
 
 #define TIM3_NUMBER_OF_CHANNELS		4
+#define TIM3_CCRX_MASK_OFF			0xFFFF
 #define TIM3_PWM_FREQUENCY_HZ		10000
 #define TIM3_ARR_VALUE				((RCC_HSI_FREQUENCY_KHZ * 1000) / (TIM3_PWM_FREQUENCY_HZ))
 
@@ -47,8 +48,9 @@ static const uint16_t TIM22_DIMMING_LUT[TIM22_DIMMING_LUT_LENGTH] = {
 	1213, 1183, 1151, 1116, 1078, 1038, 994, 947, 896, 842,
 	783, 720, 651, 578, 498, 413, 321, 222, 115, 0,
 };
-static TIM22_context_t tim22_ctx;
 static volatile uint8_t tim21_flag = 0;
+static uint16_t tim3_ccrx_mask[TIM3_NUMBER_OF_CHANNELS];
+static TIM22_context_t tim22_ctx;
 
 /*** TIM local functions ***/
 
@@ -75,9 +77,9 @@ void __attribute__((optimize("-O0"))) TIM22_IRQHandler(void) {
 	// Check update flag.
 	if (((TIM22 -> SR) & (0b1 << 0)) != 0) {
 		// Update duty cycles.
-		TIM3 -> CCR2 = TIM22_DIMMING_LUT[tim22_ctx.dimming_lut_idx];
-		TIM3 -> CCR3 = TIM22_DIMMING_LUT[tim22_ctx.dimming_lut_idx];
-		TIM3 -> CCR4 = TIM22_DIMMING_LUT[tim22_ctx.dimming_lut_idx];
+		TIM3 -> CCR2 = (TIM22_DIMMING_LUT[tim22_ctx.dimming_lut_idx] | tim3_ccrx_mask[1]);
+		TIM3 -> CCR3 = (TIM22_DIMMING_LUT[tim22_ctx.dimming_lut_idx] | tim3_ccrx_mask[2]);
+		TIM3 -> CCR4 = (TIM22_DIMMING_LUT[tim22_ctx.dimming_lut_idx] | tim3_ccrx_mask[3]);
 		// Manage index and direction.
 		if (tim22_ctx.dimming_lut_direction == 0) {
 			// Increment index.
@@ -109,12 +111,14 @@ void __attribute__((optimize("-O0"))) TIM22_IRQHandler(void) {
  * @return:	None.
  */
 void _TIM3_reset_channels(void) {
-	// Reset period.
+	// Local variables.
+	uint8_t idx = 0;
+	// Reset masks.
+	for (idx=0 ; idx<TIM3_NUMBER_OF_CHANNELS ; idx++) tim3_ccrx_mask[idx] = TIM3_CCRX_MASK_OFF;
+	// Disable all channels.
 	TIM3 -> CCR2 = (TIM3_ARR_VALUE + 1);
 	TIM3 -> CCR3 = (TIM3_ARR_VALUE + 1);
 	TIM3 -> CCR4 = (TIM3_ARR_VALUE + 1);
-	// Disable all channels.
-	TIM3 -> CCER &= 0xFFFFEEEE;
 	// Reset counter.
 	TIM3 -> CNT = 0;
 }
@@ -134,7 +138,8 @@ void TIM3_init(void) {
 	TIM3 -> CCMR1 |= (0b110 << 12) | (0b1 << 11) | (0b110 << 4) | (0b1 << 3);
 	TIM3 -> CCMR2 |= (0b110 << 12) | (0b1 << 11) | (0b110 << 4) | (0b1 << 3);
 	TIM3 -> CR1 |= (0b1 << 7);
-	// Disable all channels by default..
+	TIM3 -> CCER |= 0x00001110;
+	// Disable all channels by default.
 	_TIM3_reset_channels();
 	// Generate event to update registers.
 	TIM3 -> EGR |= (0b1 << 0); // UG='1'.
@@ -156,7 +161,7 @@ void TIM3_start(TIM3_channel_mask_t led_color) {
 	// Enable required channels.
 	for (idx=0 ; idx<TIM3_NUMBER_OF_CHANNELS ; idx++) {
 		if ((led_color & (0b1 << idx)) != 0) {
-			TIM3 -> CCER |= (0b1 << (4 * idx));
+			tim3_ccrx_mask[idx] = 0;
 		}
 	}
 	// Enable counter.

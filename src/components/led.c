@@ -52,6 +52,10 @@ errors:
 	return status;
 }
 
+/* CHECK LED BLINK STATUS.
+ * @param:	None.
+ * @return:	'1' if the blink is done, '0' otherwise.
+ */
 uint8_t LED_is_single_blink_done(void) {
 	return TIM22_is_single_blink_done();
 }

@@ -30,6 +30,7 @@ typedef enum {
 /*** SH1106 functions ***/
 
 SH1106_status_t SH1106_init(void);
+SH1106_status_t SH1106_print_image(const uint8_t image[8][128]);
 
 #define SH1106_status_check(error_base) { if (sh1106_status != SH1106_SUCCESS) { status = error_base + sh1106_status; goto errors; }}
 #define SH1106_error_check() { ERROR_status_check(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }

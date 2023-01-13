@@ -19,4 +19,6 @@ static const uint8_t FONT_CHAR_u[FONT_CHAR_WIDTH_PIXELS] = {0xF0, 0x80, 0x80, 0x
 static const uint8_t FONT_CHAR_d[FONT_CHAR_WIDTH_PIXELS] = {0xF0, 0x90, 0x90, 0x90, 0xFF, 0x00};
 static const uint8_t FONT_CHAR_o[FONT_CHAR_WIDTH_PIXELS] = {0xF0, 0x90, 0x90, 0x90, 0xF0, 0x00};
 
+
+
 #endif /* __FONT_H__ */

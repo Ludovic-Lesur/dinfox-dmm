@@ -199,24 +199,32 @@ errors:
 SH1106_status_t SH1106_init(void) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
-	uint8_t ram_line[SH1106_SCREEN_WIDTH_PIXELS] = {0x00};
-	uint8_t idx = 0;
-	uint8_t pixel_idx = 0;
-	// Build line.
-	for (idx=0 ; idx<FONT_CHAR_WIDTH_PIXELS ; idx++) ram_line[pixel_idx++] = FONT_CHAR_L[idx];
-	for (idx=0 ; idx<FONT_CHAR_WIDTH_PIXELS ; idx++) ram_line[pixel_idx++] = FONT_CHAR_u[idx];
-	for (idx=0 ; idx<FONT_CHAR_WIDTH_PIXELS ; idx++) ram_line[pixel_idx++] = FONT_CHAR_d[idx];
-	for (idx=0 ; idx<FONT_CHAR_WIDTH_PIXELS ; idx++) ram_line[pixel_idx++] = FONT_CHAR_o[idx];
 	// Screen configuration.
 	status = _SH1106_setup();
 	if (status != SH1106_SUCCESS) goto errors;
 	// Clear RAM.
 	status = _SH1106_clear_ram();
 	if (status != SH1106_SUCCESS) goto errors;
-	// Display test.
-	status = _SH1106_set_address(0, 0, 0);
-	if (status != SH1106_SUCCESS) goto errors;
-	status = _SH1106_write(SH1106_DATA_TYPE_RAM, ram_line, pixel_idx);
+errors:
+	return status;
+}
+
+/* INIT SH1106 DRIVER.
+ * @param:			None.
+ * @return status:	Function execution status.
+ */
+SH1106_status_t SH1106_print_image(const uint8_t image[8][128]) {
+	// Local variables.
+	SH1106_status_t status = SH1106_SUCCESS;
+	uint8_t page = 0;
+	// Page loop.
+	for (page=0 ; page<SH1106_RAM_HEIGHT_PAGE ; page++) {
+		// Display line.
+		status = _SH1106_set_address(page, 0, 0);
+		if (status != SH1106_SUCCESS) goto errors;
+		status = _SH1106_write(SH1106_DATA_TYPE_RAM, (uint8_t*) image[page], SH1106_SCREEN_WIDTH_PIXELS);
+		if (status != SH1106_SUCCESS) goto errors;
+	}
 	// Turn display on.
 	status = _SH1106_on_off(1);
 	if (status != SH1106_SUCCESS) goto errors;

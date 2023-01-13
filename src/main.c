@@ -28,6 +28,7 @@
 #include "rs485_common.h"
 #include "sh1106.h"
 // Utils.
+#include "logo.h"
 #include "types.h"
 // Applicative.
 #include "error.h"
@@ -180,6 +181,7 @@ int main(void) {
 	// OLED test.
 	I2C1_power_on();
 	SH1106_init();
+	SH1106_print_image(DINFOX_LOGO);
 	// Main loop.
 	while (1) {
 		led_status = LED_start_single_blink(2000, led_color);
@@ -201,6 +203,7 @@ int main(void) {
 			break;
 		}
 		LPTIM1_delay_milliseconds(1000, 1);
+		IWDG_reload();
 	}
 	return 0;
 }

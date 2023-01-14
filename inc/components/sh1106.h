@@ -9,28 +9,68 @@
 #define __SH1106_H__
 
 #include "i2c.h"
+#include "types.h"
 
 /*** SH1106 macros ***/
 
-#define SH1106_I2C_ADDRESS	0x3C
+#define SH1106_I2C_ADDRESS				0x3C
+
+#define SH1106_SCREEN_WIDTH_PIXELS		128
+#define SH1106_SCREEN_HEIGHT_PIXELS		64
+#define SH1106_SCREEN_HEIGHT_LINE		(SH1106_SCREEN_HEIGHT_PIXELS / 8)
 
 /*** SH1106 structures ***/
 
 typedef enum {
-	SH1106_SUCCESS,
+	SH1106_SUCCESS = 0,
+	SH1106_ERROR_NULL_PARAMETER,
 	SH1106_ERROR_DATA_TYPE,
 	SH1106_ERROR_I2C_BUFFER_SIZE,
 	SH1106_ERROR_PAGE_ADDRESS,
 	SH1106_ERROR_COLUMN_ADDRESS,
 	SH1106_ERROR_LINE_ADDRESS,
+	SH1106_ERROR_CONTRAST,
+	SH1106_ERROR_VERTICAL_POSITION,
+	SH1106_ERROR_TEXT_WIDTH_OVERFLOW,
+	SH1106_ERROR_TEXT_JUSTIFICATION,
 	SH1106_ERROR_BASE_I2C = 0x0100,
 	SH1106_ERROR_BASE_LAST = (SH1106_ERROR_BASE_I2C + I2C_ERROR_BASE_LAST)
 } SH1106_status_t;
 
+typedef enum {
+	SH1106_TEXT_JUSTIFICATION_LEFT = 0,
+	SH1106_TEXT_JUSTIFICATION_CENTER,
+	SH1106_TEXT_JUSTIFICATION_RIGHT,
+	SH1106_TEXT_JUSTIFICATION_LAST
+} SH1106_text_justification_t;
+
+typedef enum {
+	SH1106_TEXT_CONTRAST_NORMAL = 0,
+	SH1106_TEXT_CONTRAST_INVERTED,
+	SH1106_TEXT_CONTRAST_LAST
+} SH1106_text_contrast_t;
+
+typedef enum {
+	SH1106_TEXT_VERTICAL_POSITION_TOP = 0,
+	SH1106_TEXT_VERTICAL_POSITION_BOTTOM,
+	SH1106_TEXT_VERTICAL_POSITION_LAST
+} SH1106_text_vertical_position;
+
+typedef struct {
+	char_t* str;
+	uint8_t line;
+	SH1106_text_justification_t justification;
+	SH1106_text_contrast_t contrast;
+	SH1106_text_vertical_position vertical_position;
+	uint8_t line_erase_flag;
+} SH1106_text_t;
+
 /*** SH1106 functions ***/
 
 SH1106_status_t SH1106_init(void);
-SH1106_status_t SH1106_print_image(const uint8_t image[8][128]);
+SH1106_status_t SH1106_clear(void);
+SH1106_status_t SH1106_print_text(SH1106_text_t* text);
+SH1106_status_t SH1106_print_image(const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS]);
 
 #define SH1106_status_check(error_base) { if (sh1106_status != SH1106_SUCCESS) { status = error_base + sh1106_status; goto errors; }}
 #define SH1106_error_check() { ERROR_status_check(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }

@@ -15,16 +15,11 @@
 
 /*** SH1106 local macros ***/
 
-#define SH1106_SCREEN_WIDTH_PIXELS		128
-#define SH1106_SCREEN_HEIGHT_PIXELS		64
-
-#define SH1106_PAGE_ADDRESS_LAST		7
 #define SH1106_COLUMN_ADDRESS_LAST		131
 #define SH1106_LINE_ADDRESS_LAST		63
 
 #define SH1106_RAM_WIDTH_PIXELS			(SH1106_COLUMN_ADDRESS_LAST + 1)
 #define SH1106_RAM_HEIGHT_PIXELS		(SH1106_LINE_ADDRESS_LAST + 1)
-#define SH1106_RAM_HEIGHT_PAGE			(SH1106_PAGE_ADDRESS_LAST + 1)
 
 #define SH1106_OFFSET_WIDTH_PIXELS		(SH1106_RAM_WIDTH_PIXELS - SH1106_SCREEN_WIDTH_PIXELS)
 #define SH1106_OFFSET_HEIGHT_PIXELS		(SH1106_RAM_HEIGHT_PIXELS - SH1106_SCREEN_WIDTH_PIXELS)
@@ -129,7 +124,7 @@ SH1106_status_t _SH1106_set_address(uint8_t page, uint8_t column, uint8_t line) 
 	const uint8_t command_list_size = 4;
 	uint8_t command_list[command_list_size];
 	// Check parameters.
-	if (page > SH1106_PAGE_ADDRESS_LAST) {
+	if (page > SH1106_SCREEN_HEIGHT_LINE) {
 		status = SH1106_ERROR_PAGE_ADDRESS;
 		goto errors;
 	}
@@ -162,7 +157,7 @@ SH1106_status_t _SH1106_clear_ram(void) {
 	uint8_t page_idx = 0;
 	uint8_t ram_data[SH1106_RAM_WIDTH_PIXELS] = {0x00};
 	// Page loop.
-	for (page_idx=0 ; page_idx<SH1106_RAM_HEIGHT_PAGE ; page_idx++) {
+	for (page_idx=0 ; page_idx<SH1106_SCREEN_HEIGHT_LINE ; page_idx++) {
 		// Clear RAM page.
 		status = _SH1106_set_address(page_idx, 0, 0);
 		if (status != SH1106_SUCCESS) goto errors;
@@ -209,16 +204,139 @@ errors:
 	return status;
 }
 
+/* CLEAR SCREEN.
+ * @param:			None.
+ * @return status:	Function execution status.
+ */
+SH1106_status_t SH1106_clear(void) {
+	// Local variables.
+	SH1106_status_t status = SH1106_SUCCESS;
+	// Turn display off.
+	status = _SH1106_on_off(0);
+	if (status != SH1106_SUCCESS) goto errors;
+	// Clear RAM.
+	status = _SH1106_clear_ram();
+	if (status != SH1106_SUCCESS) goto errors;
+errors:
+	return status;
+}
+
+/* PRINT TEXT ON OLED SCREEN.
+ * @param text:		Text structure to print.
+ * @return status:	Function execution status.
+ */
+SH1106_status_t SH1106_print_text(SH1106_text_t* text) {
+	// Local variables.
+	SH1106_status_t status = SH1106_SUCCESS;
+	uint8_t ram_data[SH1106_SCREEN_WIDTH_PIXELS] = {0x00};
+	uint8_t ram_idx = 0;
+	uint8_t text_width_pixels = 0;
+	uint8_t text_column = 0;
+	uint8_t text_idx = 0;
+	uint8_t line_idx = 0;
+	uint8_t ascii_code = 0;
+	// Check parameter.
+	if (text == NULL) {
+		status = SH1106_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if ((text -> str) == NULL) {
+		status = SH1106_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if ((text -> contrast) >= SH1106_TEXT_CONTRAST_LAST) {
+		status = SH1106_ERROR_CONTRAST;
+		goto errors;
+	}
+	if ((text -> vertical_position) >= SH1106_TEXT_VERTICAL_POSITION_LAST) {
+		status = SH1106_ERROR_CONTRAST;
+		goto errors;
+	}
+	// Compute text width.
+	while ((text -> str)[text_idx] != STRING_CHAR_NULL) {
+		text_width_pixels += FONT_CHAR_WIDTH_PIXELS;
+		// Check index.
+		if (text_width_pixels >= SH1106_SCREEN_WIDTH_PIXELS) {
+			status = SH1106_ERROR_TEXT_WIDTH_OVERFLOW;
+			goto errors;
+		}
+		text_idx++;
+	}
+	// Compute column according to justification.
+	switch (text -> justification) {
+	case SH1106_TEXT_JUSTIFICATION_LEFT:
+		text_column = 0;
+		break;
+	case SH1106_TEXT_JUSTIFICATION_CENTER:
+		text_column = ((SH1106_SCREEN_WIDTH_PIXELS - 1 - text_width_pixels) / 2);
+		break;
+	case SH1106_TEXT_JUSTIFICATION_RIGHT:
+		text_column = (SH1106_SCREEN_WIDTH_PIXELS - 1 - text_width_pixels);
+		break;
+	default:
+		status = SH1106_ERROR_TEXT_JUSTIFICATION;
+		goto errors;
+	}
+	// Build RAM data.
+	ram_idx = text_column;
+	text_idx = 0;
+	while ((text -> str)[text_idx] != STRING_CHAR_NULL) {
+		// Get ASCII code.
+		ascii_code = (uint8_t) (text -> str)[text_idx];
+		// Line loop.
+		for (line_idx=0 ; line_idx<FONT_CHAR_WIDTH_PIXELS ; line_idx++) {
+			// Check index.
+			if (ram_idx >= SH1106_SCREEN_WIDTH_PIXELS) {
+				status = SH1106_ERROR_TEXT_WIDTH_OVERFLOW;
+				goto errors;
+			}
+			// Fill RAM.
+			ram_data[ram_idx] = (ascii_code < FONT_ASCII_TABLE_OFFSET) ? FONT[0][line_idx] : FONT[ascii_code - FONT_ASCII_TABLE_OFFSET][line_idx];
+			if ((text -> vertical_position) == SH1106_TEXT_VERTICAL_POSITION_BOTTOM) {
+				ram_data[ram_idx] <<= 1;
+			}
+			ram_idx++;
+		}
+		text_idx++;
+	}
+	// Manage contrast.
+	if ((text -> contrast) == SH1106_TEXT_CONTRAST_INVERTED) {
+		for (ram_idx=0 ; ram_idx<SH1106_SCREEN_WIDTH_PIXELS ; ram_idx++) ram_data[ram_idx] ^= 0xFF;
+	}
+	// Check line erase flag.
+	if ((text -> line_erase_flag) != 0) {
+		// Set address.
+		status = _SH1106_set_address((text -> line), 0, 0);
+		if (status != SH1106_SUCCESS) goto errors;
+		// Write line.
+		status = _SH1106_write(SH1106_DATA_TYPE_RAM, ram_data, SH1106_SCREEN_WIDTH_PIXELS);
+		if (status != SH1106_SUCCESS) goto errors;
+	}
+	else {
+		// Set address.
+		status = _SH1106_set_address((text -> line), text_column, 0);
+		if (status != SH1106_SUCCESS) goto errors;
+		// Write line.
+		status = _SH1106_write(SH1106_DATA_TYPE_RAM, &(ram_data[text_column]), text_width_pixels);
+		if (status != SH1106_SUCCESS) goto errors;
+	}
+	// Turn display on.
+	status = _SH1106_on_off(1);
+	if (status != SH1106_SUCCESS) goto errors;
+errors:
+	return status;
+}
+
 /* INIT SH1106 DRIVER.
  * @param:			None.
  * @return status:	Function execution status.
  */
-SH1106_status_t SH1106_print_image(const uint8_t image[8][128]) {
+SH1106_status_t SH1106_print_image(const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS]) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
 	uint8_t page = 0;
 	// Page loop.
-	for (page=0 ; page<SH1106_RAM_HEIGHT_PAGE ; page++) {
+	for (page=0 ; page<SH1106_SCREEN_HEIGHT_LINE ; page++) {
 		// Display line.
 		status = _SH1106_set_address(page, 0, 0);
 		if (status != SH1106_SUCCESS) goto errors;

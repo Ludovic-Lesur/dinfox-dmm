@@ -178,10 +178,22 @@ int main(void) {
 	// Local variables.
 	LED_status_t led_status = LED_SUCCESS;
 	LED_color_t led_color = LED_COLOR_RED;
+	SH1106_text_t text;
+	const char_t node_list_str[] = "NODES_LIST";
+	// Set up test.
+	text.str = (char_t*) &(node_list_str[0]);
+	text.line = 0;
+	text.justification = SH1106_TEXT_JUSTIFICATION_CENTER;
+	text.contrast = SH1106_TEXT_CONTRAST_INVERTED;
+	text.vertical_position = SH1106_TEXT_VERTICAL_POSITION_BOTTOM;
+	text.line_erase_flag = 1;
 	// OLED test.
 	I2C1_power_on();
 	SH1106_init();
 	SH1106_print_image(DINFOX_LOGO);
+	LPTIM1_delay_milliseconds(1000, 1);
+	SH1106_clear();
+	SH1106_print_text(&text);
 	// Main loop.
 	while (1) {
 		led_status = LED_start_single_blink(2000, led_color);

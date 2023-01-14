@@ -53,9 +53,9 @@ void I2C1_init(void) {
 	GPIO_configure(&GPIO_HMI_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	I2C1_power_off();
 	// Configure peripheral.
-	// I2CCLK = PCLK1/(PRESC+1) = SYSCLK/(PRESC+1) = 2MHz (HSI) (PRESC='1000').
-	// SCL frequency to 10kHz. See p.641 of RM0377 datasheet.
-	I2C1 -> TIMINGR |= (7 << 28) | (99 << 8) | (99 << 0);
+	// I2CCLK = PCLK1/(PRESC+1) = SYSCLK/(PRESC+1) = 8MHz (HSI) (PRESC='0001').
+	// SCL frequency to 400kHz. See p.641 of RM0377 datasheet.
+	I2C1 -> TIMINGR |= (1 << 28) | (3 << 20)| (2 << 16) | (3 << 8) | (9 << 0);
 	// Enable peripheral.
 	I2C1 -> CR1 |= (0b1 << 0); // PE='1'.
 }

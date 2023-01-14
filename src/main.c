@@ -179,14 +179,21 @@ int main(void) {
 	LED_status_t led_status = LED_SUCCESS;
 	LED_color_t led_color = LED_COLOR_RED;
 	SH1106_text_t text;
-	const char_t node_list_str[] = "NODES_LIST";
-	// Set up test.
+	SH1106_horizontal_line_t line;
+	const char_t node_list_str[] = "NODES LIST";
+	// Set up text.
 	text.str = (char_t*) &(node_list_str[0]);
-	text.line = 0;
-	text.justification = SH1106_TEXT_JUSTIFICATION_CENTER;
+	text.page = 0;
+	text.justification = SH1106_JUSTIFICATION_CENTER;
 	text.contrast = SH1106_TEXT_CONTRAST_INVERTED;
 	text.vertical_position = SH1106_TEXT_VERTICAL_POSITION_BOTTOM;
 	text.line_erase_flag = 1;
+	// Setup line.
+	line.line_pixels = 8;
+	line.width_pixels = SH1106_SCREEN_WIDTH_PIXELS;
+	line.justification = SH1106_JUSTIFICATION_CENTER;
+	line.contrast = SH1106_TEXT_CONTRAST_NORMAL;
+	line.line_erase_flag = 1;
 	// OLED test.
 	I2C1_power_on();
 	SH1106_init();
@@ -194,6 +201,7 @@ int main(void) {
 	LPTIM1_delay_milliseconds(1000, 1);
 	SH1106_clear();
 	SH1106_print_text(&text);
+	SH1106_print_horizontal_line(&line);
 	// Main loop.
 	while (1) {
 		led_status = LED_start_single_blink(2000, led_color);

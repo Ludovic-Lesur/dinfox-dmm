@@ -28,14 +28,18 @@
 #include "rs485_common.h"
 #include "sh1106.h"
 // Utils.
-#include "logo.h"
 #include "types.h"
 // Applicative.
 #include "error.h"
+#include "hmi.h"
 #include "mode.h"
 #include "version.h"
 
 /*** MAIN local macros ***/
+
+// RTC wake-up timer period.
+// Warning: this value must be lower than the watchdog period = 25s.
+#define DMM_WAKEUP_PERIOD_SECONDS	10
 
 /*** MAIN local structures ***/
 
@@ -163,6 +167,8 @@ void _DMM_init_hw(void) {
 	// Init components.
 	LED_init();
 	RS485_init();
+	// Init applicative layers.
+	HMI_init();
 }
 
 /*** MAIN functions ***/
@@ -176,53 +182,64 @@ int main(void) {
 	_DMM_init_context();
 	_DMM_init_hw();
 	// Local variables.
-	LED_status_t led_status = LED_SUCCESS;
-	LED_color_t led_color = LED_COLOR_RED;
-	SH1106_text_t text;
-	SH1106_horizontal_line_t line;
-	const char_t node_list_str[] = "NODES LIST";
-	// Set up text.
-	text.str = (char_t*) &(node_list_str[0]);
-	text.page = 0;
-	text.justification = SH1106_JUSTIFICATION_CENTER;
-	text.contrast = SH1106_TEXT_CONTRAST_INVERTED;
-	text.vertical_position = SH1106_TEXT_VERTICAL_POSITION_BOTTOM;
-	text.line_erase_flag = 1;
-	// Setup line.
-	line.line_pixels = 8;
-	line.width_pixels = SH1106_SCREEN_WIDTH_PIXELS;
-	line.justification = SH1106_JUSTIFICATION_CENTER;
-	line.contrast = SH1106_TEXT_CONTRAST_NORMAL;
-	line.line_erase_flag = 1;
-	// OLED test.
-	I2C1_power_on();
-	SH1106_init();
-	SH1106_print_image(DINFOX_LOGO);
-	LPTIM1_delay_milliseconds(1000, 1);
-	SH1106_clear();
-	SH1106_print_text(&text);
-	SH1106_print_horizontal_line(&line);
+	RS485_status_t rs485_status = RS485_SUCCESS;
+	HMI_status_t hmi_status = HMI_SUCCESS;
+	RTC_status_t rtc_status = RTC_SUCCESS;
 	// Main loop.
 	while (1) {
-		led_status = LED_start_single_blink(2000, led_color);
-		LED_error_check();
-		while (LED_is_single_blink_done() == 0);
-		LED_stop_blink();
-		switch (led_color) {
-		case LED_COLOR_RED:
-			led_color = LED_COLOR_GREEN;
+		// Perform state machine.
+		switch (dmm_ctx.state) {
+		case DMM_STATE_INIT:
+			// Perform first nodes scan.
+			rs485_status = RS485_scan_nodes(rs485_common_ctx.nodes_list, RS485_NODES_LIST_SIZE_MAX, &rs485_common_ctx.nodes_count);
+			RS485_error_check();
+			// Compute next state.
+			dmm_ctx.state = DMM_STATE_OFF;
 			break;
-		case LED_COLOR_GREEN:
-			led_color = LED_COLOR_BLUE;
+		case DMM_STATE_HMI:
+			// Process HMI.
+			hmi_status = HMI_task();
+			HMI_error_check();
+			// Compute next state.
+			dmm_ctx.state = DMM_STATE_OFF;
 			break;
-		case LED_COLOR_BLUE:
-			led_color = LED_COLOR_RED;
+		case DMM_STATE_OFF:
+			// Start periodic wakeup timer.
+			EXTI_clear_all_flags();
+			RTC_clear_wakeup_timer_flag();
+			rtc_status = RTC_start_wakeup_timer(DMM_WAKEUP_PERIOD_SECONDS);
+			RTC_error_check();
+			// Enable HMI activation interrupt.
+			NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_0_1);
+			// Compute next state.
+			dmm_ctx.state = DMM_STATE_SLEEP;
+			break;
+		case DMM_STATE_SLEEP:
+			// Enter sleep mode.
+			PWR_enter_stop_mode();
+			// Wake-up
+			IWDG_reload();
+			// Check RTC flag.
+			if (RTC_get_wakeup_timer_flag() != 0) {
+				// Clear flag.
+				RTC_clear_wakeup_timer_flag();
+				// TODO check nodes monitoring period.
+			}
+			// Check HMI activation flag.
+			if (EXTI_get_encoder_switch_flag() != 0) {
+				// Clear flag.
+				EXTI_clear_encoder_switch_flag();
+				// Stop periodic wakeup timer.
+				rtc_status = RTC_stop_wakeup_timer();
+				RTC_error_check();
+				// Start HMI.
+				dmm_ctx.state = DMM_STATE_HMI;
+			}
 			break;
 		default:
-			led_color = LED_COLOR_WHITE;
+			dmm_ctx.state = DMM_STATE_SLEEP;
 			break;
 		}
-		LPTIM1_delay_milliseconds(1000, 1);
 		IWDG_reload();
 	}
 	return 0;

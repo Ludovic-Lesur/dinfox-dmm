@@ -42,4 +42,7 @@ void EXTI_configure_gpio(const GPIO_pin_t* gpio, EXTI_trigger_t trigger);
 void EXTI_configure_line(EXTI_line_t line, EXTI_trigger_t trigger);
 void EXTI_clear_all_flags(void);
 
+uint8_t EXTI_get_encoder_switch_flag(void);
+void EXTI_clear_encoder_switch_flag(void);
+
 #endif /* __EXTI_H__ */

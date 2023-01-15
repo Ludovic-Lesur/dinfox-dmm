@@ -10,12 +10,6 @@
 
 #include "types.h"
 
-/*** RTC macros ***/
-
-// RTC wake-up timer period.
-// Warning: this value must be lower than the watchdog period = 25s.
-#define RTC_WAKEUP_PERIOD_SECONDS	10
-
 /*** RTC structures ***/
 
 typedef enum {
@@ -24,6 +18,7 @@ typedef enum {
 	RTC_ERROR_INITIALIZATION_MODE,
 	RTC_ERROR_WAKEUP_TIMER_DELAY,
 	RTC_ERROR_WAKEUP_TIMER_RUNNING,
+	RTC_ERROR_WAKEUP_TIMER_REGISTER_ACCESS,
 	RTC_ERROR_BASE_LAST = 0x0100
 } RTC_status_t;
 

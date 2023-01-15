@@ -9,6 +9,7 @@
 
 #include "exti_reg.h"
 #include "gpio.h"
+#include "hmi.h"
 #include "mapping.h"
 #include "mode.h"
 #include "nvic.h"
@@ -21,6 +22,10 @@
 #define EXTI_RTSR_FTSR_RESERVED_INDEX	18
 #define EXTI_RTSR_FTSR_MAX_INDEX		22
 
+/*** EXTI local global variables ***/
+
+static volatile uint8_t encoder_switch_flag = 0;
+
 /*** EXTI local functions ***/
 
 /* EXTI LINES 0-1 INTERRUPT HANDLER.
@@ -30,8 +35,11 @@
 void __attribute__((optimize("-O0"))) EXTI0_1_IRQHandler(void) {
 	// Rotary encoder switch IRQ (PA0).
 	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_SW.pin_index))) != 0) {
+		// Set flag in HMI driver.
+		HMI_set_irq_flag(HMI_IRQ_MASK_ENCODER_SWITCH);
+		encoder_switch_flag = 1;
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_SW.pin_index)); // PIFx='1' (writing '1' clears the bit).
+		EXTI -> PR |= (0b1 << (GPIO_ENC_SW.pin_index));
 	}
 }
 
@@ -40,14 +48,25 @@ void __attribute__((optimize("-O0"))) EXTI0_1_IRQHandler(void) {
  * @return:	None.
  */
 void __attribute__((optimize("-O0"))) EXTI2_3_IRQHandler(void) {
-	// Rotary encoder channels A/B (PA2/PA3).
+	// Rotary encoder channel A (PA2).
 	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_CHA.pin_index))) != 0) {
+		// Check channel B state.
+		if (GPIO_read(&GPIO_ENC_CHB) == 0) {
+			// Set flag in HMI driver.
+			HMI_set_irq_flag(HMI_IRQ_MASK_ENCODER_FORWARD);
+		}
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_CHA.pin_index)); // PIFx='1' (writing '1' clears the bit).
+		EXTI -> PR |= (0b1 << (GPIO_ENC_CHA.pin_index));
 	}
+	// Rotary encoder channel B (PA3).
 	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_CHB.pin_index))) != 0) {
+		// Check channel A state.
+		if (GPIO_read(&GPIO_ENC_CHA) == 0) {
+			// Set flag in HMI driver.
+			HMI_set_irq_flag(HMI_IRQ_MASK_ENCODER_BACKWARD);
+		}
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_CHB.pin_index)); // PIFx='1' (writing '1' clears the bit).
+		EXTI -> PR |= (0b1 << (GPIO_ENC_CHB.pin_index));
 	}
 }
 
@@ -58,18 +77,38 @@ void __attribute__((optimize("-O0"))) EXTI2_3_IRQHandler(void) {
 void __attribute__((optimize("-O0"))) EXTI4_15_IRQHandler(void) {
 	// BP1 (PB8).
 	if (((EXTI -> PR) & (0b1 << (GPIO_BP1.pin_index))) != 0) {
+		// Set flag in HMI driver.
+		HMI_set_irq_flag(HMI_IRQ_MASK_BP1);
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP1.pin_index)); // PIFx='1' (writing '1' clears the bit).
+		EXTI -> PR |= (0b1 << (GPIO_BP1.pin_index));
 	}
 	// BP2 (PB15).
 	if (((EXTI -> PR) & (0b1 << (GPIO_BP2.pin_index))) != 0) {
+		// Set flag in HMI driver.
+		HMI_set_irq_flag(HMI_IRQ_MASK_BP2);
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP2.pin_index)); // PIFx='1' (writing '1' clears the bit).
+		EXTI -> PR |= (0b1 << (GPIO_BP2.pin_index));
 	}
 	// BP3 (PB9).
 	if (((EXTI -> PR) & (0b1 << (GPIO_BP3.pin_index))) != 0) {
+		// Set flag in HMI driver.
+		HMI_set_irq_flag(HMI_IRQ_MASK_BP3);
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP3.pin_index)); // PIFx='1' (writing '1' clears the bit).
+		EXTI -> PR |= (0b1 << (GPIO_BP3.pin_index));
+	}
+	// CMD_ON (PB13).
+	if (((EXTI -> PR) & (0b1 << (GPIO_CMD_ON.pin_index))) != 0) {
+		// Set flag in HMI driver.
+		HMI_set_irq_flag(HMI_IRQ_MASK_CMD_ON);
+		// Clear flag.
+		EXTI -> PR |= (0b1 << (GPIO_CMD_ON.pin_index));
+	}
+	// CMD_OFF (PB14).
+	if (((EXTI -> PR) & (0b1 << (GPIO_CMD_OFF.pin_index))) != 0) {
+		// Set flag in HMI driver.
+		HMI_set_irq_flag(HMI_IRQ_MASK_CMD_OFF);
+		// Clear flag.
+		EXTI -> PR |= (0b1 << (GPIO_CMD_OFF.pin_index));
 	}
 }
 
@@ -158,4 +197,20 @@ void EXTI_configure_line(EXTI_line_t line, EXTI_trigger_t trigger) {
 void EXTI_clear_all_flags(void) {
 	// Clear all flags.
 	EXTI -> PR |= 0x007BFFFF; // PIFx='1'.
+}
+
+/* READ ENCODER SWITCH FLAG.
+ * @param:	None.
+ * @return:	None.
+ */
+uint8_t EXTI_get_encoder_switch_flag(void) {
+	return encoder_switch_flag;
+}
+
+/* CLEAR ENCODER SWITCH FLAG.
+ * @param:	None.
+ * @return:	None.
+ */
+void EXTI_clear_encoder_switch_flag(void) {
+	encoder_switch_flag = 0;
 }

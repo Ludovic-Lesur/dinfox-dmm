@@ -19,6 +19,8 @@
 #define RS485_ADDRESS_SIZE_BYTES	1
 // Framing.
 #define RS485_FRAME_END				STRING_CHAR_CR
+// Nodes list size.
+#define RS485_NODES_LIST_SIZE_MAX	32
 
 /*** RS485 common types ***/
 
@@ -38,5 +40,14 @@ typedef struct {
 	uint8_t address;
 	uint8_t board_id;
 } RS485_node_t;
+
+typedef struct {
+	RS485_node_t nodes_list[RS485_NODES_LIST_SIZE_MAX];
+	uint8_t nodes_count;
+} RS485_COMMON_context_t;
+
+/*** RS485 common context ***/
+
+RS485_COMMON_context_t rs485_common_ctx;
 
 #endif /* __RS485_COMMON_H__ */

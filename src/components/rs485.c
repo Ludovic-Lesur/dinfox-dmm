@@ -135,7 +135,7 @@ static void _RS485_reset_replies(void) {
 void RS485_init(void) {
 	// Reset parser.
 	_RS485_reset_replies();
-	// Enable receiver.
+	// Configure power enable pin.
 	GPIO_configure(&GPIO_TRX_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 }
 

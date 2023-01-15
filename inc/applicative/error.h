@@ -27,6 +27,9 @@
 #include "types.h"
 // Components.
 #include "rs485.h"
+#include "sh1106.h"
+// Applicative.
+#include "hmi.h"
 
 /*** ERROR structures ***/
 
@@ -55,6 +58,9 @@ typedef enum {
 	ERROR_BASE_STRING = (ERROR_BASE_PARSER + PARSER_ERROR_BASE_LAST),
 	// Components.
 	ERROR_BASE_RS485 = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
+	ERROR_BASE_SH1106 = (ERROR_BASE_RS485 + RS485_ERROR_BASE_LAST),
+	// Applicative.
+	ERROR_BASE_HMI = (ERROR_BASE_SH1106 + SH1106_ERROR_BASE_LAST),
 	// Last index.
 	ERROR_BASE_LAST = (ERROR_BASE_RS485 + RS485_ERROR_BASE_LAST)
 } ERROR_t;

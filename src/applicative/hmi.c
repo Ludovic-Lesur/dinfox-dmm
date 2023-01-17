@@ -42,6 +42,8 @@ static const char_t HMI_TEXT_NODES_SCAN_BUTTON[] = "NODES SCAN BUTTON";
 
 /*** HMI local structures ***/
 
+typedef void (*_HMI_irq_callback)(void);
+
 typedef enum {
 	HMI_STATE_INIT,
 	HMI_STATE_IDLE,
@@ -51,7 +53,8 @@ typedef enum {
 
 typedef struct {
 	HMI_state_t state;
-	volatile uint8_t irq_flags;
+	volatile uint32_t irq_flags;
+	_HMI_irq_callback irq_callbacks[HMI_IRQ_LAST];
 	uint8_t unused_duration_seconds;
 	char_t text[SH1106_SCREEN_WIDTH_CHAR];
 	uint8_t text_width;
@@ -201,12 +204,77 @@ errors:
 	return status;
 }
 
+/* ENCODER SWITCH IRQ CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_irq_callback_encoder_switch(void) {
+	LED_start_single_blink(LED_COLOR_WHITE, 10);
+}
+
+/* ENCODER FORWARD IRQ CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_irq_callback_encoder_forward(void) {
+	LED_start_single_blink(LED_COLOR_GREEN, 10);
+}
+
+/* ENCODER BACKWARD IRQ CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_irq_callback_encoder_backward(void) {
+	LED_start_single_blink(LED_COLOR_RED, 10);
+}
+
+/* COMMAND ON IRQ CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_irq_callback_cmd_on(void) {
+	LED_start_single_blink(LED_COLOR_YELLOW, 10);
+}
+
+/* COMMAND OFF IRQ CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_irq_callback_cmd_off(void) {
+	LED_start_single_blink(LED_COLOR_CYAN, 10);
+}
+
+/* BP1 IRQ CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_irq_callback_bp1(void) {
+	LED_start_single_blink(LED_COLOR_MAGENTA, 10);
+}
+
+/* BP2 IRQ CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_irq_callback_bp2(void) {
+	LED_start_single_blink(LED_COLOR_BLUE, 10);
+}
+
+/* BP3 IRQ CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_irq_callback_bp3(void) {
+	LED_start_single_blink(LED_COLOR_RED, 10);
+}
+
 /* HMI INTERNAL STATE MACHINE.
  * @param:			None.
  * @return status:	Function execution status.
  */
 static HMI_status_t _HMI_state_machine(void) {
 	// Local variables.
+	uint8_t idx = 0;
 	HMI_status_t status = HMI_SUCCESS;
 	I2C_status_t i2c1_status = I2C_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
@@ -237,37 +305,14 @@ static HMI_status_t _HMI_state_machine(void) {
 		hmi_ctx.state = HMI_STATE_IDLE;
 		break;
 	case HMI_STATE_IDLE:
-		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_ENCODER_SWITCH) != 0) {
-			LED_start_single_blink(100, LED_COLOR_WHITE);
-			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_ENCODER_SWITCH);
-		}
-		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_BP1) != 0) {
-			LED_start_single_blink(100, LED_COLOR_RED);
-			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_BP1);
-		}
-		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_BP2) != 0) {
-			LED_start_single_blink(100, LED_COLOR_GREEN);
-			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_BP2);
-		}
-		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_BP3) != 0) {
-			LED_start_single_blink(100, LED_COLOR_BLUE);
-			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_BP3);
-		}
-		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_CMD_ON) != 0) {
-			LED_start_single_blink(100, LED_COLOR_YELLOW);
-			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_CMD_ON);
-		}
-		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_CMD_OFF) != 0) {
-			LED_start_single_blink(100, LED_COLOR_CYAN);
-			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_CMD_OFF);
-		}
-		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_ENCODER_FORWARD) != 0) {
-			LED_start_single_blink(100, LED_COLOR_RED);
-			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_ENCODER_FORWARD);
-		}
-		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_ENCODER_BACKWARD) != 0) {
-			LED_start_single_blink(100, LED_COLOR_GREEN);
-			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_ENCODER_BACKWARD);
+		// Process IRQ flags.
+		for (idx=0 ; idx<HMI_IRQ_LAST ; idx++) {
+			// Check flag.
+			if ((hmi_ctx.irq_flags & (0b1 << idx)) != 0) {
+				// Execute callback and clear flag.
+				hmi_ctx.irq_callbacks[idx]();
+				hmi_ctx.irq_flags &= ~(0b1 << idx);
+			}
 		}
 		break;
 	case HMI_STATE_UNUSED:
@@ -287,6 +332,15 @@ errors:
  * @return:	None.
  */
 void HMI_init(void) {
+	// Init context.
+	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_SWITCH] = &_HMI_irq_callback_encoder_switch;
+	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_FORWARD] = &_HMI_irq_callback_encoder_forward;
+	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_BACKWARD] = &_HMI_irq_callback_encoder_backward;
+	hmi_ctx.irq_callbacks[HMI_IRQ_CMD_ON] = &_HMI_irq_callback_cmd_on;
+	hmi_ctx.irq_callbacks[HMI_IRQ_CMD_OFF] = &_HMI_irq_callback_cmd_off;
+	hmi_ctx.irq_callbacks[HMI_IRQ_BP1] = &_HMI_irq_callback_bp1;
+	hmi_ctx.irq_callbacks[HMI_IRQ_BP2] = &_HMI_irq_callback_bp2;
+	hmi_ctx.irq_callbacks[HMI_IRQ_BP3] = &_HMI_irq_callback_bp3;
 	// Init buttons.
 	GPIO_configure(&GPIO_BP1, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	EXTI_configure_gpio(&GPIO_BP1, EXTI_TRIGGER_RISING_EDGE);
@@ -321,7 +375,7 @@ HMI_status_t HMI_task(void) {
 	HMI_status_t status = HMI_SUCCESS;
 	RTC_status_t rtc_status = RTC_SUCCESS;
 	// Init context.
-	hmi_ctx.state = ((hmi_ctx.irq_flags & HMI_IRQ_MASK_ENCODER_SWITCH) != 0) ? HMI_STATE_INIT : HMI_STATE_UNUSED;
+	hmi_ctx.state = ((hmi_ctx.irq_flags & (0b1 << HMI_IRQ_ENCODER_SWITCH)) != 0) ? HMI_STATE_INIT : HMI_STATE_UNUSED;
 	hmi_ctx.unused_duration_seconds = 0;
 	// Start periodic wakeup timer.
 	RTC_clear_wakeup_timer_flag();
@@ -362,10 +416,10 @@ errors:
 }
 
 /* SET IRQ FLAG (CALLED BY EXTI INTERRUPT).
- * @param irq_mask:	IRQ mask to set.
+ * @param irq_flag:	IRQ flag to set.
  * @return:			None.
  */
-void HMI_set_irq_flag(HMI_irq_mask_t irq_mask) {
-	// Apply mask.
-	hmi_ctx.irq_flags |= irq_mask;
+void HMI_set_irq_flag(HMI_irq_flag_t irq_flag) {
+	// Set local flag.
+	hmi_ctx.irq_flags |= (0b1 << irq_flag);
 }

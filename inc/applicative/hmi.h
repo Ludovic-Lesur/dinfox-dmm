@@ -26,32 +26,22 @@ typedef enum {
 } HMI_status_t;
 
 typedef enum {
-	HMI_IRQ_INDEX_ENCODER_SWITCH = 0,
-	HMI_IRQ_INDEX_ENCODER_FORWARD,
-	HMI_IRQ_INDEX_ENCODER_BACKWARD,
-	HMI_IRQ_INDEX_CMD_ON,
-	HMI_IRQ_INDEX_CMD_OFF,
-	HMI_IRQ_INDEX_BP1,
-	HMI_IRQ_INDEX_BP2,
-	HMI_IRQ_INDEX_BP3
-} HMI_irq_flags_t;
-
-typedef enum {
-	HMI_IRQ_MASK_ENCODER_SWITCH = (0b1 << HMI_IRQ_INDEX_ENCODER_SWITCH),
-	HMI_IRQ_MASK_ENCODER_FORWARD = (0b1 << HMI_IRQ_INDEX_ENCODER_FORWARD),
-	HMI_IRQ_MASK_ENCODER_BACKWARD = (0b1 << HMI_IRQ_INDEX_ENCODER_BACKWARD),
-	HMI_IRQ_MASK_CMD_ON = (0b1 << HMI_IRQ_INDEX_CMD_ON),
-	HMI_IRQ_MASK_CMD_OFF = (0b1 << HMI_IRQ_INDEX_CMD_OFF),
-	HMI_IRQ_MASK_BP1 = (0b1 << HMI_IRQ_INDEX_BP1),
-	HMI_IRQ_MASK_BP2 = (0b1 << HMI_IRQ_INDEX_BP2),
-	HMI_IRQ_MASK_BP3 = (0b1 << HMI_IRQ_INDEX_BP3)
-} HMI_irq_mask_t;
+	HMI_IRQ_ENCODER_SWITCH = 0,
+	HMI_IRQ_ENCODER_FORWARD,
+	HMI_IRQ_ENCODER_BACKWARD,
+	HMI_IRQ_CMD_ON,
+	HMI_IRQ_CMD_OFF,
+	HMI_IRQ_BP1,
+	HMI_IRQ_BP2,
+	HMI_IRQ_BP3,
+	HMI_IRQ_LAST
+} HMI_irq_flag_t;
 
 /*** HMI functions ***/
 
 void HMI_init(void);
 HMI_status_t HMI_task(void);
-void HMI_set_irq_flag(HMI_irq_mask_t irq_mask);
+void HMI_set_irq_flag(HMI_irq_flag_t irq_flag);
 
 #define HMI_status_check(error_base) { if (hmi_status != HMI_SUCCESS) { status = error_base + hmi_status; goto errors; }}
 #define HMI_error_check() { ERROR_status_check(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }

@@ -29,11 +29,11 @@ void LED_init(void) {
 }
 
 /* START A SINGLE LED BLINK.
- * @param blink_period_ms:	Blink duration in ms.
  * @param led_color:		Color to set.
+ * @param blink_period_ms:	Blink duration in ms.
  * @return status:			Function execution status.
  */
-LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t color) {
+LED_status_t LED_start_single_blink(LED_color_t color, uint32_t blink_duration_ms) {
 	// Local variables.
 	LED_status_t status = LED_SUCCESS;
 	// Check parameters.

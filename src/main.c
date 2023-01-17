@@ -30,6 +30,7 @@
 // Utils.
 #include "types.h"
 // Applicative.
+#include "dinfox.h"
 #include "error.h"
 #include "hmi.h"
 #include "mode.h"
@@ -182,17 +183,29 @@ int main(void) {
 	_DMM_init_context();
 	_DMM_init_hw();
 	// Local variables.
+	uint8_t idx = 0;
+	RTC_status_t rtc_status = RTC_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	RS485_status_t rs485_status = RS485_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
-	RTC_status_t rtc_status = RTC_SUCCESS;
+
 	// Main loop.
 	while (1) {
 		// Perform state machine.
 		switch (dmm_ctx.state) {
 		case DMM_STATE_INIT:
+			// Reset node list.
+			rs485_common_ctx.nodes_count = 0;
+			for (idx=0 ; idx<RS485_NODES_LIST_SIZE_MAX ; idx++) {
+				rs485_common_ctx.nodes_list[idx].address = (RS485_ADDRESS_LAST + 1);
+				rs485_common_ctx.nodes_list[idx].board_id = DINFOX_BOARD_ID_ERROR;
+			}
 			// Perform first nodes scan.
+			lpuart1_status = LPUART1_power_on();
+			LPUART1_error_check();
 			rs485_status = RS485_scan_nodes(rs485_common_ctx.nodes_list, RS485_NODES_LIST_SIZE_MAX, &rs485_common_ctx.nodes_count);
 			RS485_error_check();
+			LPUART1_power_off();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;

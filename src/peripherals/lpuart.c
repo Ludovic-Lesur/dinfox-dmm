@@ -9,6 +9,7 @@
 
 #include "exti.h"
 #include "gpio.h"
+#include "lptim.h"
 #include "lpuart_reg.h"
 #include "mapping.h"
 #include "nvic.h"
@@ -52,22 +53,7 @@ void LPUART1_IRQHandler(void) {
 	if (((LPUART1 -> ISR) & (0b1 << 5)) != 0) {
 		// Read incoming byte.
 		rx_byte = (LPUART1 -> RDR);
-#ifdef AM
-		// Check field index.
-		switch (lpuart_ctx.rx_byte_count) {
-		case RS485_FRAME_FIELD_INDEX_DESTINATION_ADDRESS:
-			// Nothing to do.
-			break;
-		default:
-			// Transmit source address and command to applicative layer.
-			RS485_fill_rx_buffer(rx_byte);
-			break;
-		}
-		// Increment byte count.
-		lpuart_ctx.rx_byte_count++;
-#else
 		RS485_fill_rx_buffer(rx_byte);
-#endif
 		// Clear RXNE flag.
 		LPUART1 -> RQR |= (0b1 << 3);
 	}
@@ -135,10 +121,9 @@ void LPUART1_init(void) {
 	RCC -> CCIPR |= (0b11 << 10); // LPUART1SEL='11'.
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 18); // LPUARTEN='1'.
-	// Configure TX and RX GPIOs.
-	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
+	// Configure power enable pin.
+	GPIO_configure(&GPIO_TRX_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	LPUART1_power_off();
 #ifdef LPUART_USE_NRE
 	// Disable receiver by default.
 	GPIO_configure(&GPIO_LPUART1_NRE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
@@ -171,7 +156,41 @@ void LPUART1_init(void) {
 #endif
 }
 
-/* EANABLE LPUART RX OPERATION.
+/* TURN RS485 INTERFACE ON.
+ * @param:			None.
+ * @return status:	Function execution status.
+ */
+LPUART_status_t LPUART1_power_on(void) {
+	// Local variables.
+	LPUART_status_t status = LPUART_SUCCESS;
+	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
+	// Turn RS485 transceiver on.
+	GPIO_write(&GPIO_TRX_POWER_ENABLE, 1);
+	// Connect pins to LPUART peripheral.
+	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
+	// Power on delay.
+	lptim1_status = LPTIM1_delay_milliseconds(100, 1);
+	LPTIM1_status_check(LPUART_ERROR_BASE_LPTIM);
+errors:
+	return status;
+}
+
+/* TURN RS485 INTERFACE OFF.
+ * @param:	None.
+ * @return:	None.
+ */
+void LPUART1_power_off(void) {
+	// Set pins as output low.
+	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
+	// Turn RS485 transceiver on.
+	GPIO_write(&GPIO_TRX_POWER_ENABLE, 0);
+}
+
+/* ENABLE LPUART RX OPERATION.
  * @param:	None.
  * @return:	None.
  */

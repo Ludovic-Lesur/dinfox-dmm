@@ -44,4 +44,17 @@ typedef enum {
 	DINFOX_REGISTER_LAST
 } DINFOX_common_registers_t;
 
+static const char_t DINFOX_BOARD_ID_NAME[][DINFOX_BOARD_ID_LAST] = {
+	"LVRM",
+	"BPSM",
+	"DDRM",
+	"UHFM",
+	"GPSM",
+	"SM",
+	"DIM",
+	"RRM",
+	"DMM",
+	"MPMCM"
+};
+
 #endif /* __DINFOX_H__ */

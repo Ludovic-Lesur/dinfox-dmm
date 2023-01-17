@@ -9,6 +9,7 @@
 #define __SH1106_H__
 
 #include "i2c.h"
+#include "font.h"
 #include "types.h"
 
 /*** SH1106 macros ***/
@@ -16,6 +17,7 @@
 #define SH1106_I2C_ADDRESS				0x3C
 
 #define SH1106_SCREEN_WIDTH_PIXELS		128
+#define SH1106_SCREEN_WIDTH_CHAR		(SH1106_SCREEN_WIDTH_PIXELS / FONT_CHAR_WIDTH_PIXELS)
 #define SH1106_SCREEN_HEIGHT_PIXELS		64
 #define SH1106_SCREEN_HEIGHT_LINE		(SH1106_SCREEN_HEIGHT_PIXELS / 8)
 

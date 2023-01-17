@@ -135,8 +135,6 @@ static void _RS485_reset_replies(void) {
 void RS485_init(void) {
 	// Reset parser.
 	_RS485_reset_replies();
-	// Configure power enable pin.
-	GPIO_configure(&GPIO_TRX_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 }
 
 #ifdef AM
@@ -323,7 +321,7 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 		_RS485_reset_replies();
 		reply_in.type = RS485_REPLY_TYPE_OK;
 		// Send ping command.
-		RS485_send_command(node_address, "RS");
+		status = RS485_send_command(node_address, "RS");
 		if (status != RS485_SUCCESS) goto errors;
 		// Wait reply.
 		status = RS485_wait_reply(&reply_in, &reply_out);

@@ -7,6 +7,7 @@
 
 #include "hmi.h"
 
+#include "dinfox.h"
 #include "error.h"
 #include "exti.h"
 #include "font.h"
@@ -21,6 +22,7 @@
 #include "rs485_common.h"
 #include "rtc.h"
 #include "sh1106.h"
+#include "string.h"
 #include "types.h"
 
 /*** HMI macros ***/
@@ -31,6 +33,8 @@
 #define HMI_WAKEUP_PERIOD_SECONDS				1
 #define HMI_UNUSED_DURATION_THRESHOLD_SECONDS	5
 
+#define HMI_STRING_VALUE_BUFFER_SIZE			16
+
 static const char_t HMI_TEXT_NODES_LIST[] =	"NODES LIST";
 static const char_t HMI_TEXT_NODE_LIST_EMPTY[] = "NODES LIST EMPTY";
 static const char_t HMI_TEXT_PRESS[] = "PRESS";
@@ -40,8 +44,7 @@ static const char_t HMI_TEXT_NODES_SCAN_BUTTON[] = "NODES SCAN BUTTON";
 
 typedef enum {
 	HMI_STATE_INIT,
-	HMI_STATE_NODE_LIST,
-	HMI_STATE_NODE_DATA,
+	HMI_STATE_IDLE,
 	HMI_STATE_UNUSED,
 	HMI_STATE_LAST,
 } HMI_state_t;
@@ -50,8 +53,10 @@ typedef struct {
 	HMI_state_t state;
 	volatile uint8_t irq_flags;
 	uint8_t unused_duration_seconds;
-	SH1106_text_t text;
-	SH1106_horizontal_line_t line;
+	char_t text[SH1106_SCREEN_WIDTH_CHAR];
+	uint8_t text_width;
+	SH1106_text_t sh1106_text;
+	SH1106_horizontal_line_t sh1106_line;
 } HMI_context_t;
 
 /*** HMI local global variables ***/
@@ -60,31 +65,83 @@ static HMI_context_t hmi_ctx;
 
 /*** HMI local functions ***/
 
+/* GENERIC MACRO TO ADD A CHARACTER TO THE REPLY BUFFER.
+ * @param character:	Character to add.
+ * @return:				None.
+ */
+#define _HMI_text_add_char(character) { \
+	hmi_ctx.text[hmi_ctx.text_width] = character; \
+	hmi_ctx.text_width = (hmi_ctx.text_width + 1) % SH1106_SCREEN_WIDTH_CHAR; \
+}
+
+/* APPEND A STRING TO THE REPONSE BUFFER.
+ * @param tx_string:	String to add.
+ * @return:				None.
+ */
+static void _HMI_text_add_string(char_t* tx_string) {
+	// Fill TX buffer with new bytes.
+	while (*tx_string) {
+		_HMI_text_add_char(*(tx_string++));
+	}
+}
+
+/* APPEND A VALUE TO THE REPONSE BUFFER.
+ * @param tx_value:		Value to add.
+ * @param format:       Printing format.
+ * @param print_prefix: Print base prefix is non zero.
+ * @return:				None.
+ */
+static void _HMI_text_add_value(int32_t tx_value, STRING_format_t format, uint8_t print_prefix) {
+	// Local variables.
+	STRING_status_t string_status = STRING_SUCCESS;
+	char_t str_value[HMI_STRING_VALUE_BUFFER_SIZE];
+	uint8_t idx = 0;
+	// Reset string.
+	for (idx=0 ; idx<HMI_STRING_VALUE_BUFFER_SIZE ; idx++) str_value[idx] = STRING_CHAR_NULL;
+	// Convert value to string.
+	string_status = STRING_value_to_string(tx_value, format, print_prefix, str_value);
+	STRING_error_check();
+	// Add string.
+	_HMI_text_add_string(str_value);
+}
+
+/* FLUSH TEXT BUFFER.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_text_flush(void) {
+	// Local variables.
+	uint8_t idx = 0;
+	// Flush string.
+	for (idx=0 ; idx<SH1106_SCREEN_WIDTH_CHAR ; idx++) hmi_ctx.text[idx] = STRING_CHAR_NULL;
+	hmi_ctx.text_width = 0;
+}
+
 /* PRINT FIRST LINE TITLE ON SCREEN.
  * @param title:	String to print.
  * @return status:	Function executions status.
  */
-static HMI_status_t _HMI_print_title(const char_t* title) {
+static HMI_status_t _HMI_print_title(char_t* title) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	SH1106_status_t sh1106_status = SH1106_SUCCESS;
 	// Display node list menu.
-	hmi_ctx.text.str = (char_t*) title;
-	hmi_ctx.text.page = HMI_SH1106_PAGE_TITLE;
-	hmi_ctx.text.justification = SH1106_JUSTIFICATION_CENTER;
-	hmi_ctx.text.contrast = SH1106_TEXT_CONTRAST_INVERTED;
-	hmi_ctx.text.vertical_position = SH1106_TEXT_VERTICAL_POSITION_BOTTOM;
-	hmi_ctx.text.line_erase_flag = 1;
+	hmi_ctx.sh1106_text.str = title;
+	hmi_ctx.sh1106_text.page = HMI_SH1106_PAGE_TITLE;
+	hmi_ctx.sh1106_text.justification = SH1106_JUSTIFICATION_CENTER;
+	hmi_ctx.sh1106_text.contrast = SH1106_TEXT_CONTRAST_INVERTED;
+	hmi_ctx.sh1106_text.vertical_position = SH1106_TEXT_VERTICAL_POSITION_BOTTOM;
+	hmi_ctx.sh1106_text.line_erase_flag = 1;
 	// Add line.
-	hmi_ctx.line.line_pixels = 8;
-	hmi_ctx.line.width_pixels = SH1106_SCREEN_WIDTH_PIXELS;
-	hmi_ctx.line.justification = SH1106_JUSTIFICATION_CENTER;
-	hmi_ctx.line.contrast = SH1106_TEXT_CONTRAST_NORMAL;
-	hmi_ctx.line.line_erase_flag = 1;
+	hmi_ctx.sh1106_line.line_pixels = 8;
+	hmi_ctx.sh1106_line.width_pixels = SH1106_SCREEN_WIDTH_PIXELS;
+	hmi_ctx.sh1106_line.justification = SH1106_JUSTIFICATION_CENTER;
+	hmi_ctx.sh1106_line.contrast = SH1106_TEXT_CONTRAST_NORMAL;
+	hmi_ctx.sh1106_line.line_erase_flag = 1;
 	// Print title.
-	sh1106_status = SH1106_print_text(&hmi_ctx.text);
+	sh1106_status = SH1106_print_text(&hmi_ctx.sh1106_text);
 	SH1106_status_check(HMI_ERROR_BASE_SH1106);
-	sh1106_status = SH1106_print_horizontal_line(&hmi_ctx.line);
+	sh1106_status = SH1106_print_horizontal_line(&hmi_ctx.sh1106_line);
 	SH1106_status_check(HMI_ERROR_BASE_SH1106);
 errors:
 	return status;
@@ -98,32 +155,47 @@ static HMI_status_t _HMI_print_nodes_list(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	SH1106_status_t sh1106_status = SH1106_SUCCESS;
+	uint8_t idx = 0;
 	// Display node list menu.
-	status = _HMI_print_title(HMI_TEXT_NODES_LIST);
+	_HMI_text_flush();
+	_HMI_text_add_string((char_t*) HMI_TEXT_NODES_LIST);
+	_HMI_text_add_string(" [");
+	_HMI_text_add_value(rs485_common_ctx.nodes_count, STRING_FORMAT_DECIMAL, 0);
+	_HMI_text_add_string("]");
+	status = _HMI_print_title(hmi_ctx.text);
 	if (status != HMI_SUCCESS) goto errors;
 	// Set common text parameters.
-	hmi_ctx.text.page = HMI_SH1106_PAGE_DATA_FIRST;
-	hmi_ctx.text.contrast = SH1106_TEXT_CONTRAST_NORMAL;
-	hmi_ctx.text.vertical_position = SH1106_TEXT_VERTICAL_POSITION_TOP;
-	hmi_ctx.text.line_erase_flag = 1;
+	hmi_ctx.sh1106_text.str = (char_t*) hmi_ctx.text;
+	hmi_ctx.sh1106_text.page = HMI_SH1106_PAGE_DATA_FIRST;
+	hmi_ctx.sh1106_text.contrast = SH1106_TEXT_CONTRAST_NORMAL;
+	hmi_ctx.sh1106_text.vertical_position = SH1106_TEXT_VERTICAL_POSITION_TOP;
+	hmi_ctx.sh1106_text.line_erase_flag = 1;
 	// Check nodes count.
 	if (rs485_common_ctx.nodes_count == 0) {
-		hmi_ctx.text.justification = SH1106_JUSTIFICATION_CENTER;
-		hmi_ctx.text.str = (char_t*) HMI_TEXT_NODE_LIST_EMPTY;
-		sh1106_status = SH1106_print_text(&hmi_ctx.text);
+		hmi_ctx.sh1106_text.justification = SH1106_JUSTIFICATION_CENTER;
+		hmi_ctx.sh1106_text.str = (char_t*) HMI_TEXT_NODE_LIST_EMPTY;
+		sh1106_status = SH1106_print_text(&hmi_ctx.sh1106_text);
 		SH1106_status_check(HMI_ERROR_BASE_SH1106);
-		hmi_ctx.text.page += 2;
-		hmi_ctx.text.str = (char_t*) HMI_TEXT_PRESS;
-		sh1106_status = SH1106_print_text(&hmi_ctx.text);
+		hmi_ctx.sh1106_text.page += 2;
+		hmi_ctx.sh1106_text.str = (char_t*) HMI_TEXT_PRESS;
+		sh1106_status = SH1106_print_text(&hmi_ctx.sh1106_text);
 		SH1106_status_check(HMI_ERROR_BASE_SH1106);
-		hmi_ctx.text.page += 2;
-		hmi_ctx.text.str = (char_t*) HMI_TEXT_NODES_SCAN_BUTTON;
-		sh1106_status = SH1106_print_text(&hmi_ctx.text);
+		hmi_ctx.sh1106_text.page += 2;
+		hmi_ctx.sh1106_text.str = (char_t*) HMI_TEXT_NODES_SCAN_BUTTON;
+		sh1106_status = SH1106_print_text(&hmi_ctx.sh1106_text);
 		SH1106_status_check(HMI_ERROR_BASE_SH1106);
 	}
 	else {
+		hmi_ctx.sh1106_text.justification = SH1106_JUSTIFICATION_LEFT;
 		// Loop on nodes list.
-
+		for (idx=0 ; idx<(rs485_common_ctx.nodes_count) ; idx++) {
+			hmi_ctx.sh1106_text.str = (char_t*) DINFOX_BOARD_ID_NAME[rs485_common_ctx.nodes_list[idx].board_id];
+			sh1106_status = SH1106_print_text(&hmi_ctx.sh1106_text);
+			SH1106_status_check(HMI_ERROR_BASE_SH1106);
+			hmi_ctx.sh1106_text.page += 2;
+			// Exit when last page is reached.
+			if (hmi_ctx.sh1106_text.page > SH1106_SCREEN_HEIGHT_LINE) break;
+		}
 	}
 errors:
 	return status;
@@ -162,9 +234,13 @@ static HMI_status_t _HMI_state_machine(void) {
 		// Print nodes list.
 		status = _HMI_print_nodes_list();
 		// Compute next state.
-		hmi_ctx.state = HMI_STATE_NODE_LIST;
+		hmi_ctx.state = HMI_STATE_IDLE;
 		break;
-	case HMI_STATE_NODE_LIST:
+	case HMI_STATE_IDLE:
+		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_ENCODER_SWITCH) != 0) {
+			LED_start_single_blink(100, LED_COLOR_WHITE);
+			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_ENCODER_SWITCH);
+		}
 		if ((hmi_ctx.irq_flags & HMI_IRQ_MASK_BP1) != 0) {
 			LED_start_single_blink(100, LED_COLOR_RED);
 			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_BP1);
@@ -193,8 +269,6 @@ static HMI_status_t _HMI_state_machine(void) {
 			LED_start_single_blink(100, LED_COLOR_GREEN);
 			hmi_ctx.irq_flags &= (~HMI_IRQ_MASK_ENCODER_BACKWARD);
 		}
-		break;
-	case HMI_STATE_NODE_DATA:
 		break;
 	case HMI_STATE_UNUSED:
 		// Nothing to do.

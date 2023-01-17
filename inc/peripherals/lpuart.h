@@ -8,6 +8,7 @@
 #ifndef __LPUART_H__
 #define __LPUART_H__
 
+#include "lptim.h"
 #include "mode.h"
 #include "rs485_common.h"
 #include "types.h"
@@ -22,7 +23,8 @@ typedef enum {
 	LPUART_ERROR_TX_TIMEOUT,
 	LPUART_ERROR_TC_TIMEOUT,
 	LPUART_ERROR_STRING_SIZE,
-	LPUART_ERROR_BASE_LAST = 0x0100
+	LPUART_ERROR_BASE_LPTIM = 0x0100,
+	LPUART_ERROR_BASE_LAST = (LPUART_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST)
 } LPUART_status_t;
 
 /*** LPUART functions ***/
@@ -32,6 +34,8 @@ LPUART_status_t LPUART1_init(RS485_address_t node_address);
 #else
 void LPUART1_init(void);
 #endif
+LPUART_status_t LPUART1_power_on(void);
+void LPUART1_power_off(void);
 void LPUART1_enable_rx(void);
 void LPUART1_disable_rx(void);
 #ifdef AM

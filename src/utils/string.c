@@ -17,6 +17,8 @@
 #define STRING_DIGIT_HEXADECIMAL_MAX		0x0F
 #define STRING_HEXADECICMAL_DIGIT_PER_BYTE	2
 
+#define STRING_SIZE_MAX						100
+
 /*** STRING local functions ***/
 
 /* GENERIC MACRO TO CHECK RESULT INPUT POINTER.
@@ -400,6 +402,84 @@ STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_
 			(*extracted_length)++;
 		}
 		char_idx++;
+	}
+errors:
+	return status;
+}
+
+/* COMPUTE THE LENGTH OF A NULL TERMINATED STRING.
+ * @param str:	String to analyze.
+ * @param size:	Pointer to byte that will contain string size.
+ */
+STRING_status_t STRING_get_size(char_t* str, uint8_t* size) {
+	// Local variables.
+	STRING_status_t status = STRING_SUCCESS;
+	// Check parameters.
+	_STRING_check_pointer(str);
+	_STRING_check_pointer(size);
+	// Reset result.
+	(*size) = 0;
+	// Compute source buffer size.
+	while (str[(*size)] != STRING_CHAR_NULL) {
+		(*size)++;
+		// Check overflow.
+		if ((*size) > STRING_SIZE_MAX) {
+			status = STRING_ERROR_SIZE_OVERFLOW;
+			goto errors;
+		}
+	}
+errors:
+	return status;
+}
+
+/* COPY A SUBSTRING INTO ANOTHER WITH SPECIFIED JUSTIFICATION.
+ * @param copy:		Copy parameters.
+ * @return status:	Function execution status.
+ */
+STRING_status_t STRING_copy(STRING_copy_t* copy) {
+	// Local variables.
+	STRING_status_t status = STRING_SUCCESS;
+	uint8_t idx = 0;
+	uint8_t source_size = 0;
+	uint8_t start_idx = 0;
+	uint8_t destination_idx = 0;
+	// Reset destination buffer if required.
+	if ((copy -> flush_flag) != 0) {
+		for (idx=0 ; idx<(copy -> destination_size) ; idx++) (copy -> destination)[idx] = (copy -> flush_char);
+	}
+	// Compute source buffer size.
+	status = STRING_get_size((copy -> source), &source_size);
+	if (status != STRING_SUCCESS) goto errors;
+	// Check size.
+	if (source_size > (copy -> destination_size)) {
+		status = STRING_ERROR_COPY_OVERFLOW;
+		goto errors;
+	}
+	// Compute column according to justification.
+	switch (copy -> justification) {
+	case STRING_JUSTIFICATION_LEFT:
+		start_idx = 0;
+		break;
+	case STRING_JUSTIFICATION_CENTER:
+		start_idx = ((copy -> destination_size) - source_size) / (2);
+		break;
+	case STRING_JUSTIFICATION_RIGHT:
+		start_idx = ((copy -> destination_size) - source_size);
+		break;
+	default:
+		status = STRING_ERROR_TEXT_JUSTIFICATION;
+		goto errors;
+	}
+	// Char loop.
+	idx = 0;
+	while ((copy -> source)[idx] != STRING_CHAR_NULL) {
+		// Check index.
+		if (destination_idx >= ((copy -> destination_size) - 1)) {
+			status = STRING_ERROR_COPY_OVERFLOW;
+			goto errors;
+		}
+		(copy -> destination)[start_idx + idx] = (copy -> source)[idx];
+		idx++;
 	}
 errors:
 	return status;

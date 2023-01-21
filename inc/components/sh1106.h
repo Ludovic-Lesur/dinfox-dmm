@@ -10,6 +10,7 @@
 
 #include "i2c.h"
 #include "font.h"
+#include "string.h"
 #include "types.h"
 
 /*** SH1106 macros ***/
@@ -33,19 +34,13 @@ typedef enum {
 	SH1106_ERROR_LINE_ADDRESS,
 	SH1106_ERROR_CONTRAST,
 	SH1106_ERROR_VERTICAL_POSITION,
+	SH1106_ERROR_FLUSH_WIDTH_OVERFLOW,
 	SH1106_ERROR_TEXT_WIDTH_OVERFLOW,
-	SH1106_ERROR_TEXT_JUSTIFICATION,
 	SH1106_ERROR_HORIZONTAL_LINE_WIDTH,
 	SH1106_ERROR_BASE_I2C = 0x0100,
-	SH1106_ERROR_BASE_LAST = (SH1106_ERROR_BASE_I2C + I2C_ERROR_BASE_LAST)
+	SH1106_ERROR_BASE_STRING = (SH1106_ERROR_BASE_I2C + I2C_ERROR_BASE_LAST),
+	SH1106_ERROR_BASE_LAST = (SH1106_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } SH1106_status_t;
-
-typedef enum {
-	SH1106_JUSTIFICATION_LEFT = 0,
-	SH1106_JUSTIFICATION_CENTER,
-	SH1106_JUSTIFICATION_RIGHT,
-	SH1106_JUSTIFICATION_LAST
-} SH1106_justification_t;
 
 typedef enum {
 	SH1106_TEXT_CONTRAST_NORMAL = 0,
@@ -62,18 +57,18 @@ typedef enum {
 typedef struct {
 	char_t* str;
 	uint8_t page;
-	SH1106_justification_t justification;
+	STRING_justification_t justification;
 	SH1106_text_contrast_t contrast;
 	SH1106_text_vertical_position vertical_position;
-	uint8_t line_erase_flag;
+	uint8_t flush_width_pixels;
 } SH1106_text_t;
 
 typedef struct {
 	uint8_t line_pixels;
 	uint8_t width_pixels;
-	SH1106_justification_t justification;
+	STRING_justification_t justification;
 	SH1106_text_contrast_t contrast;
-	uint8_t line_erase_flag;
+	uint8_t flush_flag;
 } SH1106_horizontal_line_t;
 
 /*** SH1106 functions ***/

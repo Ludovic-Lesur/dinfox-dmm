@@ -135,6 +135,13 @@ static void _RS485_reset_replies(void) {
 void RS485_init(void) {
 	// Reset parser.
 	_RS485_reset_replies();
+	// Reset node list.
+	uint8_t idx = 0;
+	rs485_common_ctx.nodes_count = 0;
+	for (idx=0 ; idx<RS485_NODES_LIST_SIZE_MAX ; idx++) {
+		rs485_common_ctx.nodes_list[idx].address = (RS485_ADDRESS_LAST + 1);
+		rs485_common_ctx.nodes_list[idx].board_id = DINFOX_BOARD_ID_ERROR;
+	}
 }
 
 #ifdef AM
@@ -287,34 +294,35 @@ errors:
 	return status;
 }
 
-#ifdef AM
 /* SCAN ALL NODES ON RS485 BUS.
- * @param nodes_list:				Node list that will be filled.
- * @param node_list_size:			Size of the list (maximum number of nodes which can be recorded).
- * @param number_of_nodes_found:	Pointer that will contain the effective number of nodes found.
- * @return status:					Function execution status.
+ * @param:			None.
+ * @return status:	Function execution status.
  */
-RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size, uint8_t* number_of_nodes_found) {
+RS485_status_t RS485_scan_nodes(void) {
 	// Local variables.
 	RS485_status_t status = RS485_SUCCESS;
 	RS485_reply_input_t reply_in;
 	RS485_reply_output_t reply_out;
-	uint8_t node_address = 0;
+	RS485_address_t node_address = 0;
 	uint8_t node_list_idx = 0;
+	NVM_status_t nvm_status = NVM_SUCCESS;
 	// Check parameters.
-	if ((nodes_list == NULL) || (number_of_nodes_found == NULL)) {
+	if (rs485_common_ctx.nodes_list == NULL) {
 		status = RS485_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (node_list_size == 0) {
-		status = RS485_ERROR_NULL_SIZE;
-		goto errors;
-	}
-	// Reset result.
-	(*number_of_nodes_found) = 0;
+	// Read RS485 address in NVM.
+	nvm_status = NVM_read_byte(NVM_ADDRESS_RS485_ADDRESS, &node_address);
+	NVM_status_check(RS485_ERROR_BASE_NVM);
+	// Add master board to the list.
+	rs485_common_ctx.nodes_list[0].board_id = DINFOX_BOARD_ID_DMM;
+	rs485_common_ctx.nodes_list[0].address = node_address;
+	rs485_common_ctx.nodes_count = 1;
+	node_list_idx = 1;
 	// Build reply input common parameters.
 	reply_in.format = STRING_FORMAT_HEXADECIMAL;
 	reply_in.timeout_ms = RS485_REPLY_TIMEOUT_MS;
+#ifdef AM
 	// Loop on all addresses.
 	for (node_address=0 ; node_address<=RS485_ADDRESS_LAST ; node_address++) {
 		// Reset parser.
@@ -327,11 +335,11 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 		status = RS485_wait_reply(&reply_in, &reply_out);
 		if (status == RS485_SUCCESS) {
 			// Node found (even if an error was returned after ping command).
-			(*number_of_nodes_found)++;
+			rs485_common_ctx.nodes_count++;
 			// Store address and reset board ID.
-			if (node_list_idx < node_list_size) {
-				nodes_list[node_list_idx].address = node_address;
-				nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_ERROR;
+			if (node_list_idx < RS485_NODES_LIST_SIZE_MAX) {
+				rs485_common_ctx.nodes_list[node_list_idx].address = node_address;
+				rs485_common_ctx.nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_ERROR;
 			}
 			// Reset parser.
 			_RS485_reset_replies();
@@ -343,17 +351,47 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 			status = RS485_wait_reply(&reply_in, &reply_out);
 			if ((status == RS485_SUCCESS) && (reply_out.error_flag == 0)) {
 				// Update board ID.
-				nodes_list[node_list_idx].board_id = (uint8_t) reply_out.value;
+				rs485_common_ctx.nodes_list[node_list_idx].board_id = (uint8_t) reply_out.value;
 			}
 			node_list_idx++;
 		}
 		IWDG_reload();
 	}
+#else
+	// Reset parser.
+	_RS485_reset_replies();
+	reply_in.type = RS485_REPLY_TYPE_OK;
+	// Send ping command.
+	status = RS485_send_command("RS");
+	if (status != RS485_SUCCESS) goto errors;
+	// Wait reply.
+	status = RS485_wait_reply(&reply_in, &reply_out);
+	if (status == RS485_SUCCESS) {
+		// Node found (even if an error was returned after ping command).
+		rs485_common_ctx.nodes_count++;
+		// Store address and reset board ID.
+		if (node_list_idx < RS485_NODES_LIST_SIZE_MAX) {
+			rs485_common_ctx.nodes_list[node_list_idx].address = node_address;
+			rs485_common_ctx.nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_ERROR;
+		}
+		// Reset parser.
+		_RS485_reset_replies();
+		reply_in.type = RS485_REPLY_TYPE_VALUE;
+		// Get board ID.
+		status = RS485_send_command("RS$R=01");
+		if (status != RS485_SUCCESS) goto errors;
+		// Wait reply.
+		status = RS485_wait_reply(&reply_in, &reply_out);
+		if ((status == RS485_SUCCESS) && (reply_out.error_flag == 0)) {
+			// Update board ID.
+			rs485_common_ctx.nodes_list[node_list_idx].board_id = (uint8_t) reply_out.value;
+		}
+	}
+#endif
 	return RS485_SUCCESS;
 errors:
 	return status;
 }
-#endif
 
 /* FILL RS485 BUFFER WITH A NEW BYTE (CALLED BY LPUART INTERRUPT).
  * @param rx_byte:	Incoming byte.

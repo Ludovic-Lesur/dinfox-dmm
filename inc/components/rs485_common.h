@@ -24,9 +24,7 @@
 
 /*** RS485 common types ***/
 
-#ifdef AM
 typedef uint8_t	RS485_address_t;
-#endif
 
 #ifdef AM
 typedef enum {

@@ -41,7 +41,7 @@
 #define HMI_DATA_ZONE_WIDTH_CHAR				(SH1106_SCREEN_WIDTH_CHAR - (2 * (HMI_NAVIGATION_ZONE_WIDTH_CHAR + 1)))
 #define HMI_DATA_ZONE_WIDTH_PIXELS				(HMI_DATA_ZONE_WIDTH_CHAR * FONT_CHAR_WIDTH_PIXELS)
 
-#define HMI_SYMBOL_SELECTION					'>'
+#define HMI_SYMBOL_SELECT						'>'
 #define HMI_SYMBOL_TOP							'\''
 #define HMI_SYMBOL_BOTTOM						'`'
 
@@ -83,12 +83,16 @@ typedef enum {
 typedef struct {
 	HMI_state_t state;
 	HMI_screen_t screen;
-	volatile uint32_t irq_flags;
+	volatile uint8_t irq_flags;
 	_HMI_irq_callback irq_callbacks[HMI_IRQ_LAST];
 	uint8_t unused_duration_seconds;
 	char_t text[HMI_DATA_ZONE_WIDTH_CHAR + 1];
 	uint8_t text_width;
 	char_t data[HMI_DATA_PAGES_DEPTH][HMI_DATA_ZONE_WIDTH_CHAR + 1];
+	uint8_t data_depth;
+	uint8_t data_index;
+	uint8_t data_offset_index;
+	uint8_t pointer_index;
 	char_t navigation_left[HMI_DATA_PAGES_DISPLAYED][HMI_NAVIGATION_ZONE_WIDTH_CHAR + 1];
 	char_t navigation_right[HMI_DATA_PAGES_DISPLAYED][HMI_NAVIGATION_ZONE_WIDTH_CHAR + 1];
 	SH1106_horizontal_line_t sh1106_line;
@@ -236,7 +240,7 @@ static HMI_status_t _HMI_print_data(void) {
 	for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
 		// Set page and string.
 		sh1106_text.page = HMI_DATA_PAGE_ADDRESS[idx];
-		sh1106_text.str = (char_t*) hmi_ctx.data[idx];
+		sh1106_text.str = (char_t*) hmi_ctx.data[hmi_ctx.data_offset_index + idx];
 		sh1106_status = SH1106_print_text(&sh1106_text);
 		SH1106_status_check(HMI_ERROR_BASE_SH1106);
 	}
@@ -286,17 +290,15 @@ static HMI_status_t _HMI_update_navigation(void) {
 	case HMI_SCREEN_NODES_LIST:
 	case HMI_SCREEN_NODE_DATA:
 		for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
+			hmi_ctx.navigation_left[idx][0] = (hmi_ctx.pointer_index == idx) ? HMI_SYMBOL_SELECT : STRING_CHAR_SPACE;
 			switch (idx) {
 			case 0:
-				hmi_ctx.navigation_left[idx][0] = HMI_SYMBOL_SELECTION;
-				hmi_ctx.navigation_right[idx][0] = HMI_SYMBOL_TOP;
+				hmi_ctx.navigation_right[idx][0] = (hmi_ctx.data_offset_index > 0) ? HMI_SYMBOL_TOP : STRING_CHAR_SPACE;
 				break;
 			case (HMI_DATA_PAGES_DISPLAYED - 1):
-				hmi_ctx.navigation_left[idx][0] = STRING_CHAR_SPACE;
-				hmi_ctx.navigation_right[idx][0] = HMI_SYMBOL_BOTTOM;
+				hmi_ctx.navigation_right[idx][0] = (hmi_ctx.data_offset_index < (hmi_ctx.data_depth - HMI_DATA_PAGES_DISPLAYED)) ? HMI_SYMBOL_BOTTOM : STRING_CHAR_SPACE;
 				break;
 			default:
-				hmi_ctx.navigation_left[idx][0] = STRING_CHAR_SPACE;
 				hmi_ctx.navigation_right[idx][0] = STRING_CHAR_SPACE;
 				break;
 			}
@@ -322,7 +324,6 @@ static HMI_status_t _HMI_update_data(void) {
 	HMI_status_t status = HMI_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
 	STRING_copy_t string_copy;
-	uint8_t idx = 0;
 	// Common parameters.
 	string_copy.flush_char = STRING_CHAR_SPACE;
 	// Build title according to screen.
@@ -331,18 +332,18 @@ static HMI_status_t _HMI_update_data(void) {
 		// Common parameters.
 		string_copy.destination_size = HMI_DATA_ZONE_WIDTH_CHAR;
 		// Nodes loop.
-		for (idx=0 ; idx<(rs485_common_ctx.nodes_count) ; idx++) {
+		for (hmi_ctx.data_depth=0 ; hmi_ctx.data_depth<(rs485_common_ctx.nodes_count) ; hmi_ctx.data_depth++) {
 			// Update pointer.
-			string_copy.destination = (char_t*) hmi_ctx.data[idx];
+			string_copy.destination = (char_t*) hmi_ctx.data[hmi_ctx.data_depth];
 			// Print board name.
-			string_copy.source = (char_t*) DINFOX_BOARD_ID_NAME[rs485_common_ctx.nodes_list[idx].board_id];
+			string_copy.source = (char_t*) DINFOX_BOARD_ID_NAME[rs485_common_ctx.nodes_list[hmi_ctx.data_depth].board_id];
 			string_copy.justification = STRING_JUSTIFICATION_LEFT;
 			string_copy.flush_flag = 1;
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			// Print RS485 address.
 			_HMI_text_flush();
-			_HMI_text_add_value(rs485_common_ctx.nodes_list[idx].address, STRING_FORMAT_HEXADECIMAL, 1);
+			_HMI_text_add_value(rs485_common_ctx.nodes_list[hmi_ctx.data_depth].address, STRING_FORMAT_HEXADECIMAL, 1);
 			string_copy.source = (char_t*) hmi_ctx.text;
 			string_copy.justification = STRING_JUSTIFICATION_RIGHT;
 			string_copy.flush_flag = 0;
@@ -356,9 +357,9 @@ static HMI_status_t _HMI_update_data(void) {
 		string_copy.justification = STRING_JUSTIFICATION_CENTER;
 		string_copy.flush_flag = 1;
 		// Lines loop.
-		for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
-			string_copy.source = (char_t*) HMI_MESSAGE_NODES_SCAN_RUNNING[idx];
-			string_copy.destination = (char_t*) hmi_ctx.data[idx];
+		for (hmi_ctx.data_depth=0 ; hmi_ctx.data_depth<HMI_DATA_PAGES_DISPLAYED ; hmi_ctx.data_depth++) {
+			string_copy.source = (char_t*) HMI_MESSAGE_NODES_SCAN_RUNNING[hmi_ctx.data_depth];
+			string_copy.destination = (char_t*) hmi_ctx.data[hmi_ctx.data_depth];
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 		}
@@ -375,6 +376,17 @@ errors:
 	return status;
 }
 
+/* RESET NAVIGATION TO THE TOP OF THE LIST.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_reset_navigation(void) {
+	// Reset indexes.
+	hmi_ctx.data_index = 0;
+	hmi_ctx.data_offset_index = 0;
+	hmi_ctx.pointer_index = 0;
+}
+
 /* UPDATE FULL DISPLAY.
  * @param screen:	Screen to display..
  * @return:			None.
@@ -382,17 +394,21 @@ errors:
 static HMI_status_t _HMI_update(HMI_screen_t screen) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	// Check if screen if diferent from the current one.
+	// Update title zone if required.
 	if (hmi_ctx.screen != screen) {
 		// Update context.
 		hmi_ctx.screen = screen;
+		_HMI_reset_navigation();
 		// Update all zones if required.
 		status = _HMI_update_title();
 		if (status != HMI_SUCCESS) goto errors;
-		status = _HMI_update_navigation();
-		if (status != HMI_SUCCESS) goto errors;
-		status = _HMI_update_data();
 	}
+	// Update navigation and data zones.
+	// Note: data update must be performed before navigation to have correct depth value.
+	status = _HMI_update_data();
+	if (status != HMI_SUCCESS) goto errors;
+	status = _HMI_update_navigation();
+
 errors:
 	return status;
 }
@@ -440,7 +456,22 @@ static HMI_status_t _HMI_irq_callback_encoder_switch(void) {
 static HMI_status_t _HMI_irq_callback_encoder_forward(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	// TODO
+	// Increment data select index.
+	if (hmi_ctx.data_index < (hmi_ctx.data_depth - 1)) {
+		hmi_ctx.data_index++;
+	}
+	if (hmi_ctx.pointer_index < (HMI_DATA_PAGES_DISPLAYED - 1)) {
+		hmi_ctx.pointer_index++;
+	}
+	else {
+		if ((hmi_ctx.data_depth - HMI_DATA_PAGES_DISPLAYED) > 0) {
+			if (hmi_ctx.data_offset_index < (hmi_ctx.data_depth - HMI_DATA_PAGES_DISPLAYED)) {
+				hmi_ctx.data_offset_index++;
+			}
+		}
+	}
+	// Update display.
+	status = _HMI_update(hmi_ctx.screen);
 	return status;
 }
 
@@ -451,7 +482,20 @@ static HMI_status_t _HMI_irq_callback_encoder_forward(void) {
 static HMI_status_t _HMI_irq_callback_encoder_backward(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	// TODO
+	// Increment data select index.
+	if (hmi_ctx.data_index > 0) {
+		hmi_ctx.data_index--;
+	}
+	if (hmi_ctx.pointer_index > 0) {
+		hmi_ctx.pointer_index--;
+	}
+	else {
+		if (hmi_ctx.data_offset_index > 0) {
+			hmi_ctx.data_offset_index--;
+		}
+	}
+	// Update display.
+	status = _HMI_update(hmi_ctx.screen);
 	return status;
 }
 
@@ -513,6 +557,7 @@ static HMI_status_t _HMI_irq_callback_bp2(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	// Update screen.
+	_HMI_reset_navigation();
 	status = _HMI_update(HMI_SCREEN_NODES_LIST);
 	if (status != HMI_SUCCESS) goto errors;
 errors:
@@ -526,7 +571,6 @@ errors:
 static HMI_status_t _HMI_irq_callback_bp3(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	// TODO
 	return status;
 }
 

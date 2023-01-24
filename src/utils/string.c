@@ -17,6 +17,7 @@
 #define STRING_DIGIT_HEXADECIMAL_MAX		0x0F
 #define STRING_HEXADECICMAL_DIGIT_PER_BYTE	2
 
+#define STRING_VALUE_BUFFER_SIZE			16
 #define STRING_SIZE_MAX						100
 
 /*** STRING local functions ***/
@@ -481,6 +482,54 @@ STRING_status_t STRING_copy(STRING_copy_t* copy) {
 		(copy -> destination)[start_idx + idx] = (copy -> source)[idx];
 		idx++;
 	}
+errors:
+	return status;
+}
+
+/* APPEND A STRING TO A STRING.
+ * @param buffer:	Destination buffer.
+ * @param str:		String to append.
+ * @return status:	Function execution status.
+ */
+STRING_status_t STRING_append_string(char_t* buffer, uint8_t buffer_size_max, char_t* str, uint8_t* buffer_size) {
+	// Local variables.
+	STRING_status_t status = STRING_SUCCESS;
+	uint8_t idx = 0;
+	// Fill buffer.
+	while (str[idx] != STRING_CHAR_NULL) {
+		// Check index.
+		if ((*buffer_size) >= buffer_size_max) {
+			status = STRING_ERROR_APPEND_OVERFLOW;
+			goto errors;
+		}
+		buffer[(*buffer_size)] = str[idx];
+		// Increment size and index..
+		(*buffer_size)++;
+		idx++;
+	}
+errors:
+	return status;
+}
+
+/* APPEND A VALUE TO A STRING.
+ * @param buffer:		Destination buffer.
+ * @param value:		Value to convert and append.
+ * @param format:		Output string format.
+ * @param print_prefix:	Print base prefix if non-zero.
+ * @return status:		Function execution status.
+ */
+STRING_status_t STRING_append_value(char_t* buffer, uint8_t buffer_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* buffer_size) {
+	// Local variables.
+	STRING_status_t status = STRING_SUCCESS;
+	char_t str_value[STRING_VALUE_BUFFER_SIZE];
+	uint8_t idx = 0;
+	// Reset string.
+	for (idx=0 ; idx<STRING_VALUE_BUFFER_SIZE ; idx++) str_value[idx] = STRING_CHAR_NULL;
+	// Convert value to string.
+	status = STRING_value_to_string(value, format, print_prefix, str_value);
+	if (status != STRING_SUCCESS) goto errors;
+	// Add string.
+	status = STRING_append_string(buffer, buffer_size_max, str_value, buffer_size);
 errors:
 	return status;
 }

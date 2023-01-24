@@ -36,6 +36,7 @@ typedef enum {
 	STRING_ERROR_DECIMAL_OVERFLOW,
 	STRING_ERROR_SIZE_OVERFLOW,
 	STRING_ERROR_COPY_OVERFLOW,
+	STRING_ERROR_APPEND_OVERFLOW,
 	STRING_ERROR_TEXT_JUSTIFICATION,
 	STRING_ERROR_BASE_MATH = 0x0100,
 	STRING_ERROR_BASE_LAST = (STRING_ERROR_BASE_MATH + MATH_ERROR_BASE_LAST)
@@ -74,6 +75,9 @@ STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_
 
 STRING_status_t STRING_get_size(char_t* str, uint8_t* size);
 STRING_status_t STRING_copy(STRING_copy_t* copy);
+
+STRING_status_t STRING_append_string(char_t* buffer, uint8_t buffer_size_max, char_t* str, uint8_t* buffer_size);
+STRING_status_t STRING_append_value(char_t* buffer, uint8_t buffer_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* buffer_size);
 
 #define STRING_status_check(error_base) { if (string_status != STRING_SUCCESS) { status = error_base + string_status; goto errors; }}
 #define STRING_error_check() { ERROR_status_check(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }

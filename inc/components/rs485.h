@@ -49,6 +49,7 @@ typedef struct {
 } RS485_reply_input_t;
 
 typedef struct {
+	char_t* raw;
 	int32_t value; // For value type.
 	uint8_t error_flag;
 } RS485_reply_output_t;

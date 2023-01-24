@@ -17,6 +17,8 @@
 #include "led.h"
 #include "logo.h"
 #include "mapping.h"
+#include "node.h"
+#include "node_common.h"
 #include "nvic.h"
 #include "pwr.h"
 #include "rs485_common.h"
@@ -46,12 +48,17 @@
 #define HMI_SYMBOL_BOTTOM						'`'
 
 static const char_t* HMI_TITLE_NODES_LIST = "NODES LIST";
+
 static const char_t* HMI_MESSAGE_NODES_SCAN_RUNNING[HMI_DATA_PAGES_DISPLAYED] = {"NODES SCAN", "RUNNING", "..."};
-static const char_t* DINFOX_BOARD_ID_NAME[DINFOX_BOARD_ID_LAST] = {"LVRM", "BPSM", "DDRM", "UHFM", "GPSM", "SM", "DIM", "RRM", "DMM", "MPMCM"};
+static const char_t* HMI_MESSAGE_UNSUPPORTED_NODE[HMI_DATA_PAGES_DISPLAYED] = {"UNSUPPORTED", "NODE", STRING_NULL};
+static const char_t* HMI_MESSAGE_NONE_MEASUREMENT[HMI_DATA_PAGES_DISPLAYED] = {"NONE", "MEASUREMENT", "ON THIS NODE"};
+static const char_t* HMI_MESSAGE_ERROR = "ERROR";
+static const char_t* HMI_UNSUPPORTED_NODE_NAME = "----";
+static const char_t* HMI_NULL_NODE_NAME = "NULL";
 
 /*** HMI local structures ***/
 
-typedef HMI_status_t (*_HMI_irq_callback)(void);
+typedef HMI_status_t (*HMI_irq_callback_t)(void);
 
 typedef enum {
 	HMI_STATE_INIT = 0,
@@ -65,6 +72,7 @@ typedef enum {
 	HMI_SCREEN_NODES_LIST,
 	HMI_SCREEN_NODES_SCAN,
 	HMI_SCREEN_NODE_DATA,
+	HMI_SCREEN_ERROR,
 	HMI_SCREEN_LAST,
 } HMI_screen_t;
 
@@ -81,11 +89,14 @@ typedef enum {
 } HMI_page_address_t;
 
 typedef struct {
+	// Global.
+	HMI_status_t status;
 	HMI_state_t state;
 	HMI_screen_t screen;
 	volatile uint8_t irq_flags;
-	_HMI_irq_callback irq_callbacks[HMI_IRQ_LAST];
+	HMI_irq_callback_t irq_callbacks[HMI_IRQ_LAST];
 	uint8_t unused_duration_seconds;
+	// Screen.
 	char_t text[HMI_DATA_ZONE_WIDTH_CHAR + 1];
 	uint8_t text_width;
 	char_t data[HMI_DATA_PAGES_DEPTH][HMI_DATA_ZONE_WIDTH_CHAR + 1];
@@ -96,6 +107,8 @@ typedef struct {
 	char_t navigation_left[HMI_DATA_PAGES_DISPLAYED][HMI_NAVIGATION_ZONE_WIDTH_CHAR + 1];
 	char_t navigation_right[HMI_DATA_PAGES_DISPLAYED][HMI_NAVIGATION_ZONE_WIDTH_CHAR + 1];
 	SH1106_horizontal_line_t sh1106_line;
+	// Current node.
+	RS485_node_t rs485_node;
 } HMI_context_t;
 
 /*** HMI local global variables ***/
@@ -105,46 +118,6 @@ static const uint8_t HMI_DATA_PAGE_ADDRESS[HMI_DATA_PAGES_DISPLAYED] = {HMI_PAGE
 
 /*** HMI local functions ***/
 
-/* GENERIC MACRO TO ADD A CHARACTER TO THE REPLY BUFFER.
- * @param character:	Character to add.
- * @return:				None.
- */
-#define _HMI_text_add_char(character) { \
-	hmi_ctx.text[hmi_ctx.text_width] = character; \
-	hmi_ctx.text_width = (hmi_ctx.text_width + 1) % HMI_DATA_ZONE_WIDTH_CHAR; \
-}
-
-/* APPEND A STRING TO THE REPONSE BUFFER.
- * @param tx_string:	String to add.
- * @return:				None.
- */
-static void _HMI_text_add_string(char_t* tx_string) {
-	// Fill TX buffer with new bytes.
-	while (*tx_string) {
-		_HMI_text_add_char(*(tx_string++));
-	}
-}
-
-/* APPEND A VALUE TO THE REPONSE BUFFER.
- * @param tx_value:		Value to add.
- * @param format:       Printing format.
- * @param print_prefix: Print base prefix is non zero.
- * @return:				None.
- */
-static void _HMI_text_add_value(int32_t tx_value, STRING_format_t format, uint8_t print_prefix) {
-	// Local variables.
-	STRING_status_t string_status = STRING_SUCCESS;
-	char_t str_value[HMI_STRING_VALUE_BUFFER_SIZE];
-	uint8_t idx = 0;
-	// Reset string.
-	for (idx=0 ; idx<HMI_STRING_VALUE_BUFFER_SIZE ; idx++) str_value[idx] = STRING_CHAR_NULL;
-	// Convert value to string.
-	string_status = STRING_value_to_string(tx_value, format, print_prefix, str_value);
-	STRING_error_check();
-	// Add string.
-	_HMI_text_add_string(str_value);
-}
-
 /* FLUSH TEXT BUFFER.
  * @param:	None.
  * @return:	None.
@@ -153,8 +126,26 @@ static void _HMI_text_flush(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Flush string.
-	for (idx=0 ; idx<HMI_DATA_ZONE_WIDTH_CHAR ; idx++) hmi_ctx.text[idx] = STRING_CHAR_NULL;
+	for (idx=0 ; idx<(HMI_DATA_ZONE_WIDTH_CHAR + 1) ; idx++) hmi_ctx.text[idx] = STRING_CHAR_NULL;
 	hmi_ctx.text_width = 0;
+}
+
+/* FLUSH DATA BUFFER.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _HMI_data_flush(void) {
+	// Local variables.
+	uint8_t line_idx = 0;
+	uint8_t char_idx = 0;
+	// Line loop.
+	for (line_idx=0 ; line_idx<HMI_DATA_PAGES_DEPTH ; line_idx++) {
+		// Char loop.
+		for (char_idx=0 ; char_idx<(HMI_DATA_ZONE_WIDTH_CHAR + 1) ; char_idx++) {
+			hmi_ctx.data[line_idx][char_idx] = STRING_CHAR_NULL;
+		}
+	}
+	hmi_ctx.data_depth = 0;
 }
 
 /* PRINT TITLE ZONE ON SCREEN.
@@ -249,31 +240,61 @@ errors:
 }
 
 /* UPDATE TITLE ZONE.
- * @param:			None.
+ * @param screen:	View to display.
  * @return status:	Function executions status.
  */
-static HMI_status_t _HMI_update_title(void) {
+static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
+	STRING_status_t string_status = STRING_SUCCESS;
+	NODE_status_t node_status = NODE_SUCCESS;
+	char_t* text_ptr_1 = NULL;
+	char_t* text_ptr_2 = NULL;
 	// Reset text buffer.
 	_HMI_text_flush();
 	// Build title according to screen.
-	switch (hmi_ctx.screen) {
+	switch (screen) {
 	case HMI_SCREEN_NODES_LIST:
-		_HMI_text_add_string((char_t*) HMI_TITLE_NODES_LIST);
-		_HMI_text_add_string(" [");
-		_HMI_text_add_value(rs485_common_ctx.nodes_count, STRING_FORMAT_DECIMAL, 0);
-		_HMI_text_add_string("]");
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TITLE_NODES_LIST, &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
+		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, rs485_common_ctx.nodes_count, STRING_FORMAT_DECIMAL, 0, &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
 		break;
 	case HMI_SCREEN_NODES_SCAN:
-		_HMI_text_add_string((char_t*) HMI_TITLE_NODES_LIST);
-		_HMI_text_add_string(" [-]");
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TITLE_NODES_LIST, &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "[-]", &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
 		break;
 	case HMI_SCREEN_NODE_DATA:
-		// TODO.
+		node_status = NODE_get_name(&hmi_ctx.rs485_node, &text_ptr_1);
+		switch (node_status) {
+		case NODE_SUCCESS:
+			text_ptr_2 = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_NULL_NODE_NAME;
+			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, text_ptr_2, &hmi_ctx.text_width);
+			STRING_status_check(HMI_ERROR_BASE_STRING);
+			break;
+		case NODE_ERROR_NOT_SUPPORTED:
+			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_UNSUPPORTED_NODE_NAME, &hmi_ctx.text_width);
+			STRING_status_check(HMI_ERROR_BASE_STRING);
+			break;
+		default:
+			NODE_status_check(HMI_ERROR_BASE_NODE);
+			break;
+		}
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
+		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.rs485_node.address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
 		break;
 	default:
-		status = HMI_ERROR_SCREEN;
+		// Keep current title in all other cases.
 		goto errors;
 	}
 	status = _HMI_print_title((char_t*) hmi_ctx.text);
@@ -281,16 +302,20 @@ errors:
 	return status;
 }
 
-static HMI_status_t _HMI_update_navigation(void) {
+/* UPDATE NAVIGATION ZONE.
+ * @param screen:	View to display.
+ * @return status:	Function executions status.
+ */
+static HMI_status_t _HMI_update_and_print_navigation(HMI_screen_t screen) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	uint8_t idx = 0;
 	// Check screen.
-	switch (hmi_ctx.screen) {
+	switch (screen) {
 	case HMI_SCREEN_NODES_LIST:
 	case HMI_SCREEN_NODE_DATA:
 		for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
-			hmi_ctx.navigation_left[idx][0] = (hmi_ctx.pointer_index == idx) ? HMI_SYMBOL_SELECT : STRING_CHAR_SPACE;
+			hmi_ctx.navigation_left[idx][0] = ((hmi_ctx.pointer_index == idx) && (hmi_ctx.data_depth != 0)) ? HMI_SYMBOL_SELECT : STRING_CHAR_SPACE;
 			switch (idx) {
 			case 0:
 				hmi_ctx.navigation_right[idx][0] = (hmi_ctx.data_offset_index > 0) ? HMI_SYMBOL_TOP : STRING_CHAR_SPACE;
@@ -305,6 +330,7 @@ static HMI_status_t _HMI_update_navigation(void) {
 		}
 		break;
 	default:
+		// Disable navigation symbols in all other cases.
 		for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
 			hmi_ctx.navigation_left[idx][0] = STRING_CHAR_SPACE;
 			hmi_ctx.navigation_right[idx][0] = STRING_CHAR_SPACE;
@@ -316,62 +342,189 @@ static HMI_status_t _HMI_update_navigation(void) {
 }
 
 /* UPDATE DATA ZONE.
- * @param:			None.
+ * @param screen:	View to display.
  * @return status:	Function executions status.
  */
-static HMI_status_t _HMI_update_data(void) {
+static HMI_status_t _HMI_update_data(HMI_screen_t screen) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
+	NODE_status_t node_status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
 	STRING_copy_t string_copy;
+	char_t* text_ptr_1 = NULL;
+	char_t* text_ptr_2 = NULL;
+	uint8_t idx = 0;
+	// Flush buffers.
+	_HMI_data_flush();
+	_HMI_text_flush();
 	// Common parameters.
 	string_copy.flush_char = STRING_CHAR_SPACE;
-	// Build title according to screen.
-	switch (hmi_ctx.screen) {
+	string_copy.destination_size = HMI_DATA_ZONE_WIDTH_CHAR;
+	// Build data according to screen.
+	switch (screen) {
 	case HMI_SCREEN_NODES_LIST:
-		// Common parameters.
-		string_copy.destination_size = HMI_DATA_ZONE_WIDTH_CHAR;
 		// Nodes loop.
-		for (hmi_ctx.data_depth=0 ; hmi_ctx.data_depth<(rs485_common_ctx.nodes_count) ; hmi_ctx.data_depth++) {
-			// Update pointer.
-			string_copy.destination = (char_t*) hmi_ctx.data[hmi_ctx.data_depth];
-			// Print board name.
-			string_copy.source = (char_t*) DINFOX_BOARD_ID_NAME[rs485_common_ctx.nodes_list[hmi_ctx.data_depth].board_id];
+		for (idx=0 ; idx<(rs485_common_ctx.nodes_count) ; idx++) {
+			// Check size.
+			if (idx >= HMI_DATA_PAGES_DEPTH) {
+				status = HMI_ERROR_DATA_DEPTH_OVERFLOW;
+				goto errors;
+			}
+			// Build node.
+			hmi_ctx.rs485_node.address = rs485_common_ctx.nodes_list[idx].address;
+			hmi_ctx.rs485_node.board_id = rs485_common_ctx.nodes_list[idx].board_id;
+			// Get board name.
+			node_status = NODE_get_name(&hmi_ctx.rs485_node, &text_ptr_1);
+			switch (node_status) {
+			case NODE_SUCCESS:
+				string_copy.source = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_NULL_NODE_NAME;
+				break;
+			case NODE_ERROR_NOT_SUPPORTED:
+				string_copy.source = (char_t*) HMI_UNSUPPORTED_NODE_NAME;
+				break;
+			default:
+				NODE_status_check(HMI_ERROR_BASE_NODE);
+				break;
+			}
+			string_copy.destination = (char_t*) hmi_ctx.data[idx];
 			string_copy.justification = STRING_JUSTIFICATION_LEFT;
 			string_copy.flush_flag = 1;
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			// Print RS485 address.
 			_HMI_text_flush();
-			_HMI_text_add_value(rs485_common_ctx.nodes_list[hmi_ctx.data_depth].address, STRING_FORMAT_HEXADECIMAL, 1);
+			status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, rs485_common_ctx.nodes_list[idx].address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+			STRING_status_check(HMI_ERROR_BASE_STRING);
 			string_copy.source = (char_t*) hmi_ctx.text;
 			string_copy.justification = STRING_JUSTIFICATION_RIGHT;
 			string_copy.flush_flag = 0;
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 		}
+		hmi_ctx.data_depth = rs485_common_ctx.nodes_count;
 		break;
 	case HMI_SCREEN_NODES_SCAN:
 		// Common parameters.
-		string_copy.destination_size = HMI_DATA_ZONE_WIDTH_CHAR;
 		string_copy.justification = STRING_JUSTIFICATION_CENTER;
 		string_copy.flush_flag = 1;
 		// Lines loop.
-		for (hmi_ctx.data_depth=0 ; hmi_ctx.data_depth<HMI_DATA_PAGES_DISPLAYED ; hmi_ctx.data_depth++) {
-			string_copy.source = (char_t*) HMI_MESSAGE_NODES_SCAN_RUNNING[hmi_ctx.data_depth];
-			string_copy.destination = (char_t*) hmi_ctx.data[hmi_ctx.data_depth];
+		for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
+			string_copy.source = (char_t*) HMI_MESSAGE_NODES_SCAN_RUNNING[idx];
+			string_copy.destination = (char_t*) hmi_ctx.data[idx];
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 		}
 		break;
 	case HMI_SCREEN_NODE_DATA:
-		// TODO.
+		// Perform measurements.
+		node_status = NODE_perform_measurements(&hmi_ctx.rs485_node);
+		switch (node_status) {
+		case NODE_SUCCESS:
+			// Go to next step.
+			break;
+		case NODE_ERROR_NOT_SUPPORTED:
+			// Unsupported node.
+			string_copy.justification = STRING_JUSTIFICATION_CENTER;
+			string_copy.flush_flag = 1;
+			// Lines loop.
+			for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
+				string_copy.source = (char_t*) HMI_MESSAGE_UNSUPPORTED_NODE[idx];
+				string_copy.destination = (char_t*) hmi_ctx.data[idx];
+				string_status = STRING_copy(&string_copy);
+				STRING_status_check(HMI_ERROR_BASE_STRING);
+			}
+			goto errors;
+			break;
+		default:
+			NODE_status_check(HMI_ERROR_BASE_NODE);
+			break;
+		}
+		// Get first line.
+		node_status = NODE_unstack_string_data(&hmi_ctx.rs485_node, &text_ptr_1, &text_ptr_2);
+		switch (node_status) {
+		case NODE_SUCCESS:
+			if ((text_ptr_1 == NULL) || (text_ptr_2 == NULL)) {
+				// No measurement returned.
+				string_copy.justification = STRING_JUSTIFICATION_CENTER;
+				string_copy.flush_flag = 1;
+				// Lines loop.
+				for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
+					string_copy.source = (char_t*) HMI_MESSAGE_NONE_MEASUREMENT[idx];
+					string_copy.destination = (char_t*) hmi_ctx.data[idx];
+					string_status = STRING_copy(&string_copy);
+					STRING_status_check(HMI_ERROR_BASE_STRING);
+				}
+				goto errors;
+			}
+			break;
+		case NODE_ERROR_NOT_SUPPORTED:
+			// Unsupported node.
+			string_copy.justification = STRING_JUSTIFICATION_CENTER;
+			string_copy.flush_flag = 1;
+			// Lines loop.
+			for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
+				string_copy.source = (char_t*) HMI_MESSAGE_UNSUPPORTED_NODE[idx];
+				string_copy.destination = (char_t*) hmi_ctx.data[idx];
+				string_status = STRING_copy(&string_copy);
+				STRING_status_check(HMI_ERROR_BASE_STRING);
+			}
+			goto errors;
+			break;
+		default:
+			NODE_status_check(HMI_ERROR_BASE_NODE);
+			break;
+		}
+		// Measurements loop.
+		while ((text_ptr_1 != NULL) && (text_ptr_2 != NULL)) {
+			// Check index.
+			if (idx >= HMI_DATA_PAGES_DEPTH) {
+				status = HMI_ERROR_DATA_DEPTH_OVERFLOW;
+				goto errors;
+			}
+			// Update pointer.
+			string_copy.destination = (char_t*) hmi_ctx.data[idx];
+			// Print measurement name.
+			string_copy.source = text_ptr_1;
+			string_copy.justification = STRING_JUSTIFICATION_LEFT;
+			string_copy.flush_flag = 1;
+			string_status = STRING_copy(&string_copy);
+			STRING_status_check(HMI_ERROR_BASE_STRING);
+			// Print measurement value.
+			string_copy.source = text_ptr_2;
+			string_copy.justification = STRING_JUSTIFICATION_RIGHT;
+			string_copy.flush_flag = 0;
+			string_status = STRING_copy(&string_copy);
+			STRING_status_check(HMI_ERROR_BASE_STRING);
+			// Increment index.
+			idx++;
+			// Unstack next data.
+			node_status = NODE_unstack_string_data(&hmi_ctx.rs485_node, &text_ptr_1, &text_ptr_2);
+			NODE_status_check(HMI_ERROR_BASE_NODE);
+		}
+		// Update depth.
+		hmi_ctx.data_depth = idx;
+		break;
+	case HMI_SCREEN_ERROR:
+		// Common parameters.
+		string_copy.justification = STRING_JUSTIFICATION_CENTER;
+		string_copy.flush_flag = 1;
+		// Line 1.
+		string_copy.source = (char_t*) HMI_MESSAGE_ERROR;
+		string_copy.destination = (char_t*) hmi_ctx.data[0];
+		string_status = STRING_copy(&string_copy);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
+		// Line 2.
+		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.status, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
+		string_copy.source = (char_t*) hmi_ctx.text;
+		string_copy.destination = (char_t*) hmi_ctx.data[1];
+		string_status = STRING_copy(&string_copy);
+		STRING_status_check(HMI_ERROR_BASE_STRING);
 		break;
 	default:
 		status = HMI_ERROR_SCREEN;
 		goto errors;
 	}
-	status = _HMI_print_data();
 errors:
 	return status;
 }
@@ -385,32 +538,6 @@ static void _HMI_reset_navigation(void) {
 	hmi_ctx.data_index = 0;
 	hmi_ctx.data_offset_index = 0;
 	hmi_ctx.pointer_index = 0;
-}
-
-/* UPDATE FULL DISPLAY.
- * @param screen:	Screen to display..
- * @return:			None.
- */
-static HMI_status_t _HMI_update(HMI_screen_t screen) {
-	// Local variables.
-	HMI_status_t status = HMI_SUCCESS;
-	// Update title zone if required.
-	if (hmi_ctx.screen != screen) {
-		// Update context.
-		hmi_ctx.screen = screen;
-		_HMI_reset_navigation();
-		// Update all zones if required.
-		status = _HMI_update_title();
-		if (status != HMI_SUCCESS) goto errors;
-	}
-	// Update navigation and data zones.
-	// Note: data update must be performed before navigation to have correct depth value.
-	status = _HMI_update_data();
-	if (status != HMI_SUCCESS) goto errors;
-	status = _HMI_update_navigation();
-
-errors:
-	return status;
 }
 
 /* ENABLE HMI INTERRUPTS.
@@ -438,6 +565,37 @@ static void _HMI_disable_irq(void) {
 	NVIC_disable_interrupt(NVIC_INTERRUPT_EXTI_4_15);
 }
 
+/* UPDATE FULL DISPLAY.
+ * @param screen:	Screen to display..
+ * @return:			None.
+ */
+static HMI_status_t _HMI_update(HMI_screen_t screen) {
+	// Local variables.
+	HMI_status_t status = HMI_SUCCESS;
+	// Disable interrupts during update.
+	_HMI_disable_irq();
+	// Check if screen has changed.
+	if (hmi_ctx.screen != screen) {
+		_HMI_reset_navigation();
+		// Update  and print title.
+		status = _HMI_update_and_print_title(screen);
+		if (status != HMI_SUCCESS) goto errors;
+		// Update data (must be performed before navigation to have the correct depth value).
+		status = _HMI_update_data(screen);
+		if (status != HMI_SUCCESS) goto errors;
+	}
+	// Print data and navigation in all cases.
+	status = _HMI_print_data();
+	if (status != HMI_SUCCESS) goto errors;
+	status = _HMI_update_and_print_navigation(screen);
+	if (status != HMI_SUCCESS) goto errors;
+	// Update context.
+	hmi_ctx.screen = screen;
+errors:
+	_HMI_enable_irq();
+	return status;
+}
+
 /* ENCODER SWITCH IRQ CALLBACK.
  * @param:	None.
  * @return:	None.
@@ -445,7 +603,19 @@ static void _HMI_disable_irq(void) {
 static HMI_status_t _HMI_irq_callback_encoder_switch(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	// TODO
+	// Check current screen.
+	switch (hmi_ctx.screen) {
+	case HMI_SCREEN_NODES_LIST:
+		// Update current node.
+		hmi_ctx.rs485_node.address = rs485_common_ctx.nodes_list[hmi_ctx.data_index].address;
+		hmi_ctx.rs485_node.board_id = rs485_common_ctx.nodes_list[hmi_ctx.data_index].board_id;
+		// Update screen.
+		status = _HMI_update(HMI_SCREEN_NODE_DATA);
+		break;
+	default:
+		// Nothing to do in other views.
+		break;
+	}
 	return status;
 }
 
@@ -543,9 +713,9 @@ static HMI_status_t _HMI_irq_callback_bp1(void) {
 	// Update screen.
 	status = _HMI_update(HMI_SCREEN_NODES_LIST);
 errors:
-	// Enable HMI interrupts and turn RS485 interface off.
-	_HMI_enable_irq();
+	// Turn RS485 interface off and enable HMI interrupts.
 	LPUART1_power_off();
+	_HMI_enable_irq();
 	return status;
 }
 
@@ -638,9 +808,11 @@ errors:
  * @return:	None.
  */
 void HMI_init(void) {
-	// Local variables.
-	uint8_t idx = 0;
 	// Init context.
+	hmi_ctx.rs485_node.address = (RS485_ADDRESS_LAST + 1);
+	hmi_ctx.rs485_node.board_id = DINFOX_BOARD_ID_ERROR;
+	_HMI_reset_navigation();
+	// Init callbacks.
 	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_SWITCH] = &_HMI_irq_callback_encoder_switch;
 	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_FORWARD] = &_HMI_irq_callback_encoder_forward;
 	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_BACKWARD] = &_HMI_irq_callback_encoder_backward;
@@ -650,14 +822,8 @@ void HMI_init(void) {
 	hmi_ctx.irq_callbacks[HMI_IRQ_BP2] = &_HMI_irq_callback_bp2;
 	hmi_ctx.irq_callbacks[HMI_IRQ_BP3] = &_HMI_irq_callback_bp3;
 	// Init buffers ending.
-	for (idx=0 ; idx<HMI_DATA_PAGES_DEPTH ; idx++) {
-		hmi_ctx.data[idx][HMI_DATA_ZONE_WIDTH_CHAR] = STRING_CHAR_NULL;
-	}
-	for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
-		hmi_ctx.navigation_left[idx][HMI_NAVIGATION_ZONE_WIDTH_CHAR] = STRING_CHAR_NULL;
-		hmi_ctx.navigation_right[idx][HMI_NAVIGATION_ZONE_WIDTH_CHAR] = STRING_CHAR_NULL;
-	}
-	hmi_ctx.text[HMI_DATA_ZONE_WIDTH_CHAR] = STRING_CHAR_NULL;
+	_HMI_data_flush();
+	_HMI_text_flush();
 	// Init buttons.
 	GPIO_configure(&GPIO_BP1, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	EXTI_configure_gpio(&GPIO_BP1, EXTI_TRIGGER_RISING_EDGE);
@@ -703,7 +869,14 @@ HMI_status_t HMI_task(void) {
 	while (hmi_ctx.state != HMI_STATE_UNUSED) {
 		// Perform state machine.
 		status = _HMI_state_machine();
-		if (status != HMI_SUCCESS) goto errors;
+		if (status != HMI_SUCCESS) {
+			// Print error on screen.
+			hmi_ctx.status = status;
+			_HMI_update(HMI_SCREEN_ERROR);
+			// Delay and exit.
+			LPTIM1_delay_milliseconds(5000, 1);
+			goto errors;
+		}
 		// Enter sleep mode.
 		PWR_enter_sleep_mode();
 		// Wake-up.

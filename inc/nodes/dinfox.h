@@ -8,6 +8,11 @@
 #ifndef __DINFOX_H__
 #define __DINFOX_H__
 
+/*** DINFOX macros ***/
+
+#define DINFOX_NUMBER_OF_COMMON_MEASUREMENTS	5
+#define DINFOX_COMMON_MEASUREMENTS_NAME			"HW =", "SW =", "RESET =", "TMCU =", "VMCU ="
+
 /*** DINFOX boards identifier ***/
 
 typedef enum {

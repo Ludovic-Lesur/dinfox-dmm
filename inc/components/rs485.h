@@ -24,14 +24,12 @@ typedef enum {
 	RS485_ERROR_NULL_SIZE,
 	RS485_ERROR_MODE,
 	RS485_ERROR_REPLY_TYPE,
-	RS485_ERROR_REPLY_TIMEOUT,
-	RS485_ERROR_SEQUENCE_TIMEOUT,
 	RS485_ERROR_BUFFER_OVERFLOW,
-	RS485_ERROR_SOURCE_ADDRESS_MISMATCH,
 	RS485_ERROR_BASE_LPUART = 0x0100,
 	RS485_ERROR_BASE_LPTIM = (RS485_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
 	RS485_ERROR_BASE_NVM = (RS485_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
-	RS485_ERROR_BASE_PARSER = (RS485_ERROR_BASE_NVM + NVM_ERROR_BASE_LAST),
+	RS485_ERROR_BASE_STRING = (RS485_ERROR_BASE_NVM + NVM_ERROR_BASE_LAST),
+	RS485_ERROR_BASE_PARSER = (RS485_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
 	RS485_ERROR_BASE_LAST = (RS485_ERROR_BASE_PARSER + PARSER_ERROR_BASE_LAST)
 } RS485_status_t;
 
@@ -42,6 +40,17 @@ typedef enum {
 	RS485_REPLY_TYPE_LAST
 } RS485_reply_type_t;
 
+typedef union {
+	struct {
+		unsigned error_received : 1;
+		unsigned reply_timeout : 1;
+		unsigned parser_error : 1;
+		unsigned sequence_timeout : 1;
+		unsigned source_address_mismatch : 1;
+	};
+	uint8_t all;
+} RS485_reply_status_t;
+
 typedef struct {
 	RS485_reply_type_t type;
 	STRING_format_t format; // For value type.
@@ -51,16 +60,18 @@ typedef struct {
 typedef struct {
 	char_t* raw;
 	int32_t value; // For value type.
-	uint8_t error_flag;
+	RS485_reply_status_t status;
 } RS485_reply_output_t;
 
 /*** RS485 functions ***/
 
 void RS485_init(void);
 #ifdef AM
-RS485_status_t RS485_send_command(RS485_address_t slave_address, char_t* command);
+RS485_status_t RS485_send_command(RS485_address_t slave_address, char_t* command) ;
+RS485_status_t RS485_read_register(RS485_address_t slave_address, uint8_t register_address, RS485_reply_input_t* reply_in_ptr, RS485_reply_output_t* reply_out_ptr);
 #else
 RS485_status_t RS485_send_command(char_t* command);
+RS485_status_t RS485_read_register(uint8_t register_address, RS485_reply_input_t* reply_in_ptr, RS485_reply_output_t* reply_out_ptr);
 #endif
 RS485_status_t RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485_reply_output_t* reply_out_ptr);
 RS485_status_t RS485_scan_nodes(void);

@@ -23,22 +23,29 @@ typedef enum {
 	LVRM_REGISTER_LAST,
 } LVRM_register_address_t;
 
+typedef enum {
+	LVRM_DATA_INDEX_VCOM_MV = DINFOX_DATA_INDEX_LAST,
+	LVRM_DATA_INDEX_VOUT_MV,
+	LVRM_DATA_INDEX_IOUT_UA,
+	LVRM_DATA_INDEX_OUT_EN,
+	LVRM_DATA_INDEX_LAST,
+} LVRM_measurement_index_t;
+
 /*** LVRM local macros ***/
 
-#define LVRM_NUMBER_OF_MEASUREMENTS		(DINFOX_NUMBER_OF_COMMON_MEASUREMENTS + LVRM_REGISTER_LAST - DINFOX_REGISTER_LAST)
-#define LVRM_STRING_BUFFER_SIZE			16
+#define LVRM_STRING_BUFFER_SIZE		16
 
 static const char_t* LVRM_BOARD_NAME = "LVRM";
-static const char_t* LVRM_MEASUREMENTS_NAME[LVRM_NUMBER_OF_MEASUREMENTS] = {DINFOX_COMMON_MEASUREMENTS_NAME, "VCOM =", "VOUT =", "IOUT =", "RELAY ="};
-//static const char_t* LVRM_MEASUREMENTS_UNITS[LVRM_NUMBER_OF_MEASUREMENTS] = {STRING_NULL, STRING_NULL, STRING_NULL, "°C", "mV", "mV", "mV", "uA", STRING_NULL};
+static const char_t* LVRM_DATA_NAME[LVRM_DATA_INDEX_LAST] = {DINFOX_COMMON_DATA_NAME, "VCOM =", "VOUT =", "IOUT =", "RELAY ="};
+static const char_t* LVRM_DATA_UNIT[LVRM_DATA_INDEX_LAST] = {DINFOX_COMMON_DATA_UNIT, "mV", "mV", "uA", STRING_NULL};
 
 /*** LVRM local structures ***/
 
 typedef struct {
 	RS485_address_t rs485_address;
 	uint8_t read_index;
-	char_t measurements_value[LVRM_NUMBER_OF_MEASUREMENTS][LVRM_STRING_BUFFER_SIZE];
-	uint8_t measurements_value_size[LVRM_NUMBER_OF_MEASUREMENTS];
+	char_t measurements_value[LVRM_DATA_INDEX_LAST][LVRM_STRING_BUFFER_SIZE];
+	uint8_t measurements_value_size[LVRM_DATA_INDEX_LAST];
 } LVRM_context_t;
 
 /*** LVRM local global variables ***/
@@ -47,19 +54,47 @@ static LVRM_context_t lvrm_ctx;
 
 /*** LVRM local functions ***/
 
-/* FLUSH MEASURERMENTS VALUE BUFFER.
+/* GENERIC MACRO TO APPEND A STRING TO THE DATAS VALUE BUFFER.
+ * @param measurement_idx:	Measurement line index.
+ * @param str:				String to append.
+ * @return:					None.
+ */
+#define _LVRM_append_string(measurement_index, str) { \
+	string_status = STRING_append_string(lvrm_ctx.measurements_value[measurement_index], LVRM_STRING_BUFFER_SIZE, str, &(lvrm_ctx.measurements_value_size[measurement_index])); \
+	STRING_status_check(NODE_ERROR_BASE_STRING); \
+}
+
+/* GENERIC MACRO TO SET A DATA VALUE TO ERROR.
+ * @param measurement_idx:	Measurement line index.
+ * @return:					None.
+ */
+#define _LVRM_set_error(measurement_index) { \
+	_LVRM_flush_measurement_value(measurement_index); \
+	_LVRM_append_string(measurement_index, DINFOX_DATA_ERROR); \
+	error_flag = 1; \
+}
+
+/* FLUSH ONE LINE OF THE MEASURERMENTS VALUE BUFFER.
+ * @param:	None.
+ * @return:	None.
+ */
+void _LVRM_flush_measurement_value(uint8_t measurement_index) {
+	// Local variables.
+	uint8_t idx = 0;
+	// Char loop.
+	for (idx=0 ; idx<LVRM_STRING_BUFFER_SIZE ; idx++) lvrm_ctx.measurements_value[measurement_index][idx] = STRING_CHAR_NULL;
+	lvrm_ctx.measurements_value_size[measurement_index] = 0;
+}
+
+/* FLUSH WHOLE DATAS VALUE BUFFER.
  * @param:	None.
  * @return:	None.
  */
 void _LVRM_flush_measurements_value(void) {
 	// Local variables.
-	uint8_t measurement_idx = 0;
 	uint8_t idx = 0;
-	// Values loop.
-	for (measurement_idx=0 ; measurement_idx<LVRM_NUMBER_OF_MEASUREMENTS ; measurement_idx++) {
-		lvrm_ctx.measurements_value_size[measurement_idx] = 0;
-		for (idx=0 ; idx<LVRM_STRING_BUFFER_SIZE ; idx++) lvrm_ctx.measurements_value[measurement_idx][idx] = STRING_CHAR_NULL;
-	}
+	// Measurements loop.
+	for (idx=0 ; idx<LVRM_DATA_INDEX_LAST ; idx++) _LVRM_flush_measurement_value(idx);
 }
 
 /*** LVRM functions ***/
@@ -105,6 +140,8 @@ NODE_status_t LVRM_perform_measurements(void) {
 	STRING_status_t string_status = STRING_SUCCESS;
 	RS485_reply_input_t reply_in;
 	RS485_reply_output_t reply_out;
+	uint8_t data_idx = 0;
+	uint8_t error_flag = 0;
 	// Reset buffers.
 	_LVRM_flush_measurements_value();
 	// Turn RS485 on.
@@ -114,24 +151,134 @@ NODE_status_t LVRM_perform_measurements(void) {
 	reply_in.type = RS485_REPLY_TYPE_RAW;
 	reply_in.timeout_ms = 100;
 	reply_in.format = STRING_FORMAT_HEXADECIMAL;
-	// Hardware version major.
-	rs485_status = RS485_send_command(lvrm_ctx.rs485_address, "RS$R=02"); // TODO replace by RS485_read_node_register().
-	RS485_status_check(NODE_ERROR_BASE_RS485);
-	rs485_status = RS485_wait_reply(&reply_in, &reply_out);
-	RS485_status_check(NODE_ERROR_BASE_RS485);
-	// Append string.
-	string_status = STRING_append_string(lvrm_ctx.measurements_value[0], LVRM_STRING_BUFFER_SIZE, reply_out.raw, &(lvrm_ctx.measurements_value_size[0]));
-	STRING_status_check(NODE_ERROR_BASE_STRING);
-	string_status = STRING_append_string(lvrm_ctx.measurements_value[0], LVRM_STRING_BUFFER_SIZE, ".", &(lvrm_ctx.measurements_value_size[0]));
-	STRING_status_check(NODE_ERROR_BASE_STRING);
-	// Hardware version minor.
-	rs485_status = RS485_send_command(lvrm_ctx.rs485_address, "RS$R=03");
-	RS485_status_check(NODE_ERROR_BASE_RS485);
-	rs485_status = RS485_wait_reply(&reply_in, &reply_out);
-	RS485_status_check(NODE_ERROR_BASE_RS485);
-	// Append string.
-	string_status = STRING_append_string(lvrm_ctx.measurements_value[0], LVRM_STRING_BUFFER_SIZE, reply_out.raw, &(lvrm_ctx.measurements_value_size[0]));
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	// Measurements loop.
+	for (data_idx=0 ; data_idx<LVRM_DATA_INDEX_LAST ; data_idx++) {
+		// Reset error flag.
+		error_flag = 0;
+		// Check index.
+		switch (data_idx) {
+		case DINFOX_DATA_INDEX_HW_VERSION:
+			// Hardware version major.
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_HW_VERSION_MAJOR, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				_LVRM_append_string(data_idx, reply_out.raw);
+			}
+			else {
+				_LVRM_set_error(data_idx);
+				break;
+			}
+			// Hardware version minor.
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_HW_VERSION_MINOR, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				_LVRM_append_string(data_idx, ".");
+				_LVRM_append_string(data_idx, reply_out.raw);
+			}
+			else {
+				_LVRM_set_error(data_idx);
+				break;
+			}
+			break;
+		case DINFOX_DATA_INDEX_SW_VERSION:
+			// Software version major.
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_SW_VERSION_MAJOR, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				_LVRM_append_string(data_idx, reply_out.raw);
+			}
+			else {
+				_LVRM_set_error(data_idx);
+				break;
+			}
+			// Software version minor.
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_SW_VERSION_MINOR, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				_LVRM_append_string(data_idx, ".");
+				_LVRM_append_string(data_idx, reply_out.raw);
+			}
+			else {
+				_LVRM_set_error(data_idx);
+				break;
+			}
+			// Software version commit ID.
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				_LVRM_append_string(data_idx, ".");
+				_LVRM_append_string(data_idx, reply_out.raw);
+			}
+			else {
+				_LVRM_set_error(data_idx);
+				break;
+			}
+			// Software version dirty flag.
+			reply_in.type = RS485_REPLY_TYPE_VALUE;
+			reply_in.format = STRING_FORMAT_BOOLEAN;
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				// Check dirty flag.
+				if (reply_out.value != 0) {
+					_LVRM_append_string(data_idx, ".d");
+				}
+			}
+			else {
+				_LVRM_set_error(data_idx);
+			}
+			reply_in.type = RS485_REPLY_TYPE_RAW;
+			reply_in.format = STRING_FORMAT_HEXADECIMAL;
+			break;
+		case DINFOX_DATA_INDEX_RESET_FLAG:
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_RESET, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				_LVRM_append_string(data_idx, "0x");
+				_LVRM_append_string(data_idx, reply_out.raw);
+			}
+			else {
+				_LVRM_set_error(data_idx);
+			}
+			break;
+		case DINFOX_DATA_INDEX_TMCU_DEGREES:
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_TMCU_DEGREES, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				_LVRM_append_string(data_idx, reply_out.raw);
+			}
+			else {
+				_LVRM_set_error(data_idx);
+			}
+			break;
+		case DINFOX_DATA_INDEX_VMCU_MV:
+			rs485_status = RS485_read_register(lvrm_ctx.rs485_address, DINFOX_REGISTER_VMCU_MV, &reply_in, &reply_out);
+			RS485_status_check(NODE_ERROR_BASE_RS485);
+			// Check reply.
+			if (reply_out.status.all == 0) {
+				_LVRM_append_string(data_idx, reply_out.raw);
+			}
+			else {
+				_LVRM_set_error(data_idx);
+			}
+			break;
+		default:
+			_LVRM_set_error(data_idx);
+			break;
+		}
+		// Add unit if no error.
+		if (error_flag == 0) {
+			_LVRM_append_string(data_idx, (char_t*) LVRM_DATA_UNIT[data_idx]);
+		}
+	}
 errors:
 	lvrm_ctx.read_index = 0;
 	LPUART1_power_off();
@@ -147,9 +294,9 @@ NODE_status_t LVRM_unstack_string_data(char_t** measurement_name_ptr, char_t** m
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check index.
-	if (lvrm_ctx.read_index < LVRM_NUMBER_OF_MEASUREMENTS) {
+	if (lvrm_ctx.read_index < LVRM_DATA_INDEX_LAST) {
 		// Update input pointers.
-		(*measurement_name_ptr) = (char_t*) LVRM_MEASUREMENTS_NAME[lvrm_ctx.read_index];
+		(*measurement_name_ptr) = (char_t*) LVRM_DATA_NAME[lvrm_ctx.read_index];
 		(*measurement_value_ptr) = (char_t*) lvrm_ctx.measurements_value[lvrm_ctx.read_index];
 		// Increment index.
 		lvrm_ctx.read_index++;

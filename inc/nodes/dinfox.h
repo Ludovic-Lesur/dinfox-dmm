@@ -10,8 +10,9 @@
 
 /*** DINFOX macros ***/
 
-#define DINFOX_NUMBER_OF_COMMON_MEASUREMENTS	5
-#define DINFOX_COMMON_MEASUREMENTS_NAME			"HW =", "SW =", "RESET =", "TMCU =", "VMCU ="
+#define DINFOX_COMMON_DATA_NAME		"HW =", "SW =", "RESET =", "TMCU =", "VMCU ="
+#define DINFOX_COMMON_DATA_UNIT		STRING_NULL, STRING_NULL, STRING_NULL, "|C", "mV"
+#define DINFOX_DATA_ERROR			"ERROR"
 
 /*** DINFOX boards identifier ***/
 
@@ -48,5 +49,16 @@ typedef enum {
 	DINFOX_REGISTER_VMCU_MV,
 	DINFOX_REGISTER_LAST
 } DINFOX_common_registers_t;
+
+/*** DINFOX common data index ***/
+
+typedef enum {
+	DINFOX_DATA_INDEX_HW_VERSION = 0,
+	DINFOX_DATA_INDEX_SW_VERSION,
+	DINFOX_DATA_INDEX_RESET_FLAG,
+	DINFOX_DATA_INDEX_TMCU_DEGREES,
+	DINFOX_DATA_INDEX_VMCU_MV,
+	DINFOX_DATA_INDEX_LAST
+} DINFOX_common_data_index_t;
 
 #endif /* __DINFOX_H__ */

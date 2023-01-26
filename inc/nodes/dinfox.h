@@ -8,11 +8,16 @@
 #ifndef __DINFOX_H__
 #define __DINFOX_H__
 
+#include "node_common.h"
+#include "types.h"
+
 /*** DINFOX macros ***/
 
 #define DINFOX_COMMON_DATA_NAME		"HW =", "SW =", "RESET =", "TMCU =", "VMCU ="
 #define DINFOX_COMMON_DATA_UNIT		STRING_NULL, STRING_NULL, STRING_NULL, "|C", "mV"
 #define DINFOX_DATA_ERROR			"ERROR"
+#define DINFOX_STRING_BUFFER_SIZE	16
+#define DINFOX_RS485_TIMEOUT_MS		100
 
 /*** DINFOX boards identifier ***/
 
@@ -60,5 +65,9 @@ typedef enum {
 	DINFOX_DATA_INDEX_VMCU_MV,
 	DINFOX_DATA_INDEX_LAST
 } DINFOX_common_data_index_t;
+
+/*** DINFOX functions ***/
+
+NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data_index_t data_index, char_t* data_value_ptr, uint8_t* data_value_size);
 
 #endif /* __DINFOX_H__ */

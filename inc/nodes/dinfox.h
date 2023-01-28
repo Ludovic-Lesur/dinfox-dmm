@@ -68,6 +68,6 @@ typedef enum {
 
 /*** DINFOX functions ***/
 
-NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data_index_t data_index, char_t* data_value_ptr, uint8_t* data_value_size);
+NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data_index_t data_index, char_t* data_str_ptr, uint8_t* data_str_size, int32_t* data_int_ptr);
 
 #endif /* __DINFOX_H__ */

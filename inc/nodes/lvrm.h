@@ -20,6 +20,6 @@ NODE_status_t LVRM_set_rs485_address(RS485_address_t rs485_address);
 NODE_status_t LVRM_perform_measurements(void);
 NODE_status_t LVRM_unstack_string_data(char_t** measurement_name_ptr, char_t** measurement_value_ptr);
 NODE_status_t LVRM_get_sigfox_payload(uint8_t* ul_payload, uint8_t* ul_payload_size);
-NODE_status_t LVRM_write(uint8_t register_address, uint8_t value);
+NODE_status_t LVRM_write(uint8_t data_index, uint8_t value, RS485_reply_status_t* reply_status);
 
 #endif /* __LVRM_H__ */

@@ -8,6 +8,7 @@
 #include "dinfox.h"
 #include "lpuart.h"
 #include "lvrm.h"
+#include "mode.h"
 #include "node_common.h"
 #include "rs485.h"
 #include "rs485_common.h"
@@ -36,6 +37,7 @@ typedef enum {
 static const char_t* LVRM_BOARD_NAME = "LVRM";
 static const char_t* LVRM_DATA_NAME[LVRM_DATA_INDEX_LAST] = {DINFOX_COMMON_DATA_NAME, "VCOM =", "VOUT =", "IOUT =", "RELAY ="};
 static const char_t* LVRM_DATA_UNIT[LVRM_DATA_INDEX_LAST] = {DINFOX_COMMON_DATA_UNIT, "mV", "mV", "uA", STRING_NULL};
+static const STRING_format_t LVRM_DATA_FORMAT[LVRM_REGISTER_LAST] = {DINFOX_COMMON_DATA_FORMAT, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_BOOLEAN};
 
 /*** LVRM local structures ***/
 
@@ -138,8 +140,8 @@ NODE_status_t LVRM_perform_measurements(void) {
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	RS485_status_t rs485_status = RS485_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
-	RS485_reply_input_t reply_in;
-	RS485_reply_output_t reply_out;
+	RS485_read_input_t read_input;
+	RS485_reply_t reply;
 	uint8_t data_idx = 0;
 	uint8_t register_address = 0;
 	// Reset buffers.
@@ -147,10 +149,13 @@ NODE_status_t LVRM_perform_measurements(void) {
 	// Turn RS485 on.
 	lpuart1_status = LPUART1_power_on();
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-	// Common reply parameters.
-	reply_in.type = RS485_REPLY_TYPE_VALUE;
-	reply_in.timeout_ms = DINFOX_RS485_TIMEOUT_MS;
-	reply_in.format = STRING_FORMAT_DECIMAL;
+	// Common read input parameters.
+#ifdef AM
+	read_input.node_address = lvrm_ctx.rs485_address;
+#endif
+	read_input.type = RS485_REPLY_TYPE_VALUE;
+	read_input.timeout_ms = DINFOX_RS485_TIMEOUT_MS;
+	read_input.format = STRING_FORMAT_DECIMAL;
 	// Common data loop.
 	for (data_idx=0 ; data_idx<DINFOX_DATA_INDEX_LAST ; data_idx++) {
 		status = DINFOX_read_data(lvrm_ctx.rs485_address, data_idx, lvrm_ctx.data_str[data_idx], &(lvrm_ctx.data_str_size[data_idx]), lvrm_ctx.data_int);
@@ -160,13 +165,14 @@ NODE_status_t LVRM_perform_measurements(void) {
 	for (data_idx=DINFOX_DATA_INDEX_LAST ; data_idx<LVRM_DATA_INDEX_LAST ; data_idx++) {
 		// Convert to register address.
 		register_address = (data_idx + DINFOX_REGISTER_LAST - DINFOX_DATA_INDEX_LAST);
+		read_input.register_address = register_address;
 		// Read data.
-		rs485_status = RS485_read_register(lvrm_ctx.rs485_address, register_address, &reply_in, &reply_out);
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
+		if (reply.status.all == 0) {
 			// Update integer data.
-			lvrm_ctx.data_int[register_address] = reply_out.value;
+			lvrm_ctx.data_int[register_address] = reply.value;
 			// Specific print for relay.
 			if (data_idx == LVRM_DATA_INDEX_OUT_EN) {
 				if (lvrm_ctx.data_int[register_address] == 0) {
@@ -177,7 +183,7 @@ NODE_status_t LVRM_perform_measurements(void) {
 				}
 			}
 			else {
-				_LVRM_append_string(reply_out.raw);
+				_LVRM_append_string(reply.raw);
 			}
 			_LVRM_append_string((char_t*) LVRM_DATA_UNIT[data_idx]);
 		}
@@ -229,13 +235,37 @@ NODE_status_t LVRM_get_sigfox_payload(uint8_t* ul_payload, uint8_t* ul_payload_s
 }
 
 /* WRITE LVRM NODE DATA.
- * @param register_address:	Register to write.
- * @param value:			Value to write in register.
- * @return status:			Function execution status.
+ * @param data_index:	Node data index.
+ * @param value:		Value to write in corresponding register.
+ * @param write_status:	Writing operation status.
+ * @return status:		Function execution status.
  */
-NODE_status_t LVRM_write(uint8_t register_address, uint8_t value) {
+NODE_status_t LVRM_write(uint8_t data_index, uint8_t value, RS485_reply_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	RS485_status_t rs485_status = RS485_SUCCESS;
+	RS485_write_input_t write_input;
+	RS485_reply_t reply;
+	uint8_t register_address = (data_index + DINFOX_REGISTER_LAST - DINFOX_DATA_INDEX_LAST);
+	// Common write input parameters.
+#ifdef AM
+	write_input.node_address = lvrm_ctx.rs485_address;
+#endif
+	write_input.value = value;
+	write_input.timeout_ms = DINFOX_RS485_TIMEOUT_MS;
+	write_input.format = LVRM_DATA_FORMAT[register_address];
+	write_input.register_address = register_address;
+	// Turn RS485 on.
+	lpuart1_status = LPUART1_power_on();
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	// Check writable registers.
+	rs485_status = RS485_write_register(&write_input, &reply);
+	RS485_status_check(NODE_ERROR_BASE_RS485);
+	// Check reply.
+	(*write_status).all = reply.status.all;
+errors:
+	LPUART1_power_off();
 	return status;
 }
 

@@ -569,7 +569,7 @@ static void _HMI_disable_irq(void) {
  * @param screen:	Screen to display..
  * @return:			None.
  */
-static HMI_status_t _HMI_update(HMI_screen_t screen) {
+static HMI_status_t _HMI_update(HMI_screen_t screen, uint8_t update_data, uint8_t update_navigation) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	// Disable interrupts during update.
@@ -580,14 +580,19 @@ static HMI_status_t _HMI_update(HMI_screen_t screen) {
 		// Update  and print title.
 		status = _HMI_update_and_print_title(screen);
 		if (status != HMI_SUCCESS) goto errors;
-		// Update data (must be performed before navigation to have the correct depth value).
+	}
+	// Update data (must be performed before navigation to have the correct depth value).
+	if (update_data != 0) {
 		status = _HMI_update_data(screen);
 		if (status != HMI_SUCCESS) goto errors;
 	}
-	// Print data and navigation in all cases.
+	// Update navigation.
+	if (update_navigation != 0) {
+		status = _HMI_update_and_print_navigation(screen);
+		if (status != HMI_SUCCESS) goto errors;
+	}
+	// Print data in all cases.
 	status = _HMI_print_data();
-	if (status != HMI_SUCCESS) goto errors;
-	status = _HMI_update_and_print_navigation(screen);
 	if (status != HMI_SUCCESS) goto errors;
 	// Update context.
 	hmi_ctx.screen = screen;
@@ -610,7 +615,7 @@ static HMI_status_t _HMI_irq_callback_encoder_switch(void) {
 		hmi_ctx.rs485_node.address = rs485_common_ctx.nodes_list[hmi_ctx.data_index].address;
 		hmi_ctx.rs485_node.board_id = rs485_common_ctx.nodes_list[hmi_ctx.data_index].board_id;
 		// Update screen.
-		status = _HMI_update(HMI_SCREEN_NODE_DATA);
+		status = _HMI_update(HMI_SCREEN_NODE_DATA, 1, 1);
 		break;
 	default:
 		// Nothing to do in other views.
@@ -641,7 +646,7 @@ static HMI_status_t _HMI_irq_callback_encoder_forward(void) {
 		}
 	}
 	// Update display.
-	status = _HMI_update(hmi_ctx.screen);
+	status = _HMI_update(hmi_ctx.screen, 0, 1);
 	return status;
 }
 
@@ -665,7 +670,7 @@ static HMI_status_t _HMI_irq_callback_encoder_backward(void) {
 		}
 	}
 	// Update display.
-	status = _HMI_update(hmi_ctx.screen);
+	status = _HMI_update(hmi_ctx.screen, 0, 1);
 	return status;
 }
 
@@ -676,7 +681,19 @@ static HMI_status_t _HMI_irq_callback_encoder_backward(void) {
 static HMI_status_t _HMI_irq_callback_cmd_on(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	// TODO
+	NODE_status_t node_status = NODE_SUCCESS;
+	RS485_reply_status_t write_status;
+	// Execute node register write function.
+	node_status = NODE_write(&hmi_ctx.rs485_node, hmi_ctx.data_index, 1, &write_status);
+	// Check status.
+	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
+		NODE_status_check(HMI_ERROR_BASE_NODE);
+	}
+	// Update display is write operation succedded.
+	if (write_status.all == 0) {
+		status = _HMI_update(hmi_ctx.screen, 1, 0);
+	}
+errors:
 	return status;
 }
 
@@ -687,7 +704,19 @@ static HMI_status_t _HMI_irq_callback_cmd_on(void) {
 static HMI_status_t _HMI_irq_callback_cmd_off(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	// TODO
+	NODE_status_t node_status = NODE_SUCCESS;
+	RS485_reply_status_t write_status;
+	// Execute node register write function.
+	node_status = NODE_write(&hmi_ctx.rs485_node, hmi_ctx.data_index, 0, &write_status);
+	// Check status.
+	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
+		NODE_status_check(HMI_ERROR_BASE_NODE);
+	}
+	// Update display is write operation succedded.
+	if (write_status.all == 0) {
+		status = _HMI_update(hmi_ctx.screen, 1, 0);
+	}
+errors:
 	return status;
 }
 
@@ -701,7 +730,7 @@ static HMI_status_t _HMI_irq_callback_bp1(void) {
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	RS485_status_t rs485_status = RS485_SUCCESS;
 	// Update screen.
-	status = _HMI_update(HMI_SCREEN_NODES_SCAN);
+	status = _HMI_update(HMI_SCREEN_NODES_SCAN, 1, 1);
 	if (status != HMI_SUCCESS) goto errors;
 	// Disable HMI interrupts.
 	_HMI_disable_irq();
@@ -711,7 +740,7 @@ static HMI_status_t _HMI_irq_callback_bp1(void) {
 	rs485_status = RS485_scan_nodes();
 	RS485_status_check(HMI_ERROR_BASE_RS485);
 	// Update screen.
-	status = _HMI_update(HMI_SCREEN_NODES_LIST);
+	status = _HMI_update(HMI_SCREEN_NODES_LIST, 1, 1);
 errors:
 	// Turn RS485 interface off and enable HMI interrupts.
 	LPUART1_power_off();
@@ -728,7 +757,7 @@ static HMI_status_t _HMI_irq_callback_bp2(void) {
 	HMI_status_t status = HMI_SUCCESS;
 	// Update screen.
 	_HMI_reset_navigation();
-	status = _HMI_update(HMI_SCREEN_NODES_LIST);
+	status = _HMI_update(HMI_SCREEN_NODES_LIST, 1, 1);
 	if (status != HMI_SUCCESS) goto errors;
 errors:
 	return status;
@@ -773,7 +802,7 @@ static HMI_status_t _HMI_state_machine(void) {
 		// Enable external interrupts.
 		_HMI_enable_irq();
 		// Print nodes list.
-		status = _HMI_update(HMI_SCREEN_NODES_LIST);
+		status = _HMI_update(HMI_SCREEN_NODES_LIST, 1, 1);
 		if (status != HMI_SUCCESS) goto errors;
 		// Compute next state.
 		hmi_ctx.state = HMI_STATE_IDLE;
@@ -872,7 +901,7 @@ HMI_status_t HMI_task(void) {
 		if (status != HMI_SUCCESS) {
 			// Print error on screen.
 			hmi_ctx.status = status;
-			_HMI_update(HMI_SCREEN_ERROR);
+			_HMI_update(HMI_SCREEN_ERROR, 1, 1);
 			// Delay and exit.
 			LPTIM1_delay_milliseconds(5000, 1);
 			goto errors;

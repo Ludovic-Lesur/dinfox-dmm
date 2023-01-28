@@ -10,6 +10,7 @@
 #include "dinfox.h"
 #include "lvrm.h"
 #include "node_common.h"
+#include "rs485.h"
 
 /*** NODE structures ***/
 
@@ -18,7 +19,7 @@ typedef NODE_status_t (*NODE_set_rs485_address_t)(RS485_address_t rs485_address)
 typedef NODE_status_t (*NODE_perform_measurements_t)(void);
 typedef NODE_status_t (*NODE_unstack_string_data_t)(char_t** measurements_name_ptr, char_t** measurements_value_ptr);
 typedef NODE_status_t (*NODE_get_sigfox_payload_t)(uint8_t* ul_payload, uint8_t* ul_payload_size);
-typedef NODE_status_t (*NODE_write_t)(uint8_t register_address, uint8_t value);
+typedef NODE_status_t (*NODE_write_t)(uint8_t register_address, uint8_t value, RS485_reply_status_t* write_status);
 
 typedef struct {
 	NODE_get_board_name_t get_board_name;
@@ -150,12 +151,12 @@ errors:
 }
 
 /* WRITE NODE DATA.
- * @param node:				Node to write.
- * @param register_address:	Register to write.
- * @param value:			Value to write in register.
- * @return status:			Function execution status.
+ * @param node:			Node to write.
+ * @param data_index:	Node data index.
+ * @param value:		Value to write in corresponding register.
+ * @return status:		Function execution status.
  */
-NODE_status_t NODE_write(RS485_node_t* rs485_node, uint8_t register_address, uint8_t value) {
+NODE_status_t NODE_write(RS485_node_t* rs485_node, uint8_t data_index, uint8_t value, RS485_reply_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check board ID.
@@ -165,7 +166,7 @@ NODE_status_t NODE_write(RS485_node_t* rs485_node, uint8_t register_address, uin
 	status = NODE_FUNCTION[rs485_node -> board_id].set_rs485_address(rs485_node -> address);
 	if (status != NODE_SUCCESS) goto errors;
 	_NODE_check_function_pointer(write);
-	status = NODE_FUNCTION[rs485_node -> board_id].write(register_address, value);
+	status = NODE_FUNCTION[rs485_node -> board_id].write(data_index, value, write_status);
 errors:
 	return status;
 }

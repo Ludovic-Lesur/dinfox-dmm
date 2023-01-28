@@ -7,6 +7,7 @@
 
 #include "dinfox.h"
 
+#include "mode.h"
 #include "node_common.h"
 #include "rs485.h"
 #include "rs485_common.h"
@@ -16,6 +17,7 @@
 /*** DINFOX local macros ***/
 
 static const char_t* DINFOX_DATA_UNIT[DINFOX_DATA_INDEX_LAST] = {DINFOX_COMMON_DATA_UNIT};
+static const STRING_format_t DINFOX_DATA_FORMAT[DINFOX_REGISTER_LAST] = {DINFOX_COMMON_DATA_FORMAT};
 
 /*** DINFOX local functions ***/
 
@@ -63,12 +65,15 @@ NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data
 	NODE_status_t status = NODE_SUCCESS;
 	RS485_status_t rs485_status = RS485_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
-	RS485_reply_input_t reply_in;
-	RS485_reply_output_t reply_out;
+	RS485_read_input_t read_input;
+	RS485_reply_t reply;
 	uint8_t error_flag = 0;
 	// Common reply parameters.
-	reply_in.type = RS485_REPLY_TYPE_VALUE;
-	reply_in.timeout_ms = DINFOX_RS485_TIMEOUT_MS;
+#ifdef AM
+	read_input.node_address = rs485_address;
+#endif
+	read_input.type = RS485_REPLY_TYPE_VALUE;
+	read_input.timeout_ms = DINFOX_RS485_TIMEOUT_MS;
 	// Check parameters.
 	if ((data_str_ptr == NULL) || (data_str_size == NULL) || (data_int_ptr == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -78,26 +83,29 @@ NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data
 	switch (data_index) {
 	case DINFOX_DATA_INDEX_HW_VERSION:
 		// Hardware version major.
-		reply_in.format = STRING_FORMAT_DECIMAL;
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_HW_VERSION_MAJOR, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_HW_VERSION_MAJOR;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
-			_DINFOX_append_string(reply_out.raw);
-			data_int_ptr[DINFOX_REGISTER_HW_VERSION_MAJOR] = reply_out.value;
+		if (reply.status.all == 0) {
+			_DINFOX_append_string(reply.raw);
+			data_int_ptr[DINFOX_REGISTER_HW_VERSION_MAJOR] = reply.value;
 		}
 		else {
 			_DINFOX_set_error();
 			break;
 		}
 		// Hardware version minor.
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_HW_VERSION_MINOR, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_HW_VERSION_MINOR;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
+		if (reply.status.all == 0) {
 			_DINFOX_append_string(".");
-			_DINFOX_append_string(reply_out.raw);
-			data_int_ptr[DINFOX_REGISTER_HW_VERSION_MINOR] = reply_out.value;
+			_DINFOX_append_string(reply.raw);
+			data_int_ptr[DINFOX_REGISTER_HW_VERSION_MINOR] = reply.value;
 		}
 		else {
 			_DINFOX_set_error();
@@ -106,60 +114,67 @@ NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data
 		break;
 	case DINFOX_DATA_INDEX_SW_VERSION:
 		// Software version major.
-		reply_in.format = STRING_FORMAT_DECIMAL;
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_SW_VERSION_MAJOR, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_SW_VERSION_MAJOR;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
-			_DINFOX_append_string(reply_out.raw);
-			data_int_ptr[DINFOX_REGISTER_SW_VERSION_MAJOR] = reply_out.value;
+		if (reply.status.all == 0) {
+			_DINFOX_append_string(reply.raw);
+			data_int_ptr[DINFOX_REGISTER_SW_VERSION_MAJOR] = reply.value;
 		}
 		else {
 			_DINFOX_set_error();
 			break;
 		}
 		// Software version minor.
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_SW_VERSION_MINOR, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_SW_VERSION_MINOR;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
+		if (reply.status.all == 0) {
 			_DINFOX_append_string(".");
-			_DINFOX_append_string(reply_out.raw);
-			data_int_ptr[DINFOX_REGISTER_SW_VERSION_MINOR] = reply_out.value;
+			_DINFOX_append_string(reply.raw);
+			data_int_ptr[DINFOX_REGISTER_SW_VERSION_MINOR] = reply.value;
 		}
 		else {
 			_DINFOX_set_error();
 			break;
 		}
 		// Software version commit index.
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
+		if (reply.status.all == 0) {
 			_DINFOX_append_string(".");
-			_DINFOX_append_string(reply_out.raw);
-			data_int_ptr[DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX] = reply_out.value;
+			_DINFOX_append_string(reply.raw);
+			data_int_ptr[DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX] = reply.value;
 		}
 		else {
 			_DINFOX_set_error();
 			break;
 		}
 		// Software version commit ID.
-		reply_in.format = STRING_FORMAT_HEXADECIMAL;
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_SW_VERSION_COMMIT_ID, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_SW_VERSION_COMMIT_ID;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		data_int_ptr[DINFOX_REGISTER_SW_VERSION_COMMIT_ID] = (reply_out.status.all == 0) ? reply_out.value : 0;
+		data_int_ptr[DINFOX_REGISTER_SW_VERSION_COMMIT_ID] = (reply.status.all == 0) ? reply.value : 0;
 		// Software version dirty flag.
-		reply_in.format = STRING_FORMAT_BOOLEAN;
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
+		if (reply.status.all == 0) {
 			// Check dirty flag.
-			if (reply_out.value != 0) {
+			if (reply.value != 0) {
 				_DINFOX_append_string(".d");
-				data_int_ptr[DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG] = reply_out.value;
+				data_int_ptr[DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG] = reply.value;
 			}
 		}
 		else {
@@ -168,14 +183,15 @@ NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data
 		break;
 	case DINFOX_DATA_INDEX_RESET_FLAG:
 		// Reset flags.
-		reply_in.format = STRING_FORMAT_HEXADECIMAL;
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_RESET, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_RESET;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
+		if (reply.status.all == 0) {
 			_DINFOX_append_string("0x");
-			_DINFOX_append_string(reply_out.raw);
-			data_int_ptr[DINFOX_REGISTER_RESET] = reply_out.value;
+			_DINFOX_append_string(reply.raw);
+			data_int_ptr[DINFOX_REGISTER_RESET] = reply.value;
 		}
 		else {
 			_DINFOX_set_error();
@@ -183,13 +199,14 @@ NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data
 		break;
 	case DINFOX_DATA_INDEX_TMCU_DEGREES:
 		// MCU temperature.
-		reply_in.format = STRING_FORMAT_DECIMAL;
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_TMCU_DEGREES, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_TMCU_DEGREES;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
-			_DINFOX_append_string(reply_out.raw);
-			data_int_ptr[DINFOX_REGISTER_TMCU_DEGREES] = reply_out.value;
+		if (reply.status.all == 0) {
+			_DINFOX_append_string(reply.raw);
+			data_int_ptr[DINFOX_REGISTER_TMCU_DEGREES] = reply.value;
 		}
 		else {
 			_DINFOX_set_error();
@@ -197,13 +214,14 @@ NODE_status_t DINFOX_read_data(RS485_address_t rs485_address, DINFOX_common_data
 		break;
 	case DINFOX_DATA_INDEX_VMCU_MV:
 		// MCU voltage.
-		reply_in.format = STRING_FORMAT_DECIMAL;
-		rs485_status = RS485_read_register(rs485_address, DINFOX_REGISTER_VMCU_MV, &reply_in, &reply_out);
+		read_input.register_address = DINFOX_REGISTER_VMCU_MV;
+		read_input.format = DINFOX_DATA_FORMAT[read_input.register_address];
+		rs485_status = RS485_read_register(&read_input, &reply);
 		RS485_status_check(NODE_ERROR_BASE_RS485);
 		// Check reply.
-		if (reply_out.status.all == 0) {
-			_DINFOX_append_string(reply_out.raw);
-			data_int_ptr[DINFOX_REGISTER_VMCU_MV] = reply_out.value;
+		if (reply.status.all == 0) {
+			_DINFOX_append_string(reply.raw);
+			data_int_ptr[DINFOX_REGISTER_VMCU_MV] = reply.value;
 		}
 		else {
 			_DINFOX_set_error();

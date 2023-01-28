@@ -52,29 +52,37 @@ typedef union {
 } RS485_reply_status_t;
 
 typedef struct {
-	RS485_reply_type_t type;
-	STRING_format_t format; // For value type.
+#ifdef AM
+	RS485_address_t node_address;
+#endif
+	uint8_t register_address;
 	uint32_t timeout_ms;
-} RS485_reply_input_t;
+	STRING_format_t format; // Expected value format.
+	RS485_reply_type_t type;
+} RS485_read_input_t;
+
+typedef struct {
+#ifdef AM
+	RS485_address_t node_address;
+#endif
+	uint8_t register_address;
+	uint32_t timeout_ms;
+	STRING_format_t format; // Register value format.
+	int32_t value;
+} RS485_write_input_t;
 
 typedef struct {
 	char_t* raw;
 	int32_t value; // For value type.
 	RS485_reply_status_t status;
-} RS485_reply_output_t;
+} RS485_reply_t;
 
 /*** RS485 functions ***/
 
 void RS485_init(void);
-#ifdef AM
-RS485_status_t RS485_send_command(RS485_address_t slave_address, char_t* command) ;
-RS485_status_t RS485_read_register(RS485_address_t slave_address, uint8_t register_address, RS485_reply_input_t* reply_in_ptr, RS485_reply_output_t* reply_out_ptr);
-#else
-RS485_status_t RS485_send_command(char_t* command);
-RS485_status_t RS485_read_register(uint8_t register_address, RS485_reply_input_t* reply_in_ptr, RS485_reply_output_t* reply_out_ptr);
-#endif
-RS485_status_t RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485_reply_output_t* reply_out_ptr);
 RS485_status_t RS485_scan_nodes(void);
+RS485_status_t RS485_read_register(RS485_read_input_t* read_input_ptr, RS485_reply_t* reply_ptr);
+RS485_status_t RS485_write_register(RS485_write_input_t* write_input_ptr, RS485_reply_t* reply_ptr);
 void RS485_fill_rx_buffer(uint8_t rx_byte);
 
 #define RS485_status_check(error_base) { if (rs485_status != RS485_SUCCESS) { status = error_base + rs485_status; goto errors; }}

@@ -16,6 +16,7 @@
 #include "iwdg.h"
 #include "led.h"
 #include "logo.h"
+#include "lpuart.h"
 #include "mapping.h"
 #include "node.h"
 #include "node_common.h"
@@ -341,11 +342,67 @@ static HMI_status_t _HMI_update_and_print_navigation(HMI_screen_t screen) {
 	return status;
 }
 
+/* UPDATE VALUE ON CURRENT STRING DATA INDEX.
+ * @param:			None.
+ * @return status:	Function execution status.
+ */
+static HMI_status_t _HMI_update_data_value(void) {
+	// Local variables.
+	HMI_status_t status = HMI_SUCCESS;
+	NODE_status_t node_status = NODE_SUCCESS;
+	STRING_status_t string_status = STRING_SUCCESS;
+	STRING_copy_t string_copy;
+	char_t* text_ptr_1 = NULL;
+	char_t* text_ptr_2 = NULL;
+	// Common string copy parameter.
+	string_copy.flush_char = STRING_CHAR_SPACE;
+	string_copy.destination = (char_t*) hmi_ctx.data[hmi_ctx.data_index];
+	string_copy.destination_size = HMI_DATA_ZONE_WIDTH_CHAR;
+	// Check screen.
+	if (hmi_ctx.screen != HMI_SCREEN_NODE_DATA) {
+		status = HMI_ERROR_SCREEN;
+		goto errors;
+	}
+	node_status = NODE_update_data(&hmi_ctx.rs485_node, hmi_ctx.data_index);
+	// Check status.
+	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
+		NODE_status_check(HMI_ERROR_BASE_NODE);
+	}
+	else {
+		// Do not update data.
+		goto errors;
+	}
+	// Read data.
+	node_status = NODE_read_string_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, &text_ptr_1, &text_ptr_2);
+	// Check status.
+	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
+		NODE_status_check(HMI_ERROR_BASE_NODE);
+	}
+	else {
+		// Do not update data.
+		goto errors;
+	}
+	// Update name.
+	string_copy.source = text_ptr_1;
+	string_copy.justification = STRING_JUSTIFICATION_LEFT;
+	string_copy.flush_flag = 1;
+	string_status = STRING_copy(&string_copy);
+	STRING_status_check(HMI_ERROR_BASE_STRING);
+	// Update value.
+	string_copy.source = text_ptr_2;
+	string_copy.justification = STRING_JUSTIFICATION_RIGHT;
+	string_copy.flush_flag = 0;
+	string_status = STRING_copy(&string_copy);
+	STRING_status_check(HMI_ERROR_BASE_STRING);
+errors:
+	return status;
+}
+
 /* UPDATE DATA ZONE.
  * @param screen:	View to display.
  * @return status:	Function executions status.
  */
-static HMI_status_t _HMI_update_data(HMI_screen_t screen) {
+static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
@@ -416,8 +473,8 @@ static HMI_status_t _HMI_update_data(HMI_screen_t screen) {
 		}
 		break;
 	case HMI_SCREEN_NODE_DATA:
-		// Perform measurements.
-		node_status = NODE_perform_measurements(&hmi_ctx.rs485_node);
+		// Update all node data.
+		node_status = NODE_update_all_data(&hmi_ctx.rs485_node);
 		switch (node_status) {
 		case NODE_SUCCESS:
 			// Go to next step.
@@ -440,7 +497,7 @@ static HMI_status_t _HMI_update_data(HMI_screen_t screen) {
 			break;
 		}
 		// Get first line.
-		node_status = NODE_unstack_string_data(&hmi_ctx.rs485_node, &text_ptr_1, &text_ptr_2);
+		node_status = NODE_read_string_data(&hmi_ctx.rs485_node, idx, &text_ptr_1, &text_ptr_2);
 		switch (node_status) {
 		case NODE_SUCCESS:
 			if ((text_ptr_1 == NULL) || (text_ptr_2 == NULL)) {
@@ -474,7 +531,7 @@ static HMI_status_t _HMI_update_data(HMI_screen_t screen) {
 			NODE_status_check(HMI_ERROR_BASE_NODE);
 			break;
 		}
-		// Measurements loop.
+		// Data loop.
 		while ((text_ptr_1 != NULL) && (text_ptr_2 != NULL)) {
 			// Check index.
 			if (idx >= HMI_DATA_PAGES_DEPTH) {
@@ -483,13 +540,13 @@ static HMI_status_t _HMI_update_data(HMI_screen_t screen) {
 			}
 			// Update pointer.
 			string_copy.destination = (char_t*) hmi_ctx.data[idx];
-			// Print measurement name.
+			// Print data name.
 			string_copy.source = text_ptr_1;
 			string_copy.justification = STRING_JUSTIFICATION_LEFT;
 			string_copy.flush_flag = 1;
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
-			// Print measurement value.
+			// Print data value.
 			string_copy.source = text_ptr_2;
 			string_copy.justification = STRING_JUSTIFICATION_RIGHT;
 			string_copy.flush_flag = 0;
@@ -498,7 +555,7 @@ static HMI_status_t _HMI_update_data(HMI_screen_t screen) {
 			// Increment index.
 			idx++;
 			// Unstack next data.
-			node_status = NODE_unstack_string_data(&hmi_ctx.rs485_node, &text_ptr_1, &text_ptr_2);
+			node_status = NODE_read_string_data(&hmi_ctx.rs485_node, idx, &text_ptr_1, &text_ptr_2);
 			NODE_status_check(HMI_ERROR_BASE_NODE);
 		}
 		// Update depth.
@@ -583,17 +640,17 @@ static HMI_status_t _HMI_update(HMI_screen_t screen, uint8_t update_data, uint8_
 	}
 	// Update data (must be performed before navigation to have the correct depth value).
 	if (update_data != 0) {
-		status = _HMI_update_data(screen);
-		if (status != HMI_SUCCESS) goto errors;
-	}
-	// Update navigation.
-	if (update_navigation != 0) {
-		status = _HMI_update_and_print_navigation(screen);
+		status = _HMI_update_all_data(screen);
 		if (status != HMI_SUCCESS) goto errors;
 	}
 	// Print data in all cases.
 	status = _HMI_print_data();
 	if (status != HMI_SUCCESS) goto errors;
+	// Update navigation.
+	if (update_navigation != 0) {
+		status = _HMI_update_and_print_navigation(screen);
+		if (status != HMI_SUCCESS) goto errors;
+	}
 	// Update context.
 	hmi_ctx.screen = screen;
 errors:
@@ -684,14 +741,18 @@ static HMI_status_t _HMI_irq_callback_cmd_on(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	RS485_reply_status_t write_status;
 	// Execute node register write function.
-	node_status = NODE_write(&hmi_ctx.rs485_node, hmi_ctx.data_index, 1, &write_status);
+	node_status = NODE_write_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, 1, &write_status);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);
 	}
 	// Update display is write operation succedded.
 	if (write_status.all == 0) {
-		status = _HMI_update(hmi_ctx.screen, 1, 0);
+		// Read written data.
+		status = _HMI_update_data_value();
+		if (status != HMI_SUCCESS) goto errors;
+		// Update display.
+		status = _HMI_update(hmi_ctx.screen, 0, 0);
 	}
 errors:
 	return status;
@@ -707,14 +768,18 @@ static HMI_status_t _HMI_irq_callback_cmd_off(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	RS485_reply_status_t write_status;
 	// Execute node register write function.
-	node_status = NODE_write(&hmi_ctx.rs485_node, hmi_ctx.data_index, 0, &write_status);
+	node_status = NODE_write_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, 0, &write_status);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);
 	}
 	// Update display is write operation succedded.
 	if (write_status.all == 0) {
-		status = _HMI_update(hmi_ctx.screen, 1, 0);
+		// Read written data.
+		status = _HMI_update_data_value();
+		if (status != HMI_SUCCESS) goto errors;
+		// Update display.
+		status = _HMI_update(hmi_ctx.screen, 0, 0);
 	}
 errors:
 	return status;
@@ -886,10 +951,14 @@ HMI_status_t HMI_task(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	RTC_status_t rtc_status = RTC_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	// Init context.
 	hmi_ctx.screen = HMI_SCREEN_OFF;
 	hmi_ctx.state = ((hmi_ctx.irq_flags & (0b1 << HMI_IRQ_ENCODER_SWITCH)) != 0) ? HMI_STATE_INIT : HMI_STATE_UNUSED;
 	hmi_ctx.unused_duration_seconds = 0;
+	// Turn RS485 interface on.
+	lpuart1_status = LPUART1_power_on();
+	LPUART1_status_check(HMI_ERROR_BASE_LPUART);
 	// Start periodic wakeup timer.
 	RTC_clear_wakeup_timer_flag();
 	rtc_status = RTC_start_wakeup_timer(HMI_WAKEUP_PERIOD_SECONDS);
@@ -931,6 +1000,8 @@ errors:
 	// Turn HMI off.
 	I2C1_power_off();
 	_HMI_disable_irq();
+	// Turn RS485 interface off.
+	LPUART1_power_off();
 	// Stop periodic wakeup timer.
 	RTC_stop_wakeup_timer();
 	return status;

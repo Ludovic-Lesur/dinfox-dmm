@@ -6,7 +6,6 @@
  */
 
 #include "dinfox.h"
-#include "lpuart.h"
 #include "lvrm.h"
 #include "mode.h"
 #include "node_common.h"
@@ -25,28 +24,29 @@ typedef enum {
 } LVRM_register_address_t;
 
 typedef enum {
-	LVRM_DATA_INDEX_VCOM_MV = DINFOX_DATA_INDEX_LAST,
-	LVRM_DATA_INDEX_VOUT_MV,
-	LVRM_DATA_INDEX_IOUT_UA,
-	LVRM_DATA_INDEX_OUT_EN,
-	LVRM_DATA_INDEX_LAST,
+	LVRM_STRING_DATA_INDEX_VCOM_MV = DINFOX_STRING_DATA_INDEX_LAST,
+	LVRM_STRING_DATA_INDEX_VOUT_MV,
+	LVRM_STRING_DATA_INDEX_IOUT_UA,
+	LVRM_STRING_DATA_INDEX_OUT_EN,
+	LVRM_STRING_DATA_INDEX_LAST,
 } LVRM_measurement_index_t;
 
 /*** LVRM local macros ***/
 
 static const char_t* LVRM_BOARD_NAME = "LVRM";
-static const char_t* LVRM_DATA_NAME[LVRM_DATA_INDEX_LAST] = {DINFOX_COMMON_DATA_NAME, "VCOM =", "VOUT =", "IOUT =", "RELAY ="};
-static const char_t* LVRM_DATA_UNIT[LVRM_DATA_INDEX_LAST] = {DINFOX_COMMON_DATA_UNIT, "mV", "mV", "uA", STRING_NULL};
-static const STRING_format_t LVRM_DATA_FORMAT[LVRM_REGISTER_LAST] = {DINFOX_COMMON_DATA_FORMAT, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_BOOLEAN};
+
+static const char_t* LVRM_STRING_DATA_NAME[LVRM_STRING_DATA_INDEX_LAST] = {DINFOX_COMMON_STRING_DATA_NAME, "VCOM =", "VOUT =", "IOUT =", "RELAY ="};
+static const char_t* LVRM_STRING_DATA_UNIT[LVRM_STRING_DATA_INDEX_LAST] = {DINFOX_COMMON_STRING_DATA_UNIT, "mV", "mV", "uA", STRING_NULL};
+
+static const STRING_format_t LVRM_REGISTER_FORMAT[LVRM_REGISTER_LAST] = {DINFOX_COMMON_REGISTER_FORMAT, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_BOOLEAN};
 
 /*** LVRM local structures ***/
 
 typedef struct {
 	RS485_address_t rs485_address;
-	uint8_t read_index;
-	char_t data_str[LVRM_DATA_INDEX_LAST][DINFOX_STRING_BUFFER_SIZE];
-	uint8_t data_str_size[LVRM_DATA_INDEX_LAST];
-	int32_t data_int[LVRM_REGISTER_LAST];
+	char_t string_data_value[LVRM_STRING_DATA_INDEX_LAST][DINFOX_STRING_BUFFER_SIZE];
+	uint8_t string_data_value_size[LVRM_STRING_DATA_INDEX_LAST];
+	int32_t integer_data_value[LVRM_REGISTER_LAST];
 } LVRM_context_t;
 
 /*** LVRM local global variables ***/
@@ -61,7 +61,7 @@ static LVRM_context_t lvrm_ctx;
  * @return:					None.
  */
 #define _LVRM_append_string(str) { \
-	string_status = STRING_append_string(lvrm_ctx.data_str[data_idx], DINFOX_STRING_BUFFER_SIZE, str, &(lvrm_ctx.data_str_size[data_idx])); \
+	string_status = STRING_append_string(lvrm_ctx.string_data_value[string_data_index], DINFOX_STRING_BUFFER_SIZE, str, &(lvrm_ctx.string_data_value_size[string_data_index])); \
 	STRING_status_check(NODE_ERROR_BASE_STRING); \
 }
 
@@ -70,33 +70,33 @@ static LVRM_context_t lvrm_ctx;
  * @return:					None.
  */
 #define _LVRM_set_error() { \
-	_LVRM_flush_data_str(data_idx); \
-	_LVRM_append_string(DINFOX_DATA_ERROR); \
+		_LVRM_flush_string_data_value(string_data_index); \
+	_LVRM_append_string(DINFOX_STRING_DATA_ERROR); \
 }
 
 /* FLUSH ONE LINE OF THE MEASURERMENTS VALUE BUFFER.
  * @param:	None.
  * @return:	None.
  */
-void _LVRM_flush_data_str(uint8_t measurement_index) {
+void _LVRM_flush_string_data_value(uint8_t measurement_index) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Char loop.
-	for (idx=0 ; idx<DINFOX_STRING_BUFFER_SIZE ; idx++) lvrm_ctx.data_str[measurement_index][idx] = STRING_CHAR_NULL;
-	lvrm_ctx.data_str_size[measurement_index] = 0;
+	for (idx=0 ; idx<DINFOX_STRING_BUFFER_SIZE ; idx++) lvrm_ctx.string_data_value[measurement_index][idx] = STRING_CHAR_NULL;
+	lvrm_ctx.string_data_value_size[measurement_index] = 0;
 }
 
 /* FLUSH WHOLE DATAS VALUE BUFFER.
  * @param:	None.
  * @return:	None.
  */
-void _LVRM_flush_measurements_value(void) {
+void _LVRM_flush_all_data_value(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	// String data.
-	for (idx=0 ; idx<LVRM_DATA_INDEX_LAST ; idx++) _LVRM_flush_data_str(idx);
+	for (idx=0 ; idx<LVRM_STRING_DATA_INDEX_LAST ; idx++) _LVRM_flush_string_data_value(idx);
 	// Integer data.
-	for (idx=0 ; idx<LVRM_REGISTER_LAST ; idx++) lvrm_ctx.data_int[idx] = 0;
+	for (idx=0 ; idx<LVRM_REGISTER_LAST ; idx++) lvrm_ctx.integer_data_value[idx] = 0;
 }
 
 /*** LVRM functions ***/
@@ -131,24 +131,17 @@ errors:
 }
 
 /* RETRIEVE DATA FROM LVRM NODE.
- * @param:			None.
- * @return status:	Function execution status.
+ * @param string_data_index:	Node string data index.
+ * @return status:				Function execution status.
  */
-NODE_status_t LVRM_perform_measurements(void) {
+NODE_status_t LVRM_update_data(uint8_t string_data_index) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	RS485_status_t rs485_status = RS485_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
 	RS485_read_input_t read_input;
 	RS485_reply_t reply;
-	uint8_t data_idx = 0;
 	uint8_t register_address = 0;
-	// Reset buffers.
-	_LVRM_flush_measurements_value();
-	// Turn RS485 on.
-	lpuart1_status = LPUART1_power_on();
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Common read input parameters.
 #ifdef AM
 	read_input.node_address = lvrm_ctx.rs485_address;
@@ -156,15 +149,22 @@ NODE_status_t LVRM_perform_measurements(void) {
 	read_input.type = RS485_REPLY_TYPE_VALUE;
 	read_input.timeout_ms = DINFOX_RS485_TIMEOUT_MS;
 	read_input.format = STRING_FORMAT_DECIMAL;
-	// Common data loop.
-	for (data_idx=0 ; data_idx<DINFOX_DATA_INDEX_LAST ; data_idx++) {
-		status = DINFOX_read_data(lvrm_ctx.rs485_address, data_idx, lvrm_ctx.data_str[data_idx], &(lvrm_ctx.data_str_size[data_idx]), lvrm_ctx.data_int);
+	// Check index.
+	if (string_data_index >= LVRM_STRING_DATA_INDEX_LAST) {
+		status = NODE_ERROR_STRING_DATA_INDEX;
+		goto errors;
+	}
+	// Flush line.
+	_LVRM_flush_string_data_value(string_data_index);
+	// Common data.
+	if (string_data_index < DINFOX_STRING_DATA_INDEX_LAST) {
+		status = DINFOX_update_data(lvrm_ctx.rs485_address, string_data_index, lvrm_ctx.string_data_value[string_data_index], &(lvrm_ctx.string_data_value_size[string_data_index]), &(lvrm_ctx.integer_data_value[string_data_index]));
 		if (status != NODE_SUCCESS) goto errors;
 	}
-	// Specific data loop.
-	for (data_idx=DINFOX_DATA_INDEX_LAST ; data_idx<LVRM_DATA_INDEX_LAST ; data_idx++) {
+	// Specific data.
+	else {
 		// Convert to register address.
-		register_address = (data_idx + DINFOX_REGISTER_LAST - DINFOX_DATA_INDEX_LAST);
+		register_address = (string_data_index + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
 		read_input.register_address = register_address;
 		// Read data.
 		rs485_status = RS485_read_register(&read_input, &reply);
@@ -172,10 +172,10 @@ NODE_status_t LVRM_perform_measurements(void) {
 		// Check reply.
 		if (reply.status.all == 0) {
 			// Update integer data.
-			lvrm_ctx.data_int[register_address] = reply.value;
+			lvrm_ctx.integer_data_value[register_address] = reply.value;
 			// Specific print for relay.
-			if (data_idx == LVRM_DATA_INDEX_OUT_EN) {
-				if (lvrm_ctx.data_int[register_address] == 0) {
+			if (string_data_index == LVRM_STRING_DATA_INDEX_OUT_EN) {
+				if (lvrm_ctx.integer_data_value[register_address] == 0) {
 					_LVRM_append_string("OFF");
 				}
 				else {
@@ -185,41 +185,88 @@ NODE_status_t LVRM_perform_measurements(void) {
 			else {
 				_LVRM_append_string(reply.raw);
 			}
-			_LVRM_append_string((char_t*) LVRM_DATA_UNIT[data_idx]);
+			_LVRM_append_string((char_t*) LVRM_STRING_DATA_UNIT[string_data_index]);
 		}
 		else {
 			_LVRM_set_error();
 		}
 	}
 errors:
-	lvrm_ctx.read_index = 0;
-	LPUART1_power_off();
+	return status;
+}
+
+/* RETRIEVE DATA FROM LVRM NODE.
+ * @param:			None.
+ * @return status:	Function execution status.
+ */
+NODE_status_t LVRM_update_all_data(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	uint8_t idx = 0;
+	// Reset buffers.
+	_LVRM_flush_all_data_value();
+	// String data loop.
+	for (idx=0 ; idx<LVRM_STRING_DATA_INDEX_LAST ; idx++) {
+		status = LVRM_update_data(idx);
+		if (status != NODE_SUCCESS) goto errors;
+	}
+errors:
 	return status;
 }
 
 /* UNSTACK NODE DATA FORMATTED AS STRING.
- * @param measurement_name_ptr:		Pointer to string that will contain next measurement name.
- * @param measurement_value_ptr:	Pointer to string that will contain next measurement value.
+ * @param string_data_name_ptr:		Pointer to string that will contain next measurement name.
+ * @param string_data_value_ptr:	Pointer to string that will contain next measurement value.
  * @return status:					Function execution status.
  */
-NODE_status_t LVRM_unstack_string_data(char_t** measurement_name_ptr, char_t** measurement_value_ptr) {
+NODE_status_t LVRM_read_string_data(uint8_t string_data_index, char_t** string_data_name_ptr, char_t** string_data_value_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check index.
-	if (lvrm_ctx.read_index < LVRM_DATA_INDEX_LAST) {
+	if (string_data_index < LVRM_STRING_DATA_INDEX_LAST) {
 		// Update input pointers.
-		(*measurement_name_ptr) = (char_t*) LVRM_DATA_NAME[lvrm_ctx.read_index];
-		(*measurement_value_ptr) = (char_t*) lvrm_ctx.data_str[lvrm_ctx.read_index];
-		// Increment index.
-		lvrm_ctx.read_index++;
+		(*string_data_name_ptr) = (char_t*) LVRM_STRING_DATA_NAME[string_data_index];
+		(*string_data_value_ptr) = (char_t*) lvrm_ctx.string_data_value[string_data_index];
 	}
 	else {
 		// Return NULL pointers.
-		(*measurement_name_ptr) = NULL;
-		(*measurement_value_ptr) = NULL;
-		// Reset index.
-		lvrm_ctx.read_index = 0;
+		(*string_data_name_ptr) = NULL;
+		(*string_data_value_ptr) = NULL;
 	}
+	return status;
+}
+
+/* WRITE LVRM NODE DATA.
+ * @param string_data_index:	Node string data index.
+ * @param value:				Value to write in corresponding register.
+ * @param write_status:			Pointer to the writing operation status.
+ * @return status:				Function execution status.
+ */
+NODE_status_t LVRM_write_data(uint8_t string_data_index, uint8_t value, RS485_reply_status_t* write_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	RS485_status_t rs485_status = RS485_SUCCESS;
+	RS485_write_input_t write_input;
+	RS485_reply_t reply;
+	uint8_t register_address = 0;
+	// Convert string data index to register.
+	if (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST) {
+		register_address = (string_data_index + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
+	}
+	// Common write input parameters.
+#ifdef AM
+	write_input.node_address = lvrm_ctx.rs485_address;
+#endif
+	write_input.value = value;
+	write_input.timeout_ms = DINFOX_RS485_TIMEOUT_MS;
+	write_input.format = LVRM_REGISTER_FORMAT[register_address];
+	write_input.register_address = register_address;
+	// Check writable registers.
+	rs485_status = RS485_write_register(&write_input, &reply);
+	RS485_status_check(NODE_ERROR_BASE_RS485);
+	// Check reply.
+	(*write_status).all = reply.status.all;
+errors:
 	return status;
 }
 
@@ -233,39 +280,3 @@ NODE_status_t LVRM_get_sigfox_payload(uint8_t* ul_payload, uint8_t* ul_payload_s
 	NODE_status_t status = NODE_SUCCESS;
 	return status;
 }
-
-/* WRITE LVRM NODE DATA.
- * @param data_index:	Node data index.
- * @param value:		Value to write in corresponding register.
- * @param write_status:	Writing operation status.
- * @return status:		Function execution status.
- */
-NODE_status_t LVRM_write(uint8_t data_index, uint8_t value, RS485_reply_status_t* write_status) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	RS485_status_t rs485_status = RS485_SUCCESS;
-	RS485_write_input_t write_input;
-	RS485_reply_t reply;
-	uint8_t register_address = (data_index + DINFOX_REGISTER_LAST - DINFOX_DATA_INDEX_LAST);
-	// Common write input parameters.
-#ifdef AM
-	write_input.node_address = lvrm_ctx.rs485_address;
-#endif
-	write_input.value = value;
-	write_input.timeout_ms = DINFOX_RS485_TIMEOUT_MS;
-	write_input.format = LVRM_DATA_FORMAT[register_address];
-	write_input.register_address = register_address;
-	// Turn RS485 on.
-	lpuart1_status = LPUART1_power_on();
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-	// Check writable registers.
-	rs485_status = RS485_write_register(&write_input, &reply);
-	RS485_status_check(NODE_ERROR_BASE_RS485);
-	// Check reply.
-	(*write_status).all = reply.status.all;
-errors:
-	LPUART1_power_off();
-	return status;
-}
-

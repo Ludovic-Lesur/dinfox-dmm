@@ -9,23 +9,8 @@
 #define __DINFOX_H__
 
 #include "node_common.h"
+#include "string.h"
 #include "types.h"
-
-/*** DINFOX macros ***/
-
-#define DINFOX_COMMON_STRING_DATA_NAME	"HW =", "SW =", "RESET =", "TMCU =", "VMCU ="
-#define DINFOX_COMMON_STRING_DATA_UNIT	STRING_NULL, STRING_NULL, STRING_NULL, "|C", "mV"
-
-#define DINFOX_STRING_DATA_ERROR		"ERROR"
-#define DINFOX_STRING_BUFFER_SIZE		16
-
-#define DINFOX_RS485_TIMEOUT_MS			100
-
-#define DINFOX_COMMON_REGISTER_FORMAT	STRING_FORMAT_HEXADECIMAL, STRING_FORMAT_HEXADECIMAL, \
-										STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL, \
-										STRING_FORMAT_HEXADECIMAL, STRING_FORMAT_BOOLEAN, \
-										STRING_FORMAT_HEXADECIMAL, STRING_FORMAT_HEXADECIMAL, \
-										STRING_FORMAT_DECIMAL, STRING_FORMAT_DECIMAL
 
 /*** DINFOX boards identifier ***/
 
@@ -61,7 +46,7 @@ typedef enum {
 	DINFOX_REGISTER_TMCU_DEGREES,
 	DINFOX_REGISTER_VMCU_MV,
 	DINFOX_REGISTER_LAST
-} DINFOX_common_registers_t;
+} DINFOX_register_address_t;
 
 /*** DINFOX common data index ***/
 
@@ -72,10 +57,26 @@ typedef enum {
 	DINFOX_STRING_DATA_INDEX_TMCU_DEGREES,
 	DINFOX_STRING_DATA_INDEX_VMCU_MV,
 	DINFOX_STRING_DATA_INDEX_LAST
-} DINFOX_common_data_index_t;
+} DINFOX_string_data_index_t;
+
+static const STRING_format_t DINFOX_REGISTERS_FORMAT[DINFOX_REGISTER_LAST] = {
+	STRING_FORMAT_HEXADECIMAL,
+	STRING_FORMAT_HEXADECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_HEXADECIMAL,
+	STRING_FORMAT_BOOLEAN,
+	STRING_FORMAT_HEXADECIMAL,
+	STRING_FORMAT_HEXADECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL
+};
 
 /*** DINFOX functions ***/
 
-NODE_status_t DINFOX_update_data(RS485_address_t rs485_address, DINFOX_common_data_index_t data_index, char_t* data_str_ptr, uint8_t* data_str_size, int32_t* data_int_ptr);
+NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
 
 #endif /* __DINFOX_H__ */

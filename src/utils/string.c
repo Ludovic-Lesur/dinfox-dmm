@@ -487,9 +487,11 @@ errors:
 }
 
 /* APPEND A STRING TO A STRING.
- * @param buffer:	Destination buffer.
- * @param str:		String to append.
- * @return status:	Function execution status.
+ * @param buffer:			Destination buffer.
+ * @param buffer_size_max:	Size of the destination buffer.
+ * @param str:				String to append.
+ * @param buffer_size:		Pointer that will contain new buffer size after append.
+ * @return status:			Function execution status.
  */
 STRING_status_t STRING_append_string(char_t* buffer, uint8_t buffer_size_max, char_t* str, uint8_t* buffer_size) {
 	// Local variables.

@@ -10,10 +10,12 @@
 
 #include "lptim.h"
 #include "mode.h"
-#include "rs485_common.h"
+#include "node_common.h"
 #include "types.h"
 
 /*** LPUART structures ***/
+
+typedef void (*LPUART_rx_callback_t)(uint8_t rx_byte);
 
 typedef enum {
 	LPUART_SUCCESS = 0,
@@ -22,7 +24,6 @@ typedef enum {
 	LPUART_ERROR_NODE_ADDRESS,
 	LPUART_ERROR_TX_TIMEOUT,
 	LPUART_ERROR_TC_TIMEOUT,
-	LPUART_ERROR_STRING_SIZE,
 	LPUART_ERROR_BASE_LPTIM = 0x0100,
 	LPUART_ERROR_BASE_LAST = (LPUART_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST)
 } LPUART_status_t;
@@ -30,7 +31,7 @@ typedef enum {
 /*** LPUART functions ***/
 
 #ifdef AM
-LPUART_status_t LPUART1_init(RS485_address_t node_address);
+void LPUART1_init(NODE_address_t self_address);
 #else
 void LPUART1_init(void);
 #endif
@@ -38,11 +39,7 @@ LPUART_status_t LPUART1_power_on(void);
 void LPUART1_power_off(void);
 void LPUART1_enable_rx(void);
 void LPUART1_disable_rx(void);
-#ifdef AM
-LPUART_status_t LPUART1_send_command(RS485_address_t slave_address, char_t* command);
-#else
-LPUART_status_t LPUART1_send_command(char_t* command);
-#endif
+LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes, LPUART_rx_callback_t rx_callback);
 
 #define LPUART1_status_check(error_base) { if (lpuart1_status != LPUART_SUCCESS) { status = error_base + lpuart1_status; goto errors; }}
 #define LPUART1_error_check() { ERROR_status_check(lpuart1_status, LPUART_SUCCESS, ERROR_BASE_LPUART1); }

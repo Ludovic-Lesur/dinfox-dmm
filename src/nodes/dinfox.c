@@ -7,10 +7,10 @@
 
 #include "dinfox.h"
 
+#include "lbus.h"
 #include "mode.h"
+#include "node.h"
 #include "node_common.h"
-#include "rs485.h"
-#include "rs485_common.h"
 #include "string.h"
 #include "types.h"
 
@@ -29,21 +29,20 @@ static const char_t* DINFOX_STRING_DATA_UNIT[DINFOX_STRING_DATA_INDEX_LAST] = {S
  * @param int_ptr:				Pointer to the data integer value.
  * @return status:				Function execution status.
  */
-NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr) {
+NODE_status_t DINFOX_update_common_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	RS485_status_t rs485_status = RS485_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
-	RS485_read_input_t read_input;
-	RS485_reply_t reply;
+	NODE_read_parameters_t read_input;
+	NODE_reply_t reply;
 	uint8_t error_flag = 0;
 	uint8_t buffer_size = 0;
 	// Common reply parameters.
 #ifdef AM
 	read_input.node_address = rs485_address;
 #endif
-	read_input.type = RS485_REPLY_TYPE_VALUE;
-	read_input.timeout_ms = NODE_RS485_TIMEOUT_MS;
+	read_input.type = NODE_REPLY_TYPE_VALUE;
+	read_input.timeout_ms = LBUS_TIMEOUT_MS;
 	// Check parameters.
 	if (single_data_ptr == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -63,8 +62,8 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// Hardware version major.
 		read_input.register_address = DINFOX_REGISTER_HW_VERSION_MAJOR;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			NODE_append_string_value(reply.raw);
@@ -77,8 +76,8 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// Hardware version minor.
 		read_input.register_address = DINFOX_REGISTER_HW_VERSION_MINOR;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			NODE_append_string_value(".");
@@ -94,8 +93,8 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// Software version major.
 		read_input.register_address = DINFOX_REGISTER_SW_VERSION_MAJOR;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			NODE_append_string_value(reply.raw);
@@ -108,8 +107,8 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// Software version minor.
 		read_input.register_address = DINFOX_REGISTER_SW_VERSION_MINOR;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			NODE_append_string_value(".");
@@ -123,8 +122,8 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// Software version commit index.
 		read_input.register_address = DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			NODE_append_string_value(".");
@@ -138,15 +137,15 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// Software version commit ID.
 		read_input.register_address = DINFOX_REGISTER_SW_VERSION_COMMIT_ID;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		NODE_update_value((reply.status.all == 0) ? reply.value : 0);
 		// Software version dirty flag.
 		read_input.register_address = DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			// Check dirty flag.
@@ -163,8 +162,8 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// Reset flags.
 		read_input.register_address = DINFOX_REGISTER_RESET;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			NODE_append_string_value("0x");
@@ -179,8 +178,8 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// MCU temperature.
 		read_input.register_address = DINFOX_REGISTER_TMCU_DEGREES;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			NODE_append_string_value(reply.raw);
@@ -194,8 +193,8 @@ NODE_status_t DINFOX_update_common_data(RS485_address_t rs485_address, uint8_t s
 		// MCU voltage.
 		read_input.register_address = DINFOX_REGISTER_VMCU_MV;
 		read_input.format = DINFOX_REGISTERS_FORMAT[read_input.register_address];
-		rs485_status = RS485_read_register(&read_input, &reply);
-		RS485_status_check(NODE_ERROR_BASE_RS485);
+		status = LBUS_read_register(&read_input, &reply);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (reply.status.all == 0) {
 			NODE_append_string_value(reply.raw);

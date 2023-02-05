@@ -9,6 +9,7 @@
 #define __ERROR_H__
 
 // Peripherals.
+#include <lbus.h>
 #include "adc.h"
 #include "flash.h"
 #include "iwdg.h"
@@ -26,8 +27,10 @@
 #include "string.h"
 #include "types.h"
 // Components.
-#include "rs485.h"
 #include "sh1106.h"
+// Nodes.
+#include "lbus.h"
+#include "node.h"
 // Applicative.
 #include "hmi.h"
 
@@ -57,12 +60,14 @@ typedef enum {
 	ERROR_BASE_PARSER = (ERROR_BASE_MATH + MATH_ERROR_BASE_LAST),
 	ERROR_BASE_STRING = (ERROR_BASE_PARSER + PARSER_ERROR_BASE_LAST),
 	// Components.
-	ERROR_BASE_RS485 = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
-	ERROR_BASE_SH1106 = (ERROR_BASE_RS485 + RS485_ERROR_BASE_LAST),
+	ERROR_BASE_SH1106 = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
+	// Nodes.
+	ERROR_BASE_LBUS = (ERROR_BASE_SH1106 + SH1106_ERROR_BASE_LAST),
+	ERROR_BASE_NODE = (ERROR_BASE_LBUS + LBUS_ERROR_BASE_LAST),
 	// Applicative.
-	ERROR_BASE_HMI = (ERROR_BASE_SH1106 + SH1106_ERROR_BASE_LAST),
+	ERROR_BASE_HMI = (ERROR_BASE_NODE + NODE_ERROR_BASE_LAST),
 	// Last index.
-	ERROR_BASE_LAST = (ERROR_BASE_RS485 + RS485_ERROR_BASE_LAST)
+	ERROR_BASE_LAST = (ERROR_BASE_HMI + HMI_ERROR_BASE_LAST)
 } ERROR_t;
 
 /*** ERROR functions ***/

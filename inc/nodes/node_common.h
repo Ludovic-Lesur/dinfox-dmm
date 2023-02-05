@@ -8,30 +8,71 @@
 #ifndef __NODE_COMMON_H__
 #define __NODE_COMMON_H__
 
-#include "rs485.h"
 #include "string.h"
+#include "types.h"
 
 /*** NODE common macros ***/
+
+#define NODES_LIST_SIZE_MAX			32
 
 #define NODE_STRING_BUFFER_SIZE		16
 #define NODE_STRING_DATA_ERROR		"ERROR"
 
-#define NODE_RS485_TIMEOUT_MS		100
+#define NODE_NODE_TIMEOUT_MS		100
 
-/*** NODE common structures ***/
+/*** NODES common structures ***/
+
+typedef uint8_t	NODE_address_t;
+
+typedef struct {
+	NODE_address_t address;
+	uint8_t board_id;
+} NODE_t;
 
 typedef enum {
-	NODE_SUCCESS = 0,
-	NODE_ERROR_NOT_SUPPORTED,
-	NODE_ERROR_NULL_PARAMETER,
-	NODE_ERROR_RS485_ADDRESS,
-	NODE_ERROR_REGISTER_ADDRESS,
-	NODE_ERROR_STRING_DATA_INDEX,
-	NODE_ERROR_SIGFOX_PAYLOAD_TYPE,
-	NODE_ERROR_BASE_STRING = 0x0100,
-	NODE_ERROR_BASE_RS485 = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_RS485 + RS485_ERROR_BASE_LAST)
-} NODE_status_t;
+	NODE_REPLY_TYPE_NONE = 0,
+	NODE_REPLY_TYPE_RAW,
+	NODE_REPLY_TYPE_OK,
+	NODE_REPLY_TYPE_VALUE,
+	NODE_REPLY_TYPE_LAST
+} NODE_reply_type_t;
+
+typedef union {
+	struct {
+		unsigned error_received : 1;
+		unsigned reply_timeout : 1;
+		unsigned parser_error : 1;
+		unsigned sequence_timeout : 1;
+		unsigned source_address_mismatch : 1;
+	};
+	uint8_t all;
+} NODE_reply_status_t;
+
+typedef struct {
+#ifdef AM
+	NODE_address_t node_address;
+#endif
+	uint8_t register_address;
+	uint32_t timeout_ms;
+	STRING_format_t format; // Expected value format.
+	NODE_reply_type_t type;
+} NODE_read_parameters_t;
+
+typedef struct {
+#ifdef AM
+	NODE_address_t node_address;
+#endif
+	uint8_t register_address;
+	uint32_t timeout_ms;
+	STRING_format_t format; // Register value format.
+	int32_t value;
+} NODE_write_parameters_t;
+
+typedef struct {
+	char_t* raw;
+	int32_t value; // For value type.
+	NODE_reply_status_t status;
+} NODE_reply_t;
 
 typedef struct {
 	char_t* string_name_ptr;
@@ -45,16 +86,6 @@ typedef enum {
 	NODE_SIGFOX_PAYLOAD_TYPE_MONITORING,
 	NODE_SIGFOX_PAYLOAD_TYPE_LAST
 } NODE_sigfox_payload_type_t;
-
-/*** NODE common functions structure ***/
-
-typedef NODE_status_t (*NODE_update_specific_data_t)(RS485_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
-typedef NODE_status_t (*NODE_get_sigfox_payload_t)(NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
-
-typedef struct {
-	NODE_update_specific_data_t update_specific_data;
-	NODE_get_sigfox_payload_t get_sigfox_payload;
-} NODE_functions_t;
 
 /*** NODE common functions ***/
 

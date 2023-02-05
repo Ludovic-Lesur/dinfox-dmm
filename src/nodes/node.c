@@ -8,9 +8,10 @@
 #include "node.h"
 
 #include "dinfox.h"
+#include "lbus.h"
 #include "lvrm.h"
 #include "node_common.h"
-#include "rs485.h"
+#include "r4s8cr.h"
 
 /*** NODE local macros ***/
 
@@ -19,13 +20,28 @@
 
 /*** NODE local structures ***/
 
+typedef enum {
+	NODE_PROTOCOL_LBUS = 0,
+	NODE_PROTOCOL_KMTRONIC,
+	NODE_PROTOCOL_LAST
+} NODE_protocol_t;
+
+typedef NODE_status_t (*NODE_update_specific_data_t)(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
+typedef NODE_status_t (*NODE_get_sigfox_payload_t)(NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+
+typedef struct {
+	NODE_update_specific_data_t update_specific_data;
+	NODE_get_sigfox_payload_t get_sigfox_payload;
+} NODE_functions_t;
+
 typedef struct {
 	char_t* name;
+	NODE_protocol_t protocol;
 	uint8_t last_register_address;
 	uint8_t last_string_data_index;
 	STRING_format_t* registers_format;
 	NODE_functions_t functions;
-} NODE_t;
+} NODE_descriptor_t;
 
 typedef struct {
 	char_t string_data_name[NODE_STRING_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
@@ -33,13 +49,28 @@ typedef struct {
 	int32_t integer_data_value[NODE_REGISTER_ADDRESS_MAX];
 } NODE_data_t;
 
+typedef struct {
+	NODE_address_t self_address;
+	NODE_data_t data;
+} NODE_context_t;
+
 /*** NODE local global variables ***/
 
 // Note: table is indexed with board ID.
-static const NODE_t NODES[DINFOX_BOARD_ID_LAST] = {
-	{"LVRM", LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) &LVRM_REGISTERS_FORMAT, {&LVRM_update_specific_data, &LVRM_get_sigfox_payload}},
+static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
+	{"LVRM", NODE_PROTOCOL_LBUS, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) &LVRM_REGISTERS_FORMAT, {&LVRM_update_specific_data, &LVRM_get_sigfox_payload}},
+	{"BPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"DDRM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"UHFM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"GPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"SM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"DIM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"RRM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"DMM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"MPMCM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
+	{"R4S8CR", NODE_PROTOCOL_KMTRONIC, 0, 0, NULL, {NULL, NULL}},
 };
-static NODE_data_t node_ctx;
+static NODE_context_t node_ctx;
 
 /*** NODE local functions ***/
 
@@ -96,7 +127,7 @@ static void _NODE_flush_string_data_value(uint8_t string_data_index) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Char loop.
-	for (idx=0 ; idx<NODE_STRING_BUFFER_SIZE ; idx++) node_ctx.string_data_value[string_data_index][idx] = STRING_CHAR_NULL;
+	for (idx=0 ; idx<NODE_STRING_BUFFER_SIZE ; idx++) node_ctx.data.string_data_value[string_data_index][idx] = STRING_CHAR_NULL;
 }
 
 /* FLUSH WHOLE DATAS VALUE BUFFER.
@@ -106,20 +137,59 @@ static void _NODE_flush_string_data_value(uint8_t string_data_index) {
 void _NODE_flush_all_data_value(void) {
 	// Local variables.
 	uint8_t idx = 0;
-	// String data.
+	// Reset string and integer data.
 	for (idx=0 ; idx<NODE_STRING_DATA_INDEX_MAX ; idx++) _NODE_flush_string_data_value(idx);
-	// Integer data.
-	for (idx=0 ; idx<NODE_REGISTER_ADDRESS_MAX ; idx++) node_ctx.integer_data_value[idx] = 0;
+	for (idx=0 ; idx<NODE_REGISTER_ADDRESS_MAX ; idx++) node_ctx.data.integer_data_value[idx] = 0;
+}
+
+/* FLUSH NODES LIST.
+ * @param:	None.
+ */
+void _NODE_flush_list(void) {
+	// Local variables.
+	uint8_t idx = 0;
+	// Reset node list.
+	for (idx=0 ; idx<NODES_LIST_SIZE_MAX ; idx++) {
+		NODES_LIST.list[idx].address = 0xFF;
+		NODES_LIST.list[idx].board_id = DINFOX_BOARD_ID_ERROR;
+	}
+	NODES_LIST.count = 0;
 }
 
 /*** NODE functions ***/
+
+#ifdef AM
+/* INIT NODE LAYER.
+ * @param self address:	Address of this board.
+ * @return status:		None.
+ */
+void NODE_init(NODE_address_t self_address) {
+#else
+/* INIT NODE LAYER.
+ * @param:	None.
+ * @return:	None.
+ */
+void NODE_init(void) {
+#endif
+	// Reset node list.
+	_NODE_flush_list();
+#ifdef AM
+	// Store self address.
+	node_ctx.self_address = self_address;
+	// Init protocol layers.
+	LBUS_init(self_address);
+#else
+	// Init protocol layers.
+	LBUS_init();
+#endif
+}
 
 /* GET NODE BOARD NAME.
  * @param rs485_node:		Node to get name of.
  * @param board_name_ptr:	Pointer to string that will contain board name.
  * @return status:			Function execution status.
  */
-NODE_status_t NODE_get_name(RS485_node_t* node, char_t** board_name_ptr) {
+NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check board ID.
@@ -135,7 +205,7 @@ errors:
  * @param last_string_data_index:	Pointer to byte that will contain last string index.
  * @return status:				Function execution status.
  */
-NODE_status_t NODE_get_last_string_data_index(RS485_node_t* node, uint8_t* last_string_data_index) {
+NODE_status_t NODE_get_last_string_data_index(NODE_t* node, uint8_t* last_string_data_index) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check board ID.
@@ -151,7 +221,7 @@ errors:
  * @param string_data_index:	Node string data index.
  * @return status:				Function execution status.
  */
-NODE_status_t NODE_update_data(RS485_node_t* node, uint8_t string_data_index) {
+NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_single_data_ptr_t single_data_ptr;
@@ -161,17 +231,26 @@ NODE_status_t NODE_update_data(RS485_node_t* node, uint8_t string_data_index) {
 	// Flush line.
 	_NODE_flush_string_data_value(string_data_index);
 	// Update pointers.
-	single_data_ptr.string_name_ptr = (char_t*) &(node_ctx.string_data_name[string_data_index]);
-	single_data_ptr.string_value_ptr = (char_t*) &(node_ctx.string_data_value[string_data_index]);
-	single_data_ptr.value_ptr = &(node_ctx.integer_data_value[string_data_index]);
-	// Check index.
-	if (string_data_index < DINFOX_STRING_DATA_INDEX_LAST) {
-		// Common data.
-		status = DINFOX_update_common_data((node -> address), string_data_index, &single_data_ptr);
-	}
-	else {
-		// Specific data.
-		status = NODES[node -> board_id].functions.update_specific_data((node -> address), string_data_index, &single_data_ptr);
+	single_data_ptr.string_name_ptr = (char_t*) &(node_ctx.data.string_data_name[string_data_index]);
+	single_data_ptr.string_value_ptr = (char_t*) &(node_ctx.data.string_data_value[string_data_index]);
+	single_data_ptr.value_ptr = &(node_ctx.data.integer_data_value[string_data_index]);
+	// Check node protocol.
+	switch (NODES[node -> board_id].protocol) {
+	case NODE_PROTOCOL_LBUS:
+		// Check index to update common or specific data.
+		if (string_data_index < DINFOX_STRING_DATA_INDEX_LAST) {
+			status = DINFOX_update_common_data((node -> address), string_data_index, &single_data_ptr);
+		}
+		else {
+			status = NODES[node -> board_id].functions.update_specific_data((node -> address), string_data_index, &single_data_ptr);
+		}
+		break;
+	case NODE_PROTOCOL_KMTRONIC:
+		// TODO
+		break;
+	default:
+		status = NODE_ERROR_PROTOCOL;
+		break;
 	}
 errors:
 	return status;
@@ -181,7 +260,7 @@ errors:
  * @param node:		Node to update.
  * @return status:	Function execution status.
  */
-NODE_status_t NODE_update_all_data(RS485_node_t* node) {
+NODE_status_t NODE_update_all_data(NODE_t* node) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t idx = 0;
@@ -205,7 +284,7 @@ errors:
  * @param string_data_value_ptr:	Pointer to string that will contain next measurement value.
  * @return status:					Function execution status.
  */
-NODE_status_t NODE_read_string_data(RS485_node_t* node, uint8_t string_data_index, char_t** string_data_name_ptr, char_t** string_data_value_ptr) {
+NODE_status_t NODE_read_string_data(NODE_t* node, uint8_t string_data_index, char_t** string_data_name_ptr, char_t** string_data_value_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check parameters.
@@ -220,8 +299,8 @@ NODE_status_t NODE_read_string_data(RS485_node_t* node, uint8_t string_data_inde
 		goto errors;
 	}
 	// Update pointers.
-	(*string_data_name_ptr) = (char_t*) node_ctx.string_data_name[string_data_index];
-	(*string_data_value_ptr) = (char_t*) node_ctx.string_data_value[string_data_index];
+	(*string_data_name_ptr) = (char_t*) node_ctx.data.string_data_name[string_data_index];
+	(*string_data_value_ptr) = (char_t*) node_ctx.data.string_data_value[string_data_index];
 errors:
 	return status;
 }
@@ -233,12 +312,12 @@ errors:
  * @param write_status:			Pointer to the writing operation status.
  * @return status:				Function execution status.
  */
-NODE_status_t NODE_write_register(RS485_node_t* node, uint8_t register_address, int32_t value, RS485_reply_status_t* write_status) {
+NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_t value, NODE_reply_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	RS485_status_t rs485_status = RS485_SUCCESS;
-	RS485_write_input_t write_input;
-	RS485_reply_t reply;
+	LBUS_status_t lbus_status = LBUS_SUCCESS;
+	NODE_write_parameters_t write_input;
+	NODE_reply_t reply;
 	// Check node and board ID.
 	_NODE_check_node_and_board_id();
 	// Check write status.
@@ -255,17 +334,29 @@ NODE_status_t NODE_write_register(RS485_node_t* node, uint8_t register_address, 
 		status = NODE_ERROR_REGISTER_ADDRESS;
 		goto errors;
 	}
-	// Build write input parameters.
+	// Common write parameters.
 #ifdef AM
 	write_input.node_address = (node -> address);
 #endif
 	write_input.value = value;
-	write_input.timeout_ms = NODE_RS485_TIMEOUT_MS;
-	write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
 	write_input.register_address = register_address;
-	// Check writable registers.
-	rs485_status = RS485_write_register(&write_input, &reply);
-	RS485_status_check(NODE_ERROR_BASE_RS485);
+	// Check node protocol.
+	switch (NODES[node -> board_id].protocol) {
+	case NODE_PROTOCOL_LBUS:
+		// Specific write parameters.
+		write_input.timeout_ms = LBUS_TIMEOUT_MS;
+		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
+		// Check index to update common or specific data.
+		lbus_status = LBUS_write_register(&write_input, &reply);
+		LBUS_status_check(NODE_ERROR_BASE_LBUS);
+		break;
+	case NODE_PROTOCOL_KMTRONIC:
+		// TODO
+		break;
+	default:
+		status = NODE_ERROR_PROTOCOL;
+		break;
+	}
 	// Check reply.
 	(*write_status).all = reply.status.all;
 errors:
@@ -279,7 +370,7 @@ errors:
  * @param write_status:			Pointer to the writing operation status.
  * @return status:				Function execution status.
  */
-NODE_status_t NODE_write_string_data(RS485_node_t* node, uint8_t string_data_index, int32_t value, RS485_reply_status_t* write_status) {
+NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_reply_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t register_address = 0;
@@ -292,13 +383,41 @@ NODE_status_t NODE_write_string_data(RS485_node_t* node, uint8_t string_data_ind
 	return status;
 }
 
+/* SCAN ALL NODE ON BUS.
+ * @param:			None.
+ * @return status:	Function executions status.
+ */
+NODE_status_t NODE_scan(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	LBUS_status_t lbus_status = LBUS_SUCCESS;
+	uint8_t lbus_nodes_count = 0;
+	// Reset list.
+	_NODE_flush_list();
+	// Add master board to the list.
+	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
+	NODES_LIST.list[0].address = node_ctx.self_address;
+	NODES_LIST.count++;
+	// Manually add nodes which does not use LBUS protocol.
+	NODES_LIST.list[1].board_id = DINFOX_BOARD_ID_R4S8CR;
+	NODES_LIST.list[1].address = R4S8CR_RS485_ADDRESS;
+	NODES_LIST.count++;
+	// Scan LBUS nodes.
+	lbus_status = LBUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &lbus_nodes_count);
+	LBUS_status_check(NODE_ERROR_BASE_LBUS);
+	// Update count.
+	NODES_LIST.count += lbus_nodes_count;
+errors:
+	return status;
+}
+
 /* GET NODE SIGFOX PAYLOAD.
  * @param node:				Node to read.
  * @param ul_payload:		Pointer that will contain UL payload of the node.
  * @param ul_payload_size:	Pointer to byte that will contain UL payload size.
  * @return status:			Function execution status.
  */
-NODE_status_t NODE_get_sigfox_payload(NODE_sigfox_payload_type_t sigfox_payload_type, RS485_node_t* node, uint8_t* ul_payload, uint8_t* ul_payload_size) {
+NODE_status_t NODE_get_sigfox_payload(NODE_t* node, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check board ID.

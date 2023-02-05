@@ -22,7 +22,6 @@
 #include "node_common.h"
 #include "nvic.h"
 #include "pwr.h"
-#include "rs485_common.h"
 #include "rtc.h"
 #include "sh1106.h"
 #include "string.h"
@@ -108,7 +107,7 @@ typedef struct {
 	char_t navigation_right[HMI_DATA_PAGES_DISPLAYED][HMI_NAVIGATION_ZONE_WIDTH_CHAR + 1];
 	SH1106_horizontal_line_t sh1106_line;
 	// Current node.
-	RS485_node_t rs485_node;
+	NODE_t rs485_node;
 } HMI_context_t;
 
 /*** HMI local global variables ***/
@@ -259,7 +258,7 @@ static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 		STRING_status_check(HMI_ERROR_BASE_STRING);
 		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
 		STRING_status_check(HMI_ERROR_BASE_STRING);
-		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, rs485_common_ctx.nodes_count, STRING_FORMAT_DECIMAL, 0, &hmi_ctx.text_width);
+		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.count, STRING_FORMAT_DECIMAL, 0, &hmi_ctx.text_width);
 		STRING_status_check(HMI_ERROR_BASE_STRING);
 		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
 		STRING_status_check(HMI_ERROR_BASE_STRING);
@@ -421,15 +420,15 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 	switch (screen) {
 	case HMI_SCREEN_NODES_LIST:
 		// Nodes loop.
-		for (idx=0 ; idx<(rs485_common_ctx.nodes_count) ; idx++) {
+		for (idx=0 ; idx<(NODES_LIST.count) ; idx++) {
 			// Check size.
 			if (idx >= HMI_DATA_PAGES_DEPTH) {
 				status = HMI_ERROR_DATA_DEPTH_OVERFLOW;
 				goto errors;
 			}
 			// Build node.
-			hmi_ctx.rs485_node.address = rs485_common_ctx.nodes_list[idx].address;
-			hmi_ctx.rs485_node.board_id = rs485_common_ctx.nodes_list[idx].board_id;
+			hmi_ctx.rs485_node.address = NODES_LIST.list[idx].address;
+			hmi_ctx.rs485_node.board_id = NODES_LIST.list[idx].board_id;
 			// Get board name.
 			node_status = NODE_get_name(&hmi_ctx.rs485_node, &text_ptr_1);
 			switch (node_status) {
@@ -450,7 +449,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			// Print RS485 address.
 			_HMI_text_flush();
-			status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, rs485_common_ctx.nodes_list[idx].address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+			status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			string_copy.source = (char_t*) hmi_ctx.text;
 			string_copy.justification = STRING_JUSTIFICATION_RIGHT;
@@ -458,7 +457,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 		}
-		hmi_ctx.data_depth = rs485_common_ctx.nodes_count;
+		hmi_ctx.data_depth = NODES_LIST.count;
 		break;
 	case HMI_SCREEN_NODES_SCAN:
 		// Common parameters.
@@ -649,8 +648,8 @@ static HMI_status_t _HMI_irq_callback_encoder_switch(void) {
 	switch (hmi_ctx.screen) {
 	case HMI_SCREEN_NODES_LIST:
 		// Update current node.
-		hmi_ctx.rs485_node.address = rs485_common_ctx.nodes_list[hmi_ctx.data_index].address;
-		hmi_ctx.rs485_node.board_id = rs485_common_ctx.nodes_list[hmi_ctx.data_index].board_id;
+		hmi_ctx.rs485_node.address = NODES_LIST.list[hmi_ctx.data_index].address;
+		hmi_ctx.rs485_node.board_id = NODES_LIST.list[hmi_ctx.data_index].board_id;
 		// Update screen.
 		status = _HMI_update(HMI_SCREEN_NODE_DATA, 1, 1);
 		break;
@@ -719,7 +718,7 @@ static HMI_status_t _HMI_irq_callback_cmd_on(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
-	RS485_reply_status_t write_status;
+	NODE_reply_status_t write_status;
 	// Execute node register write function.
 	node_status = NODE_write_string_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, 1, &write_status);
 	// Check status.
@@ -746,7 +745,7 @@ static HMI_status_t _HMI_irq_callback_cmd_off(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
-	RS485_reply_status_t write_status;
+	NODE_reply_status_t write_status;
 	// Execute node register write function.
 	node_status = NODE_write_string_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, 0, &write_status);
 	// Check status.
@@ -772,15 +771,15 @@ errors:
 static HMI_status_t _HMI_irq_callback_bp1(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	RS485_status_t rs485_status = RS485_SUCCESS;
+	NODE_status_t node_status = NODE_SUCCESS;
 	// Update screen.
 	status = _HMI_update(HMI_SCREEN_NODES_SCAN, 1, 1);
 	if (status != HMI_SUCCESS) goto errors;
 	// Disable HMI interrupts.
 	_HMI_disable_irq();
 	// Perform nodes scan.
-	rs485_status = RS485_scan_nodes();
-	RS485_status_check(HMI_ERROR_BASE_RS485);
+	node_status = NODE_scan();
+	NODE_status_check(HMI_ERROR_BASE_NODE);
 	// Update screen.
 	status = _HMI_update(HMI_SCREEN_NODES_LIST, 1, 1);
 errors:
@@ -881,7 +880,7 @@ errors:
  */
 void HMI_init(void) {
 	// Init context.
-	hmi_ctx.rs485_node.address = (RS485_ADDRESS_LAST + 1);
+	hmi_ctx.rs485_node.address = 0xFF;
 	hmi_ctx.rs485_node.board_id = DINFOX_BOARD_ID_ERROR;
 	_HMI_reset_navigation();
 	// Init callbacks.

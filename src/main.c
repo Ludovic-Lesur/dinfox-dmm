@@ -6,6 +6,7 @@
  */
 
 // Registers
+#include <lbus.h>
 #include "rcc_reg.h"
 // Peripherals.
 #include "adc.h"
@@ -22,13 +23,14 @@
 #include "pwr.h"
 #include "rcc.h"
 #include "rtc.h"
-// Components.
-#include "led.h"
-#include "rs485.h"
-#include "rs485_common.h"
-#include "sh1106.h"
 // Utils.
 #include "types.h"
+// Components.
+#include "led.h"
+#include "sh1106.h"
+// Nodes.
+#include "node.h"
+#include "node_common.h"
 // Applicative.
 #include "dinfox.h"
 #include "error.h"
@@ -97,9 +99,8 @@ void _DMM_init_hw(void) {
 	RTC_status_t rtc_status = RTC_SUCCESS;
 	ADC_status_t adc1_status = ADC_SUCCESS;
 #ifdef AM
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	NVM_status_t nvm_status = NVM_SUCCESS;
-	RS485_address_t node_address;
+	NODE_address_t self_address;
 #endif
 #ifndef DEBUG
 	IWDG_status_t iwdg_status = IWDG_SUCCESS;
@@ -149,7 +150,7 @@ void _DMM_init_hw(void) {
 	IWDG_reload();
 #ifdef AM
 	// Read RS485 address in NVM.
-	nvm_status = NVM_read_byte(NVM_ADDRESS_RS485_ADDRESS, &node_address);
+	nvm_status = NVM_read_byte(NVM_ADDRESS_RS485_ADDRESS, &self_address);
 	NVM_error_check();
 #endif
 	// Init peripherals.
@@ -159,15 +160,19 @@ void _DMM_init_hw(void) {
 	adc1_status = ADC1_init();
 	ADC1_error_check();
 #ifdef AM
-	lpuart1_status = LPUART1_init(node_address);
-	LPUART1_error_check();
+	LPUART1_init(self_address);
 #else
 	LPUART1_init();
 #endif
 	I2C1_init();
 	// Init components.
 	LED_init();
-	RS485_init();
+	// Init nodes layer.
+#ifdef AM
+	NODE_init(self_address);
+#else
+	NODE_init();
+#endif
 	// Init applicative layers.
 	HMI_init();
 }
@@ -185,7 +190,7 @@ int main(void) {
 	// Local variables.
 	RTC_status_t rtc_status = RTC_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	RS485_status_t rs485_status = RS485_SUCCESS;
+	NODE_status_t node_status = NODE_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
 	// Main loop.
 	while (1) {
@@ -195,8 +200,8 @@ int main(void) {
 			// Perform first nodes scan.
 			lpuart1_status = LPUART1_power_on();
 			LPUART1_error_check();
-			rs485_status = RS485_scan_nodes();
-			RS485_error_check();
+			node_status = NODE_scan();
+			NODE_error_check();
 			LPUART1_power_off();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;

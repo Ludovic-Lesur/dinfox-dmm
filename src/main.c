@@ -98,10 +98,8 @@ void _DMM_init_hw(void) {
 	RCC_status_t rcc_status = RCC_SUCCESS;
 	RTC_status_t rtc_status = RTC_SUCCESS;
 	ADC_status_t adc1_status = ADC_SUCCESS;
-#ifdef AM
 	NVM_status_t nvm_status = NVM_SUCCESS;
 	NODE_address_t self_address;
-#endif
 #ifndef DEBUG
 	IWDG_status_t iwdg_status = IWDG_SUCCESS;
 #endif
@@ -148,31 +146,21 @@ void _DMM_init_hw(void) {
 		dmm_ctx.status.lse_status = 0;
 	}
 	IWDG_reload();
-#ifdef AM
 	// Read RS485 address in NVM.
 	nvm_status = NVM_read_byte(NVM_ADDRESS_RS485_ADDRESS, &self_address);
 	NVM_error_check();
-#endif
 	// Init peripherals.
 	LPTIM1_init(dmm_ctx.lsi_frequency_hz);
 	TIM3_init();
 	TIM22_init();
 	adc1_status = ADC1_init();
 	ADC1_error_check();
-#ifdef AM
 	LPUART1_init(self_address);
-#else
-	LPUART1_init();
-#endif
 	I2C1_init();
 	// Init components.
 	LED_init();
 	// Init nodes layer.
-#ifdef AM
 	NODE_init(self_address);
-#else
-	NODE_init();
-#endif
 	// Init applicative layers.
 	HMI_init();
 }

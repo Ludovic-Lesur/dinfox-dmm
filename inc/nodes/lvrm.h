@@ -10,6 +10,7 @@
 
 #include "dinfox.h"
 #include "node_common.h"
+#include "node_status.h"
 #include "string.h"
 #include "types.h"
 
@@ -45,7 +46,7 @@ static const STRING_format_t LVRM_REGISTERS_FORMAT[LVRM_NUMBER_OF_SPECIFIC_REGIS
 
 /*** LVRM functions ***/
 
-NODE_status_t LVRM_update_specific_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
-NODE_status_t LVRM_get_sigfox_payload(NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+NODE_status_t LVRM_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
+NODE_status_t LVRM_get_sigfox_payload(NODE_sigfox_payload_type_t payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
 
 #endif /* __LVRM_H__ */

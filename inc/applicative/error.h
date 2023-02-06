@@ -9,7 +9,6 @@
 #define __ERROR_H__
 
 // Peripherals.
-#include <lbus.h>
 #include "adc.h"
 #include "flash.h"
 #include "iwdg.h"
@@ -62,8 +61,7 @@ typedef enum {
 	// Components.
 	ERROR_BASE_SH1106 = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
 	// Nodes.
-	ERROR_BASE_LBUS = (ERROR_BASE_SH1106 + SH1106_ERROR_BASE_LAST),
-	ERROR_BASE_NODE = (ERROR_BASE_LBUS + LBUS_ERROR_BASE_LAST),
+	ERROR_BASE_NODE = (ERROR_BASE_SH1106 + SH1106_ERROR_BASE_LAST),
 	// Applicative.
 	ERROR_BASE_HMI = (ERROR_BASE_NODE + NODE_ERROR_BASE_LAST),
 	// Last index.

@@ -79,19 +79,11 @@ errors:
 
 /*** LPUART functions ***/
 
-#ifdef AM
 /* CONFIGURE LPUART1.
  * @param self_address:	Address of this board.
  * @return status:		Function execution status.
  */
 void LPUART1_init(NODE_address_t self_address) {
-#else
-/* CONFIGURE LPUART1.
- * @param:	None.
- * @return:	None.
- */
-void LPUART1_init(void) {
-#endif
 	// Local variables.
 	uint32_t brr = 0;
 	// Select LSE as clock source.
@@ -109,14 +101,15 @@ void LPUART1_init(void) {
 	// Put NRE pin in high impedance since it is directly connected to the DE pin.
 	GPIO_configure(&GPIO_LPUART1_NRE, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 #endif
-#ifdef AM
+	// Configure peripheral in addressed mode by default.
 	LPUART1 -> CR1 |= 0x00002822;
 	LPUART1 -> CR2 |= (self_address << 24) | (0b1 << 4);
 	LPUART1 -> CR3 |= 0x00805000;
-#else
+
+
 	LPUART1 -> CR1 |= 0x00000022;
 	LPUART1 -> CR3 |= 0x00B05000;
-#endif
+
 	// Baud rate.
 	brr = (RCC_LSE_FREQUENCY_HZ * 256);
 	brr /= LPUART_BAUD_RATE;
@@ -199,12 +192,41 @@ void LPUART1_disable_rx(void) {
 	NVIC_disable_interrupt(NVIC_INTERRUPT_LPUART1);
 }
 
+/* SET LPUART RECEPTION MODE.
+ * @param rx_mode:		Reception mode.
+ * @param rx_callback:	RX callback to call on data reception.
+ * @return status:		Function execution status.
+ */
+LPUART_status_t LPUART1_set_rx_mode(LPUART_rx_mode_t rx_mode, LPUART_rx_callback_t rx_callback) {
+	// Local variables.
+	LPUART_status_t status = LPUART_SUCCESS;
+	// Check parameters.
+	switch (rx_mode) {
+	case LPUART_RX_MODE_ADDRESSED:
+		// Enable mute mode, address detection and wake up on address match.
+		LPUART1 -> CR1 |= 0x00002800; // MME='1' and WAKE='1'.
+		LPUART1 -> CR3 &= 0xFFCFFFFF; // WUS='00'.
+		break;
+	case LPUART_RX_MODE_DIRECT:
+		// Disable mute mode, address detection and wake-up on RXNE.
+		LPUART1 -> CR1 &= 0xFFFFD7FF; // MME='0' and WAKE='0'.
+		LPUART1 -> CR3 |= 0x00030000; // WUS='11'.
+		break;
+	default:
+		status = LPUART_ERROR_RX_MODE;
+		break;
+	}
+	// Store callback (even if NULL).
+	LPUART1_rx_callback = rx_callback;
+	return status;
+}
+
 /* SEND DATA OVER LPUART.
  * @param data:				Data buffer to send.
  * @param data_size_bytes:	Number of bytes to send.
  * @return status:			Function execution status.
  */
-LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes, LPUART_rx_callback_t rx_callback) {
+LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	uint8_t idx = 0;
@@ -216,8 +238,6 @@ LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes, LPUART_rx_c
 		status = LPUART_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Update callback.
-	LPUART1_rx_callback = rx_callback;
 	// Bytes loop.
 	for (idx=0 ; idx<data_size_bytes ; idx++) {
 		// Fill buffer.

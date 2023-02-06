@@ -30,12 +30,12 @@ typedef struct {
 } NODE_t;
 
 typedef enum {
-	NODE_REPLY_TYPE_NONE = 0,
-	NODE_REPLY_TYPE_RAW,
-	NODE_REPLY_TYPE_OK,
-	NODE_REPLY_TYPE_VALUE,
-	NODE_REPLY_TYPE_LAST
-} NODE_reply_type_t;
+	NODE_READ_TYPE_NONE = 0,
+	NODE_READ_TYPE_RAW,
+	NODE_READ_TYPE_OK,
+	NODE_READ_TYPE_VALUE,
+	NODE_READ_TYPE_LAST
+} NODE_read_type_t;
 
 typedef union {
 	struct {
@@ -46,7 +46,7 @@ typedef union {
 		unsigned source_address_mismatch : 1;
 	};
 	uint8_t all;
-} NODE_reply_status_t;
+} NODE_access_status_t;
 
 typedef struct {
 #ifdef AM
@@ -55,8 +55,13 @@ typedef struct {
 	uint8_t register_address;
 	uint32_t timeout_ms;
 	STRING_format_t format; // Expected value format.
-	NODE_reply_type_t type;
+	NODE_read_type_t type;
 } NODE_read_parameters_t;
+
+typedef struct {
+	char_t* raw;
+	int32_t value;
+} NODE_read_data_t;
 
 typedef struct {
 #ifdef AM
@@ -67,12 +72,6 @@ typedef struct {
 	STRING_format_t format; // Register value format.
 	int32_t value;
 } NODE_write_parameters_t;
-
-typedef struct {
-	char_t* raw;
-	int32_t value; // For value type.
-	NODE_reply_status_t status;
-} NODE_reply_t;
 
 typedef struct {
 	char_t* string_name_ptr;

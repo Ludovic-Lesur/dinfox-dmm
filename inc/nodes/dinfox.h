@@ -8,8 +8,8 @@
 #ifndef __DINFOX_H__
 #define __DINFOX_H__
 
-#include "node.h"
 #include "node_common.h"
+#include "node_status.h"
 #include "string.h"
 #include "types.h"
 
@@ -79,6 +79,6 @@ static const STRING_format_t DINFOX_REGISTERS_FORMAT[DINFOX_REGISTER_LAST] = {
 
 /*** DINFOX functions ***/
 
-NODE_status_t DINFOX_update_common_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
+NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
 
 #endif /* __DINFOX_H__ */

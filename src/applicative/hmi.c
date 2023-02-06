@@ -718,7 +718,7 @@ static HMI_status_t _HMI_irq_callback_cmd_on(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
-	NODE_reply_status_t write_status;
+	NODE_access_status_t write_status;
 	// Execute node register write function.
 	node_status = NODE_write_string_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, 1, &write_status);
 	// Check status.
@@ -745,7 +745,7 @@ static HMI_status_t _HMI_irq_callback_cmd_off(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
-	NODE_reply_status_t write_status;
+	NODE_access_status_t write_status;
 	// Execute node register write function.
 	node_status = NODE_write_string_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, 0, &write_status);
 	// Check status.

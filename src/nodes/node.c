@@ -11,6 +11,7 @@
 #include "lbus.h"
 #include "lvrm.h"
 #include "node_common.h"
+#include "node_status.h"
 #include "r4s8cr.h"
 
 /*** NODE local macros ***/
@@ -22,15 +23,19 @@
 
 typedef enum {
 	NODE_PROTOCOL_LBUS = 0,
-	NODE_PROTOCOL_KMTRONIC,
+	NODE_PROTOCOL_R4S8CR,
 	NODE_PROTOCOL_LAST
 } NODE_protocol_t;
 
-typedef NODE_status_t (*NODE_update_specific_data_t)(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
-typedef NODE_status_t (*NODE_get_sigfox_payload_t)(NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+typedef NODE_status_t (*NODE_read_register_t)(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status);
+typedef NODE_status_t (*NODE_write_register_t)(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);
+typedef NODE_status_t (*NODE_update_data_t)(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
+typedef NODE_status_t (*NODE_get_sigfox_payload_t)(NODE_sigfox_payload_type_t payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
 
 typedef struct {
-	NODE_update_specific_data_t update_specific_data;
+	NODE_read_register_t read_register;
+	NODE_write_register_t write_register;
+	NODE_update_data_t update_data;
 	NODE_get_sigfox_payload_t get_sigfox_payload;
 } NODE_functions_t;
 
@@ -58,17 +63,38 @@ typedef struct {
 
 // Note: table is indexed with board ID.
 static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
-	{"LVRM", NODE_PROTOCOL_LBUS, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) &LVRM_REGISTERS_FORMAT, {&LVRM_update_specific_data, &LVRM_get_sigfox_payload}},
-	{"BPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"DDRM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"UHFM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"GPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"SM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"DIM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"RRM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"DMM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"MPMCM", NODE_PROTOCOL_LBUS, 0, 0, NULL, {NULL, NULL}},
-	{"R4S8CR", NODE_PROTOCOL_KMTRONIC, 0, 0, NULL, {NULL, NULL}},
+	{"LVRM", NODE_PROTOCOL_LBUS, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTERS_FORMAT,
+		{&LBUS_read_register, &LBUS_write_register, &LVRM_update_data, &LVRM_get_sigfox_payload}
+	},
+	{"BPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"DDRM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"UHFM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"GPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"SM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"DIM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"RRM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"DMM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"MPMCM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
+		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	},
+	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTERS_FORMAT,
+		{&R4S8CR_read_register, &R4S8CR_write_register, &R4S8CR_update_data, &R4S8CR_get_sigfox_payload}},
 };
 static NODE_context_t node_ctx;
 
@@ -100,25 +126,6 @@ static NODE_context_t node_ctx;
 	} \
 }
 
-/* GENERIC MACRO TO APPEND A STRING TO THE DATAS VALUE BUFFER.
- * @param measurement_idx:	Measurement line index.
- * @param str:				String to append.
- * @return:					None.
- */
-#define _NODE_append_string(str) { \
-	string_status = STRING_append_string(node_ctx.string_data_value[string_data_index], DINFOX_STRING_BUFFER_SIZE, str, &(node_ctx.string_data_value_size[string_data_index])); \
-	STRING_status_check(NODE_ERROR_BASE_STRING); \
-}
-
-/* GENERIC MACRO TO SET A DATA VALUE TO ERROR.
- * @param measurement_idx:	Measurement line index.
- * @return:					None.
- */
-#define _NODE_set_error() { \
-	_NODE_flush_string_data_value(string_data_index); \
-	_NODE_append_string(NODE_STRING_DATA_ERROR); \
-}
-
 /* FLUSH ONE LINE OF THE MEASURERMENTS VALUE BUFFER.
  * @param:	None.
  * @return:	None.
@@ -127,7 +134,10 @@ static void _NODE_flush_string_data_value(uint8_t string_data_index) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Char loop.
-	for (idx=0 ; idx<NODE_STRING_BUFFER_SIZE ; idx++) node_ctx.data.string_data_value[string_data_index][idx] = STRING_CHAR_NULL;
+	for (idx=0 ; idx<NODE_STRING_BUFFER_SIZE ; idx++) {
+		node_ctx.data.string_data_name[string_data_index][idx] = STRING_CHAR_NULL;
+		node_ctx.data.string_data_value[string_data_index][idx] = STRING_CHAR_NULL;
+	}
 }
 
 /* FLUSH WHOLE DATAS VALUE BUFFER.
@@ -158,30 +168,17 @@ void _NODE_flush_list(void) {
 
 /*** NODE functions ***/
 
-#ifdef AM
 /* INIT NODE LAYER.
  * @param self address:	Address of this board.
  * @return status:		None.
  */
 void NODE_init(NODE_address_t self_address) {
-#else
-/* INIT NODE LAYER.
- * @param:	None.
- * @return:	None.
- */
-void NODE_init(void) {
-#endif
 	// Reset node list.
 	_NODE_flush_list();
-#ifdef AM
 	// Store self address.
 	node_ctx.self_address = self_address;
 	// Init protocol layers.
 	LBUS_init(self_address);
-#else
-	// Init protocol layers.
-	LBUS_init();
-#endif
 }
 
 /* GET NODE BOARD NAME.
@@ -227,7 +224,7 @@ NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
 	NODE_single_data_ptr_t single_data_ptr;
 	// Check board ID.
 	_NODE_check_node_and_board_id();
-	_NODE_check_function_pointer(update_specific_data);
+	_NODE_check_function_pointer(update_data);
 	// Flush line.
 	_NODE_flush_string_data_value(string_data_index);
 	// Update pointers.
@@ -239,14 +236,14 @@ NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
 	case NODE_PROTOCOL_LBUS:
 		// Check index to update common or specific data.
 		if (string_data_index < DINFOX_STRING_DATA_INDEX_LAST) {
-			status = DINFOX_update_common_data((node -> address), string_data_index, &single_data_ptr);
+			status = DINFOX_update_data((node -> address), string_data_index, &single_data_ptr);
 		}
 		else {
-			status = NODES[node -> board_id].functions.update_specific_data((node -> address), string_data_index, &single_data_ptr);
+			status = NODES[node -> board_id].functions.update_data((node -> address), string_data_index, &single_data_ptr);
 		}
 		break;
-	case NODE_PROTOCOL_KMTRONIC:
-		// TODO
+	case NODE_PROTOCOL_R4S8CR:
+		status = NODES[node -> board_id].functions.update_data((node -> address), string_data_index, &single_data_ptr);
 		break;
 	default:
 		status = NODE_ERROR_PROTOCOL;
@@ -312,14 +309,13 @@ errors:
  * @param write_status:			Pointer to the writing operation status.
  * @return status:				Function execution status.
  */
-NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_t value, NODE_reply_status_t* write_status) {
+NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_t value, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LBUS_status_t lbus_status = LBUS_SUCCESS;
 	NODE_write_parameters_t write_input;
-	NODE_reply_t reply;
 	// Check node and board ID.
 	_NODE_check_node_and_board_id();
+	_NODE_check_function_pointer(write_register);
 	// Check write status.
 	if (write_status == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -346,19 +342,17 @@ NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_
 		// Specific write parameters.
 		write_input.timeout_ms = LBUS_TIMEOUT_MS;
 		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
-		// Check index to update common or specific data.
-		lbus_status = LBUS_write_register(&write_input, &reply);
-		LBUS_status_check(NODE_ERROR_BASE_LBUS);
 		break;
-	case NODE_PROTOCOL_KMTRONIC:
-		// TODO
+	case NODE_PROTOCOL_R4S8CR:
+		// Specific write parameters.
+		write_input.timeout_ms = R4S8CR_TIMEOUT_MS;
+		write_input.format = NODES[node -> board_id].registers_format[register_address];
 		break;
 	default:
 		status = NODE_ERROR_PROTOCOL;
 		break;
 	}
-	// Check reply.
-	(*write_status).all = reply.status.all;
+	status = NODES[node -> board_id].functions.write_register(&write_input, write_status);
 errors:
 	return status;
 }
@@ -370,12 +364,12 @@ errors:
  * @param write_status:			Pointer to the writing operation status.
  * @return status:				Function execution status.
  */
-NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_reply_status_t* write_status) {
+NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	uint8_t register_address = 0;
+	uint8_t register_address = string_data_index;
 	// Convert string data index to register.
-	if (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST) {
+	if ((NODES[node ->board_id].protocol == NODE_PROTOCOL_LBUS) && (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST)) {
 		register_address = (string_data_index + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
 	}
 	// Write register.
@@ -390,7 +384,6 @@ NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, in
 NODE_status_t NODE_scan(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LBUS_status_t lbus_status = LBUS_SUCCESS;
 	uint8_t lbus_nodes_count = 0;
 	// Reset list.
 	_NODE_flush_list();
@@ -403,8 +396,8 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.list[1].address = R4S8CR_RS485_ADDRESS;
 	NODES_LIST.count++;
 	// Scan LBUS nodes.
-	lbus_status = LBUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &lbus_nodes_count);
-	LBUS_status_check(NODE_ERROR_BASE_LBUS);
+	status = LBUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &lbus_nodes_count);
+	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
 	NODES_LIST.count += lbus_nodes_count;
 errors:

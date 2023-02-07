@@ -55,7 +55,6 @@ typedef struct {
 } NODE_data_t;
 
 typedef struct {
-	NODE_address_t self_address;
 	NODE_data_t data;
 } NODE_context_t;
 
@@ -169,16 +168,12 @@ void _NODE_flush_list(void) {
 /*** NODE functions ***/
 
 /* INIT NODE LAYER.
- * @param self address:	Address of this board.
- * @return status:		None.
+ * @param:	None.
+ * @return:	None.
  */
-void NODE_init(NODE_address_t self_address) {
+void NODE_init(void) {
 	// Reset node list.
 	_NODE_flush_list();
-	// Store self address.
-	node_ctx.self_address = self_address;
-	// Init protocol layers.
-	LBUS_init(self_address);
 }
 
 /* GET NODE BOARD NAME.
@@ -389,14 +384,15 @@ NODE_status_t NODE_scan(void) {
 	_NODE_flush_list();
 	// Add master board to the list.
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
-	NODES_LIST.list[0].address = node_ctx.self_address;
-	NODES_LIST.count++;
-	// Manually add nodes which does not use LBUS protocol.
-	NODES_LIST.list[1].board_id = DINFOX_BOARD_ID_R4S8CR;
-	NODES_LIST.list[1].address = R4S8CR_RS485_ADDRESS;
+	NODES_LIST.list[0].address = DINFOX_RS485_ADDRESS_DMM;
 	NODES_LIST.count++;
 	// Scan LBUS nodes.
 	status = LBUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &lbus_nodes_count);
+	if (status != NODE_SUCCESS) goto errors;
+	// Update count.
+	NODES_LIST.count += lbus_nodes_count;
+	// Scan R4S8CR nodes.
+	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &lbus_nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
 	NODES_LIST.count += lbus_nodes_count;

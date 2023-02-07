@@ -25,7 +25,7 @@ NODE_list_t NODES_LIST;
 
 /*** NODE functions ***/
 
-void NODE_init(NODE_address_t self_address);
+void NODE_init(void);
 NODE_status_t NODE_scan(void);
 
 NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index);

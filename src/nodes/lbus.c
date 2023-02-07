@@ -22,7 +22,6 @@
 
 // Addressing.
 #define LBUS_ADDRESS_MASK				0x7F
-#define LBUS_ADDRESS_LAST				LBUS_ADDRESS_MASK
 #define LBUS_ADDRESS_SIZE_BYTES			1
 // Framing.
 #define LBUS_FRAME_END					STRING_CHAR_CR
@@ -69,7 +68,6 @@ typedef struct {
 	// Command buffer.
 	char_t command[LBUS_BUFFER_SIZE_BYTES];
 	uint8_t command_size;
-	NODE_address_t self_address;
 #ifdef AM
 	NODE_address_t expected_source_address;
 #endif
@@ -148,7 +146,7 @@ static NODE_status_t _LBUS_send(char_t* command) {
 	STRING_status_t string_status = STRING_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 #ifdef AM
-	if (destination_address > LBUS_ADDRESS_LAST) {
+	if (destination_address > DINFOX_RS485_ADDRESS_LBUS_LAST) {
 		status = NODE_ERROR_NODE_ADDRESS;
 		goto errors;
 	}
@@ -159,7 +157,7 @@ static NODE_status_t _LBUS_send(char_t* command) {
 	// Add addressing header.
 	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS] = (destination_address | 0x80);
 	lbus_ctx.command_size++;
-	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS] = lbus_ctx.self_address;
+	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS] = DINFOX_RS485_ADDRESS_DMM;
 	lbus_ctx.command_size++;
 #endif
 	// Add command.
@@ -181,7 +179,6 @@ static NODE_status_t _LBUS_send(char_t* command) {
 	lpuart1_status = LPUART1_send((uint8_t*) lbus_ctx.command, lbus_ctx.command_size);
 	LPUART1_enable_rx();
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-
 errors:
 	return status;
 }
@@ -343,18 +340,6 @@ errors:
 
 /*** LBUS functions ***/
 
-/* INIT LBUS INTERFACE.
- * @param self_address:	Address of this board.
- * @return:				None.
- */
-void LBUS_init(NODE_address_t self_address) {
-	// Reset buffers.
-	_LBUS_flush_command();
-	_LBUS_flush_replies();
-	// Store self address.
-	lbus_ctx.self_address = self_address;
-}
-
 /* READ LBUS NODE REGISTER.
  * @param read_params:	Pointer to the read operation parameters.
  * @param read_data:	Pointer to the read result.
@@ -431,7 +416,7 @@ errors:
 	return status;
 }
 
-/* SCAN ALL NODES ON BUS.
+/* SCAN LBUS NODES ON BUS.
  * @param nodes_list:		Node list to fill.
  * @param nodes_list_size:	Maximum size of the list.
  * @param nodes_count:		Pointer to byte that will contain the number of LBUS nodes detected.
@@ -446,7 +431,7 @@ NODE_status_t LBUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* no
 	NODE_address_t node_address = 0;
 	uint8_t node_list_idx = 0;
 	// Check parameters.
-	if (nodes_list == NULL) {
+	if ((nodes_list == NULL) || (nodes_count == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
@@ -459,7 +444,7 @@ NODE_status_t LBUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* no
 	read_params.type = NODE_READ_TYPE_VALUE;
 #ifdef AM
 	// Loop on all addresses.
-	for (node_address=0 ; node_address<=LBUS_ADDRESS_LAST ; node_address++) {
+	for (node_address=0 ; node_address<=DINFOX_RS485_ADDRESS_LBUS_LAST ; node_address++) {
 		// Ping address.
 		status = _LBUS_ping(node_address, &read_status);
 		if (status != NODE_SUCCESS) goto errors;

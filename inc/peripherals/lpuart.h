@@ -36,7 +36,7 @@ typedef void (*LPUART_rx_callback_t)(uint8_t rx_byte);
 
 /*** LPUART functions ***/
 
-void LPUART1_init(NODE_address_t self_address);
+void LPUART1_init(void);
 LPUART_status_t LPUART1_power_on(void);
 void LPUART1_power_off(void);
 void LPUART1_enable_rx(void);

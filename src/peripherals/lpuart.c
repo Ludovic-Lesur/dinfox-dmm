@@ -7,6 +7,7 @@
 
 #include "lpuart.h"
 
+#include "dinfox.h"
 #include "exti.h"
 #include "gpio.h"
 #include "lptim.h"
@@ -80,10 +81,10 @@ errors:
 /*** LPUART functions ***/
 
 /* CONFIGURE LPUART1.
- * @param self_address:	Address of this board.
- * @return status:		Function execution status.
+ * @param:	None.
+ * @return:	None.
  */
-void LPUART1_init(NODE_address_t self_address) {
+void LPUART1_init(void) {
 	// Local variables.
 	uint32_t brr = 0;
 	// Select LSE as clock source.
@@ -103,7 +104,7 @@ void LPUART1_init(NODE_address_t self_address) {
 #endif
 	// Configure peripheral in addressed mode by default.
 	LPUART1 -> CR1 |= 0x00002822;
-	LPUART1 -> CR2 |= (self_address << 24) | (0b1 << 4);
+	LPUART1 -> CR2 |= (DINFOX_RS485_ADDRESS_DMM << 24) | (0b1 << 4);
 	LPUART1 -> CR3 |= 0x00805000;
 
 

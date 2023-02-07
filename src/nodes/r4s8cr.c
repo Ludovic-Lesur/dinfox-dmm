@@ -7,6 +7,7 @@
 
 #include "r4s8cr.h"
 
+#include "dinfox.h"
 #include "lpuart.h"
 #include "node_common.h"
 #include "node_status.h"
@@ -20,15 +21,13 @@
 #define R4S8CR_RELAY_ADDRESS_SIZE_BYTES	1
 #define R4S8CR_COMMAND_SIZE_BYTES		1
 
-#define R4S8CR_COMMAND_READ				0xA1
+#define R4S8CR_COMMAND_READ				0xA0
 #define R4S8CR_COMMAND_OFF				0x00
 #define R4S8CR_COMMAND_ON				0x01
 
 #define R4S8CR_REPLY_PARSING_DELAY_MS	10
 
-#define R4S8CR_NUMBER_OF_RELAYS			8
-
-#define R4S8CR_REPLY_SIZE_BYTES			(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_NUMBER_OF_RELAYS)
+#define R4S8CR_REPLY_SIZE_BYTES			(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_REGISTER_LAST)
 
 static const char_t* R4S8CR_STRING_DATA_NAME[R4S8CR_STRING_DATA_INDEX_LAST] = {"RELAY 1 =", "RELAY 2 =", "RELAY 3 =", "RELAY 4 =", "RELAY 5 =", "RELAY 6 =", "RELAY 7 =", "RELAY 8 ="};
 
@@ -46,6 +45,8 @@ typedef struct {
 static R4S8CR_context_t r4s8cr_ctx;
 
 /*** LBUS local functions ***/
+
+
 
 /* FLUSH COMMAND BUFFER.
  * @param:	None.
@@ -77,6 +78,7 @@ NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_rea
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
 	uint32_t reply_time_ms = 0;
+	uint8_t relay_box_id = 0;
 	// Check parameters.
 	if ((read_params == NULL) || (read_data == NULL) || (read_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -90,12 +92,22 @@ NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_rea
 		status = NODE_ERROR_READ_TYPE;
 		goto errors;
 	}
+	if ((read_params -> register_address) >= R4S8CR_REGISTER_LAST) {
+		status = NODE_ERROR_REGISTER_ADDRESS;
+		goto errors;
+	}
+	if (((read_params -> node_address) < DINFOX_RS485_ADDRESS_R4S8CR_START) || ((read_params -> node_address) >= (DINFOX_RS485_ADDRESS_R4S8CR_START + DINFOX_RS485_ADDRESS_RANGE_R4S8CR))) {
+		status = NODE_ERROR_NODE_ADDRESS;
+		goto errors;
+	}
+	// Convert node address to ID.
+	relay_box_id = ((read_params -> node_address) - DINFOX_RS485_ADDRESS_R4S8CR_START + 1) & 0x0F;
 	// Flush buffers and status.
 	_R4S8CR_flush_buffers();
 	(read_status -> all) = 0;
 	// Build command.
 	r4s8cr_ctx.command[0] = R4S8CR_RS485_ADDRESS;
-	r4s8cr_ctx.command[1] = R4S8CR_COMMAND_READ;
+	r4s8cr_ctx.command[1] = (R4S8CR_COMMAND_READ | relay_box_id);
 	r4s8cr_ctx.command[2] = 0x00;
 	r4s8cr_ctx.command_size = (R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_COMMAND_SIZE_BYTES);
 	// Configure reception mode.
@@ -116,7 +128,7 @@ NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_rea
 		// Check number of received bytes.
 		if (r4s8cr_ctx.reply_size >= R4S8CR_REPLY_SIZE_BYTES) {
 			// Update value.
-			(read_data -> value) = r4s8cr_ctx.reply[(read_params -> register_address) + R4S8CR_REPLY_SIZE_BYTES - R4S8CR_NUMBER_OF_RELAYS];
+			(read_data -> value) = r4s8cr_ctx.reply[(read_params -> register_address) + R4S8CR_REPLY_SIZE_BYTES - R4S8CR_REGISTER_LAST];
 			break;
 		}
 		// Exit if timeout.
@@ -139,6 +151,8 @@ NODE_status_t R4S8CR_write_register(NODE_write_parameters_t* write_params, NODE_
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	uint8_t relay_box_id = 0;
+	uint8_t relay_id = 0;
 	// Check parameters.
 	if ((write_params == NULL) || (write_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -148,13 +162,24 @@ NODE_status_t R4S8CR_write_register(NODE_write_parameters_t* write_params, NODE_
 		status = NODE_ERROR_REGISTER_FORMAT;
 		goto errors;
 	}
+	if ((write_params -> register_address) >= R4S8CR_REGISTER_LAST) {
+		status = NODE_ERROR_REGISTER_ADDRESS;
+		goto errors;
+	}
+	if (((write_params -> node_address) < DINFOX_RS485_ADDRESS_R4S8CR_START) || ((write_params -> node_address) >= (DINFOX_RS485_ADDRESS_R4S8CR_START + DINFOX_RS485_ADDRESS_RANGE_R4S8CR))) {
+		status = NODE_ERROR_NODE_ADDRESS;
+		goto errors;
+	}
+	// Convert node address to ID.
+	relay_box_id = ((write_params -> node_address) - DINFOX_RS485_ADDRESS_R4S8CR_START + 1) & 0x0F;
+	relay_id = ((relay_box_id - 1) * 8) + (write_params -> register_address) + 1;
 	// No reply after write operation.
 	(write_status -> all) = 0;
 	// Flush buffers.
 	_R4S8CR_flush_buffers();
 	// Build command.
 	r4s8cr_ctx.command[0] = R4S8CR_RS485_ADDRESS;
-	r4s8cr_ctx.command[1] = ((write_params -> register_address) + 1);
+	r4s8cr_ctx.command[1] = relay_id;
 	r4s8cr_ctx.command[2] = ((write_params -> value) == 0) ? R4S8CR_COMMAND_OFF : R4S8CR_COMMAND_ON;
 	r4s8cr_ctx.command_size = (R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_COMMAND_SIZE_BYTES);
 	// Configure reception mode.
@@ -166,6 +191,52 @@ NODE_status_t R4S8CR_write_register(NODE_write_parameters_t* write_params, NODE_
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();
+errors:
+	return status;
+}
+
+/* SCAN R4S8CR NODES ON BUS.
+ * @param nodes_list:		Node list to fill.
+ * @param nodes_list_size:	Maximum size of the list.
+ * @param nodes_count:		Pointer to byte that will contain the number of LBUS nodes detected.
+ * @return status:			Function execution status.
+ */
+NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_read_parameters_t read_params;
+	NODE_read_data_t read_data;
+	NODE_access_status_t read_status;
+	NODE_address_t node_address = 0;
+	uint8_t node_list_idx = 0;
+	// Check parameters.
+	if ((nodes_list == NULL) || (nodes_count == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Reset count.
+	(*nodes_count) = 0;
+	// Build read input common parameters.
+	read_params.format = STRING_FORMAT_BOOLEAN;
+	read_params.timeout_ms = R4S8CR_TIMEOUT_MS;
+	read_params.register_address = R4S8CR_REGISTER_RELAY_1;
+	read_params.type = NODE_READ_TYPE_VALUE;
+	// Loop on all addresses.
+	for (node_address=DINFOX_RS485_ADDRESS_R4S8CR_START ; node_address<(DINFOX_RS485_ADDRESS_R4S8CR_START + DINFOX_RS485_ADDRESS_RANGE_R4S8CR) ; node_address++) {
+		// Update read parameters.
+		read_params.node_address = node_address;
+		// Ping address.
+		status = R4S8CR_read_register(&read_params, &read_data, &read_status);
+		if (status != NODE_SUCCESS) goto errors;
+		// Check reply status.
+		if (read_status.all == 0) {
+			// Node found.
+			(*nodes_count)++;
+			// Store address and reset board ID.
+			nodes_list[node_list_idx].address = node_address;
+			nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_R4S8CR;
+		}
+	}
 errors:
 	return status;
 }

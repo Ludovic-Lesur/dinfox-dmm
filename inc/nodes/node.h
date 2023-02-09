@@ -40,7 +40,7 @@ NODE_status_t NODE_get_last_register_address(NODE_t* node, uint8_t* last_registe
 NODE_status_t NODE_read_register(NODE_t* node, uint8_t register_address, int32_t* value, NODE_access_status_t* read_status);
 NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_t value, NODE_access_status_t* write_status);
 
-NODE_status_t NODE_get_sigfox_payload(NODE_t* node, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+NODE_status_t NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_payload_type);
 
 #define NODE_status_check(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; }}
 #define NODE_error_check() { ERROR_status_check(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }

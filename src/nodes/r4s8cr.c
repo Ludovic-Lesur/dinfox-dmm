@@ -14,24 +14,40 @@
 
 /*** R4S8CR local macros ***/
 
-#define R4S8CR_BUFFER_SIZE_BYTES		64
-#define R4S8CR_REPLY_BUFFER_DEPTH		16
+#define R4S8CR_BUFFER_SIZE_BYTES			64
+#define R4S8CR_REPLY_BUFFER_DEPTH			16
 
-#define R4S8CR_ADDRESS_SIZE_BYTES		1
-#define R4S8CR_RELAY_ADDRESS_SIZE_BYTES	1
-#define R4S8CR_COMMAND_SIZE_BYTES		1
+#define R4S8CR_ADDRESS_SIZE_BYTES			1
+#define R4S8CR_RELAY_ADDRESS_SIZE_BYTES		1
+#define R4S8CR_COMMAND_SIZE_BYTES			1
 
-#define R4S8CR_COMMAND_READ				0xA0
-#define R4S8CR_COMMAND_OFF				0x00
-#define R4S8CR_COMMAND_ON				0x01
+#define R4S8CR_COMMAND_READ					0xA0
+#define R4S8CR_COMMAND_OFF					0x00
+#define R4S8CR_COMMAND_ON					0x01
 
-#define R4S8CR_REPLY_PARSING_DELAY_MS	10
+#define R4S8CR_REPLY_PARSING_DELAY_MS		10
 
-#define R4S8CR_REPLY_SIZE_BYTES			(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_REGISTER_LAST)
+#define R4S8CR_REPLY_SIZE_BYTES				(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_REGISTER_LAST)
+
+#define R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE		1
 
 static const char_t* R4S8CR_STRING_DATA_NAME[R4S8CR_STRING_DATA_INDEX_LAST] = {"RELAY 1 =", "RELAY 2 =", "RELAY 3 =", "RELAY 4 =", "RELAY 5 =", "RELAY 6 =", "RELAY 7 =", "RELAY 8 ="};
 
 /*** R4S8CR local structures ***/
+
+typedef union {
+	uint8_t frame[R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE];
+	struct {
+		unsigned relay_1 : 1;
+		unsigned relay_2 : 1;
+		unsigned relay_3 : 1;
+		unsigned relay_4 : 1;
+		unsigned relay_5 : 1;
+		unsigned relay_6 : 1;
+		unsigned relay_7 : 1;
+		unsigned relay_8 : 1;
+	} __attribute__((packed));
+} R4S8CR_sigfox_payload_data_t;
 
 typedef struct {
 	uint8_t command[R4S8CR_BUFFER_SIZE_BYTES];
@@ -45,8 +61,6 @@ typedef struct {
 static R4S8CR_context_t r4s8cr_ctx;
 
 /*** LBUS local functions ***/
-
-
 
 /* FLUSH COMMAND BUFFER.
  * @param:	None.
@@ -244,10 +258,11 @@ errors:
 /* RETRIEVE SPECIFIC DATA OF RS48CR NODE.
  * @param rs485_address:		RS485 address of the node to update.
  * @param string_data_index:	Node string data index.
- * @param single_data_ptr:		Pointer to the data string and value to fill.
+ * @param single_string_data:	Pointer to the data string to be filled.
+ * @param registers_value:		Registers value table.
  * @return status:				Function execution status.
  */
-NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr) {
+NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -277,7 +292,7 @@ NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_da
 	// Add data value.
 	if (read_status.all == 0) {
 		// Update integer data.
-		NODE_update_value(read_data.value);
+		NODE_update_value(string_data_index, read_data.value);
 		NODE_append_string_value((read_data.value == 0) ? "OFF" : "ON");
 	}
 	else {
@@ -288,13 +303,49 @@ errors:
 }
 
 /* GET R4S8CR NODE SIGFOX PAYLOAD.
- * @param payload_type:		Sigfox payload type.
- * @param ul_payload:		Pointer that will contain UL payload of the node.
- * @param ul_payload_size:	Pointer to byte that will contain UL payload size.
- * @return status:			Function execution status.
+ * @param integer_data_value:	Pointer to the node registers value.
+ * @param sigfox_payload_type:	Sigfox payload type.
+ * @param sigfox_payload:		Pointer that will contain the specific sigfox payload of the node.
+ * @param sigfox_payload_size:	Pointer to byte that will contain sigfox payload size.
+ * @return status:				Function execution status.
  */
-NODE_status_t R4S8CR_get_sigfox_payload(NODE_sigfox_payload_type_t payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size) {
+NODE_status_t R4S8CR_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size) {
+	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	R4S8CR_sigfox_payload_data_t sigfox_payload_data;
+	uint8_t idx = 0;
+	// Check parameters.
+	if ((integer_data_value == NULL) || (sigfox_payload == NULL) || (sigfox_payload_size == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Check type.
+	switch (sigfox_payload_type) {
+	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
+		// None monitoring frame.
+		(*sigfox_payload_size) = 0;
+		break;
+	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
+		// Build data payload.
+		sigfox_payload_data.relay_1 = integer_data_value[R4S8CR_REGISTER_RELAY_1];
+		sigfox_payload_data.relay_2 = integer_data_value[R4S8CR_REGISTER_RELAY_2];
+		sigfox_payload_data.relay_3 = integer_data_value[R4S8CR_REGISTER_RELAY_3];
+		sigfox_payload_data.relay_4 = integer_data_value[R4S8CR_REGISTER_RELAY_4];
+		sigfox_payload_data.relay_5 = integer_data_value[R4S8CR_REGISTER_RELAY_5];
+		sigfox_payload_data.relay_6 = integer_data_value[R4S8CR_REGISTER_RELAY_6];
+		sigfox_payload_data.relay_7 = integer_data_value[R4S8CR_REGISTER_RELAY_7];
+		sigfox_payload_data.relay_8 = integer_data_value[R4S8CR_REGISTER_RELAY_8];
+		// Copy payload.
+		for (idx=0 ; idx<R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE ; idx++) {
+			sigfox_payload[idx] = sigfox_payload_data.frame[idx];
+		}
+		(*sigfox_payload_size) = R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE;
+		break;
+	default:
+		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
+		goto errors;
+	}
+errors:
 	return status;
 }
 

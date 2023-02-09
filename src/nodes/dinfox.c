@@ -24,12 +24,11 @@ static const char_t* DINFOX_STRING_DATA_UNIT[DINFOX_STRING_DATA_INDEX_LAST] = {S
 /* UPDATE COMMON MEASUREMENTS OF DINFOX NODES.
  * @param rs485_address:		RS485 address.
  * @param string_data_index:	Data index to read.
- * @param name_ptr:				Pointer to the data name line.
- * @param value_ptr:			Pointer to the data value line.
- * @param int_ptr:				Pointer to the data integer value.
+ * @param single_string_data:	Pointer to the data string to be filled.
+ * @param registers_value:		Registers value table.
  * @return status:				Function execution status.
  */
-NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr) {
+NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -45,7 +44,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 	read_params.type = NODE_READ_TYPE_VALUE;
 	read_params.timeout_ms = LBUS_TIMEOUT_MS;
 	// Check parameters.
-	if (single_data_ptr == NULL) {
+	if ((single_string_data == NULL) || (registers_value == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
@@ -68,7 +67,8 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		// Check reply.
 		if (read_status.all == 0) {
 			NODE_append_string_value(read_data.raw);
-			NODE_update_value(read_data.value);
+			registers_value[DINFOX_REGISTER_HW_VERSION_MAJOR] = read_data.value;
+			NODE_update_value(DINFOX_REGISTER_HW_VERSION_MAJOR, read_data.value);
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);
@@ -83,7 +83,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		if (read_status.all == 0) {
 			NODE_append_string_value(".");
 			NODE_append_string_value(read_data.raw);
-			NODE_update_value(read_data.value);
+			NODE_update_value(DINFOX_REGISTER_HW_VERSION_MINOR, read_data.value);
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);
@@ -99,7 +99,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		// Check reply.
 		if (read_status.all == 0) {
 			NODE_append_string_value(read_data.raw);
-			NODE_update_value(read_data.value);
+			NODE_update_value(DINFOX_REGISTER_SW_VERSION_MAJOR, read_data.value);
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);
@@ -114,7 +114,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		if (read_status.all == 0) {
 			NODE_append_string_value(".");
 			NODE_append_string_value(read_data.raw);
-			NODE_update_value(read_data.value);
+			NODE_update_value(DINFOX_REGISTER_SW_VERSION_MINOR, read_data.value);
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);
@@ -129,7 +129,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		if (read_status.all == 0) {
 			NODE_append_string_value(".");
 			NODE_append_string_value(read_data.raw);
-			NODE_update_value(read_data.value);
+			NODE_update_value(DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX, read_data.value);
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);
@@ -141,7 +141,9 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		status = LBUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
-		NODE_update_value((read_status.all == 0) ? read_data.value : 0);
+		if (read_status.all == 0) {
+			NODE_update_value(DINFOX_REGISTER_SW_VERSION_COMMIT_ID, read_data.value);
+		}
 		// Software version dirty flag.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
@@ -152,16 +154,16 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 			// Check dirty flag.
 			if (read_data.value != 0) {
 				NODE_append_string_value(".d");
-				NODE_update_value(read_data.value);
+				NODE_update_value(DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG, read_data.value);
 			}
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);
 		}
 		break;
-	case DINFOX_STRING_DATA_INDEX_RESET_FLAG:
+	case DINFOX_STRING_DATA_INDEX_RESET_REASON:
 		// Reset flags.
-		read_params.register_address = DINFOX_REGISTER_RESET;
+		read_params.register_address = DINFOX_REGISTER_RESET_REASON;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
 		status = LBUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
@@ -169,7 +171,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		if (read_status.all == 0) {
 			NODE_append_string_value("0x");
 			NODE_append_string_value(read_data.raw);
-			NODE_update_value(read_data.value);
+			NODE_update_value(DINFOX_REGISTER_RESET_REASON, read_data.value);
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);
@@ -184,7 +186,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		// Check reply.
 		if (read_status.all == 0) {
 			NODE_append_string_value(read_data.raw);
-			NODE_update_value(read_data.value);
+			NODE_update_value(DINFOX_REGISTER_TMCU_DEGREES, read_data.value);
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);
@@ -199,7 +201,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 		// Check reply.
 		if (read_status.all == 0) {
 			NODE_append_string_value(read_data.raw);
-			NODE_update_value(read_data.value);
+			NODE_update_value(DINFOX_REGISTER_VMCU_MV, read_data.value);
 		}
 		else {
 			NODE_append_string_value(NODE_STRING_DATA_ERROR);

@@ -74,15 +74,14 @@ typedef struct {
 } NODE_write_parameters_t;
 
 typedef struct {
-	char_t* string_name_ptr;
-	char_t* string_value_ptr;
-	int32_t* value_ptr;
-} NODE_single_data_ptr_t;
+	char_t* name_ptr;
+	char_t* value_ptr;
+} NODE_single_string_data_t;
 
 typedef enum {
 	NODE_SIGFOX_PAYLOAD_TYPE_STARTUP = 0,
-	NODE_SIGFOX_PAYLOAD_TYPE_DATA,
 	NODE_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	NODE_SIGFOX_PAYLOAD_TYPE_DATA,
 	NODE_SIGFOX_PAYLOAD_TYPE_LAST
 } NODE_sigfox_payload_type_t;
 
@@ -93,7 +92,7 @@ typedef enum {
  * @return:		None.
  */
 #define NODE_append_string_name(str) { \
-	string_status = STRING_append_string((single_data_ptr -> string_name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
+	string_status = STRING_append_string((single_string_data -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
 	STRING_status_check(NODE_ERROR_BASE_STRING); \
 }
 
@@ -102,7 +101,7 @@ typedef enum {
  * @return:		None.
  */
 #define NODE_append_string_value(str) { \
-	string_status = STRING_append_string((single_data_ptr -> string_value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
+	string_status = STRING_append_string((single_string_data -> value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
 	STRING_status_check(NODE_ERROR_BASE_STRING); \
 }
 
@@ -110,8 +109,8 @@ typedef enum {
  * @param val:	New value.
  * @return:		None.
  */
-#define NODE_update_value(val) { \
-	(*(single_data_ptr -> value_ptr)) = val; \
+#define NODE_update_value(addr, val) { \
+	registers_value[addr] = read_data.value; \
 }
 
 #endif /* __NODE_COMMON_H__ */

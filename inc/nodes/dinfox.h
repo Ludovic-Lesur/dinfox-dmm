@@ -72,7 +72,7 @@ typedef enum {
 	DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX,
 	DINFOX_REGISTER_SW_VERSION_COMMIT_ID,
 	DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG,
-	DINFOX_REGISTER_RESET,
+	DINFOX_REGISTER_RESET_REASON,
 	DINFOX_REGISTER_ERROR_STACK,
 	DINFOX_REGISTER_TMCU_DEGREES,
 	DINFOX_REGISTER_VMCU_MV,
@@ -84,7 +84,7 @@ typedef enum {
 typedef enum {
 	DINFOX_STRING_DATA_INDEX_HW_VERSION = 0,
 	DINFOX_STRING_DATA_INDEX_SW_VERSION,
-	DINFOX_STRING_DATA_INDEX_RESET_FLAG,
+	DINFOX_STRING_DATA_INDEX_RESET_REASON,
 	DINFOX_STRING_DATA_INDEX_TMCU_DEGREES,
 	DINFOX_STRING_DATA_INDEX_VMCU_MV,
 	DINFOX_STRING_DATA_INDEX_LAST
@@ -108,6 +108,6 @@ static const STRING_format_t DINFOX_REGISTERS_FORMAT[DINFOX_REGISTER_LAST] = {
 
 /*** DINFOX functions ***/
 
-NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_data_ptr_t* single_data_ptr);
+NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value);
 
 #endif /* __DINFOX_H__ */

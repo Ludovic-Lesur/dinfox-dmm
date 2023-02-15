@@ -18,8 +18,24 @@
 #define LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
 #define LVRM_SIGFOX_PAYLOAD_DATA_SIZE			7
 
-static const char_t* LVRM_STRING_DATA_NAME[LVRM_NUMBER_OF_SPECIFIC_STRING_DATA] = {"VCOM =", "VOUT =", "IOUT =", "RELAY ="};
-static const char_t* LVRM_STRING_DATA_UNIT[LVRM_NUMBER_OF_SPECIFIC_STRING_DATA] = {"mV", "mV", "uA", STRING_NULL};
+static const char_t* LVRM_STRING_DATA_NAME[LVRM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
+	"VCOM =",
+	"VOUT =",
+	"IOUT =",
+	"RELAY ="
+};
+static const char_t* LVRM_STRING_DATA_UNIT[LVRM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
+	"mV",
+	"mV",
+	"uA",
+	STRING_NULL
+};
+static const int32_t LVRM_ERROR_VALUE[LVRM_NUMBER_OF_SPECIFIC_REGISTERS] = {
+	NODE_ERROR_VALUE_ANALOG_16BITS,
+	NODE_ERROR_VALUE_ANALOG_16BITS,
+	NODE_ERROR_VALUE_ANALOG_23BITS,
+	NODE_ERROR_VALUE_RELAY_STATE
+};
 
 /*** LVRM local structures ***/
 
@@ -71,7 +87,7 @@ NODE_status_t LVRM_update_data(NODE_address_t rs485_address, uint8_t string_data
 	read_params.node_address = rs485_address;
 #endif
 	read_params.register_address = register_address;
-	read_params.type = NODE_READ_TYPE_VALUE;
+	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = LBUS_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_DECIMAL;
 	// Read data.
@@ -82,8 +98,6 @@ NODE_status_t LVRM_update_data(NODE_address_t rs485_address, uint8_t string_data
 	buffer_size = 0;
 	// Add data value.
 	if (read_status.all == 0) {
-		// Update integer data.
-		NODE_update_value(register_address, read_data.value);
 		// Specific print for relay.
 		if (string_data_index == LVRM_STRING_DATA_INDEX_OUT_EN) {
 			NODE_append_string_value((read_data.value == 0) ? "OFF" : "ON");
@@ -93,9 +107,13 @@ NODE_status_t LVRM_update_data(NODE_address_t rs485_address, uint8_t string_data
 		}
 		// Add unit.
 		NODE_append_string_value((char_t*) LVRM_STRING_DATA_UNIT[string_data_index - DINFOX_STRING_DATA_INDEX_LAST]);
+		// Update integer data.
+		NODE_update_value(register_address, read_data.value);
 	}
 	else {
-		NODE_append_string_value(NODE_STRING_DATA_ERROR);
+		NODE_flush_string_value();
+		NODE_append_string_value(NODE_ERROR_STRING);
+		NODE_update_value(register_address, LVRM_ERROR_VALUE[register_address]);
 	}
 errors:
 	return status;

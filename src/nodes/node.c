@@ -9,10 +9,13 @@
 
 #include "dinfox.h"
 #include "lbus.h"
+#include "lpuart.h"
 #include "lvrm.h"
 #include "node_common.h"
 #include "node_status.h"
 #include "r4s8cr.h"
+#include "rtc.h"
+#include "uhfm.h"
 
 /*** NODE local macros ***/
 
@@ -21,6 +24,9 @@
 
 #define NODE_SIGFOX_PAYLOAD_STARTUP_SIZE	8
 #define NODE_SIGFOX_PAYLOAD_SIZE_MAX		12
+
+#define NODE_SIGFOX_PERIOD_SECONDS			300
+#define NODE_SIGFOX_LOOP_MAX				100
 
 /*** NODE local structures ***/
 
@@ -83,6 +89,9 @@ typedef struct {
 	NODE_address_t uhfm_address;
 	NODE_sigfox_payload_t sigfox_payload;
 	uint8_t sigfox_payload_size;
+	uint32_t sigfox_seconds_count;
+	uint8_t sigfox_node_list_index;
+	NODE_sigfox_payload_type_t sigfox_payload_type_index;
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -98,8 +107,8 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	{"DDRM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
 		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
 	},
-	{"UHFM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"UHFM", NODE_PROTOCOL_LBUS, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTERS_FORMAT,
+		{&LBUS_read_register, &LBUS_write_register, &UHFM_update_data, &UHFM_get_sigfox_payload}
 	},
 	{"GPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
 		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
@@ -192,6 +201,87 @@ void _NODE_flush_list(void) {
 	NODES_LIST.count = 0;
 }
 
+/* SEND NODE DATA THROUGH RADIO.
+ * @param node:					Node to monitor by radio.
+ * @param sigfox_payload_type:	Type of data to send.
+ * @return status:				Function execution status.
+ */
+NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_payload_type) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	uint8_t sigfox_payload_specific_size;
+	NODE_sigfox_payload_startup_t sigfox_payload_startup;
+	UHFM_sigfox_message_t sigfox_message;
+	NODE_access_status_t send_status;
+	uint8_t idx = 0;
+	// Check board ID.
+	_NODE_check_node_and_board_id();
+	_NODE_check_function_pointer(get_sigfox_payload);
+	// Reset payload.
+	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_payload.frame[idx] = 0x00;
+	node_ctx.sigfox_payload_size = 0;
+	// Add board ID and RS485 address.
+	node_ctx.sigfox_payload.board_id = (node -> board_id);
+	node_ctx.sigfox_payload.rs485_address = (node -> address);
+	node_ctx.sigfox_payload_size = 2;
+	// Add specific payload.
+	switch (sigfox_payload_type) {
+	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
+		// Check node protocol.
+		if (NODES[node -> board_id].protocol != NODE_PROTOCOL_LBUS) {
+			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
+			goto errors;
+		}
+		// Build startup payload here since the format is common to all boards.
+		sigfox_payload_startup.reset_reason = node_ctx.data.registers_value[DINFOX_REGISTER_RESET_REASON];
+		sigfox_payload_startup.major_version = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_MAJOR];
+		sigfox_payload_startup.minor_version = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_MINOR];
+		sigfox_payload_startup.commit_index = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX];
+		sigfox_payload_startup.commit_id = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_COMMIT_ID];
+		sigfox_payload_startup.dirty_flag = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG];
+		// Add specific data to global paylaod.
+		for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_STARTUP_SIZE ; idx++) {
+			node_ctx.sigfox_payload.node_data[idx] = sigfox_payload_startup.frame[idx];
+		}
+		node_ctx.sigfox_payload_size += NODE_SIGFOX_PAYLOAD_STARTUP_SIZE;
+		break;
+	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
+	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
+		// Execute function of the corresponding board ID.
+		status = NODES[node -> board_id].functions.get_sigfox_payload(node_ctx.data.registers_value, sigfox_payload_type, node_ctx.sigfox_payload.node_data, &sigfox_payload_specific_size);
+		if (status != NODE_SUCCESS) goto errors;
+		// Check returned pointer.
+		if (sigfox_payload_specific_size == 0) {
+			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
+			goto errors;
+		}
+		node_ctx.sigfox_payload_size += sigfox_payload_specific_size;
+		break;
+	default:
+		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
+		goto errors;
+	}
+	// Check UHFM board availability.
+	if (node_ctx.uhfm_address == DINFOX_RS485_ADDRESS_BROADCAST) {
+		status = NODE_ERROR_NONE_RADIO_MODULE;
+		goto errors;
+	}
+	// Build Sigfox message structure.
+	sigfox_message.ul_payload = (uint8_t*) node_ctx.sigfox_payload.frame;
+	sigfox_message.ul_payload_size = node_ctx.sigfox_payload_size;
+	sigfox_message.bidirectional_flag = 0;
+	sigfox_message.dl_payload = NULL;
+	// Send message.
+	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &send_status);
+	if (status != NODE_SUCCESS) goto errors;
+	// Check send status.
+	if (send_status.all != 0) {
+		status = NODE_ERROR_SIGFOX_SEND;
+	}
+errors:
+	return status;
+}
+
 /*** NODE functions ***/
 
 /* INIT NODE LAYER.
@@ -201,6 +291,10 @@ void _NODE_flush_list(void) {
 void NODE_init(void) {
 	// Reset node list.
 	_NODE_flush_list();
+	// Init context.
+	node_ctx.sigfox_seconds_count = NODE_SIGFOX_PERIOD_SECONDS;
+	node_ctx.sigfox_node_list_index = 0;
+	node_ctx.sigfox_payload_type_index = 0;
 }
 
 /* GET NODE BOARD NAME.
@@ -284,6 +378,11 @@ NODE_status_t NODE_update_all_data(NODE_t* node) {
 	uint8_t idx = 0;
 	// Check board ID.
 	_NODE_check_node_and_board_id();
+	// Check indexes.
+	if ((NODES[node -> board_id].last_string_data_index) == 0) {
+		status = NODE_ERROR_NOT_SUPPORTED;
+		goto errors;
+	}
 	// Reset buffers.
 	_NODE_flush_all_data_value();
 	// String data loop.
@@ -405,6 +504,7 @@ NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, in
 NODE_status_t NODE_scan(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	uint8_t lbus_nodes_count = 0;
 	uint8_t idx = 0;
 	// Reset list.
@@ -414,6 +514,9 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
 	NODES_LIST.list[0].address = DINFOX_RS485_ADDRESS_DMM;
 	NODES_LIST.count++;
+	// Turn RS485 interface on.
+	lpuart1_status = LPUART1_power_on();
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Scan LBUS nodes.
 	status = LBUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &lbus_nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
@@ -433,73 +536,66 @@ NODE_status_t NODE_scan(void) {
 	// Update count.
 	NODES_LIST.count += lbus_nodes_count;
 errors:
+	// Turn RS485 interface off.
+	LPUART1_power_off();
 	return status;
 }
 
-/* SEND NODE DATA THROUGH RADIO.
- * @param node:					Node to monitor by radio.
- * @param sigfox_payload_type:	Type of data to send.
- * @return status:				Function execution status.
+/* MAIN TASK OF NODE LAYER.
+ * @param:			None.
+ * @return status:	Function execution status.
  */
-NODE_status_t NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_payload_type) {
+NODE_status_t NODE_task(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	uint8_t sigfox_payload_specific_size;
-	NODE_sigfox_payload_startup_t sigfox_payload_startup;
-	uint8_t idx = 0;
-	// Check board ID.
-	_NODE_check_node_and_board_id();
-	_NODE_check_function_pointer(get_sigfox_payload);
-	// Reset payload.
-	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_payload.frame[idx] = 0x00;
-	node_ctx.sigfox_payload_size = 0;
-	// Add board ID and RS485 address.
-	node_ctx.sigfox_payload.board_id = (node -> board_id);
-	node_ctx.sigfox_payload.rs485_address = (node -> address);
-	node_ctx.sigfox_payload_size = 2;
-	// Add specific payload.
-	switch (sigfox_payload_type) {
-	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
-		// Check node protocol.
-		if (NODES[node ->board_id].protocol != NODE_PROTOCOL_LBUS) {
-			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
-			goto errors;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	uint32_t loop_count = 0;
+	// Increment time.
+	node_ctx.sigfox_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
+	// Check Sigfox period.
+	if (node_ctx.sigfox_seconds_count >= NODE_SIGFOX_PERIOD_SECONDS) {
+		// Reset count.
+		node_ctx.sigfox_seconds_count = 0;
+		// Turn RS485 interface on.
+		lpuart1_status = LPUART1_power_on();
+		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+		// Search next Sigfox message to send.
+		do {
+			// Update node data.
+			status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_node_list_index]));
+			if (status == NODE_SUCCESS) {
+				// Send data through radio.
+				status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_node_list_index]), node_ctx.sigfox_payload_type_index);
+				// Handle all errors except not supported and empty payload.
+				if ((status != NODE_SUCCESS) && (status != NODE_ERROR_NOT_SUPPORTED) && (status != NODE_ERROR_SIGFOX_PAYLOAD_EMPTY)) goto errors;
+			}
+			else {
+				// Handle all errors except not supported.
+				if (status != NODE_ERROR_NOT_SUPPORTED) goto errors;
+			}
+			// Increment payload type index.
+			node_ctx.sigfox_payload_type_index++;
+			if (node_ctx.sigfox_payload_type_index >= NODE_SIGFOX_PAYLOAD_TYPE_LAST) {
+				// Switch to next node.
+				node_ctx.sigfox_payload_type_index = 0;
+				node_ctx.sigfox_node_list_index++;
+				if (node_ctx.sigfox_node_list_index >= NODES_LIST.count) {
+					// Come back to first node.
+					node_ctx.sigfox_node_list_index = 0;
+				}
+			}
+			// Exit if timeout.
+			loop_count++;
+			if (loop_count > NODE_SIGFOX_LOOP_MAX) {
+				status = NODE_ERROR_SIGFOX_LOOP;
+				goto errors;
+			}
+
 		}
-		// Build startup payload here since the format is common to all boards.
-		sigfox_payload_startup.reset_reason = node_ctx.data.registers_value[DINFOX_REGISTER_RESET_REASON];
-		sigfox_payload_startup.major_version = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_MAJOR];
-		sigfox_payload_startup.minor_version = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_MINOR];
-		sigfox_payload_startup.commit_index = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX];
-		sigfox_payload_startup.commit_id = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_COMMIT_ID];
-		sigfox_payload_startup.dirty_flag = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG];
-		// Add specific data to global paylaod.
-		for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_STARTUP_SIZE ; idx++) {
-			node_ctx.sigfox_payload.node_data[idx] = sigfox_payload_startup.frame[idx];
-		}
-		node_ctx.sigfox_payload_size += NODE_SIGFOX_PAYLOAD_STARTUP_SIZE;
-		break;
-	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
-	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
-		// Execute function of the corresponding board ID.
-		status = NODES[node -> board_id].functions.get_sigfox_payload(node_ctx.data.registers_value, sigfox_payload_type, node_ctx.sigfox_payload.node_data, &sigfox_payload_specific_size);
-		if (status != NODE_SUCCESS) goto errors;
-		// Check returned pointer.
-		if (sigfox_payload_specific_size == 0) {
-			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
-			goto errors;
-		}
-		node_ctx.sigfox_payload_size += sigfox_payload_specific_size;
-		break;
-	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
-		goto errors;
+		while (status != NODE_SUCCESS);
 	}
-	// Check UHFM board availability.
-	if (node_ctx.uhfm_address == DINFOX_RS485_ADDRESS_BROADCAST) {
-		status = NODE_ERROR_NONE_RADIO_MODULE;
-		goto errors;
-	}
-	// TODO send frame.
 errors:
+	// Turn RS485 interface off.
+	LPUART1_power_off();
 	return status;
 }

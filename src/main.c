@@ -36,12 +36,6 @@
 #include "mode.h"
 #include "version.h"
 
-/*** MAIN local macros ***/
-
-// RTC wake-up timer period.
-// Warning: this value must be lower than the watchdog period = 25s.
-#define DMM_WAKEUP_PERIOD_SECONDS	10
-
 /*** MAIN local structures ***/
 
 typedef union {
@@ -170,20 +164,21 @@ int main(void) {
 	_DMM_init_hw();
 	// Local variables.
 	RTC_status_t rtc_status = RTC_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
+	// Start periodic wakeup timer.
+	EXTI_clear_all_flags();
+	RTC_clear_wakeup_timer_flag();
+	rtc_status = RTC_start_wakeup_timer(RTC_WAKEUP_PERIOD_SECONDS);
+	RTC_error_check();
 	// Main loop.
 	while (1) {
 		// Perform state machine.
 		switch (dmm_ctx.state) {
 		case DMM_STATE_INIT:
 			// Perform first nodes scan.
-			lpuart1_status = LPUART1_power_on();
-			LPUART1_error_check();
 			node_status = NODE_scan();
 			NODE_error_check();
-			LPUART1_power_off();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;
@@ -195,11 +190,6 @@ int main(void) {
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;
 		case DMM_STATE_OFF:
-			// Start periodic wakeup timer.
-			EXTI_clear_all_flags();
-			RTC_clear_wakeup_timer_flag();
-			rtc_status = RTC_start_wakeup_timer(DMM_WAKEUP_PERIOD_SECONDS);
-			RTC_error_check();
 			// Enable HMI activation interrupt.
 			NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_0_1);
 			// Compute next state.
@@ -214,15 +204,14 @@ int main(void) {
 			if (RTC_get_wakeup_timer_flag() != 0) {
 				// Clear flag.
 				RTC_clear_wakeup_timer_flag();
-				// TODO check nodes monitoring period.
+				// Perform nodes_task.
+				node_status = NODE_task();
+				NODE_error_check();
 			}
 			// Check HMI activation flag.
 			if (EXTI_get_encoder_switch_flag() != 0) {
 				// Clear flag.
 				EXTI_clear_encoder_switch_flag();
-				// Stop periodic wakeup timer.
-				rtc_status = RTC_stop_wakeup_timer();
-				RTC_error_check();
 				// Start HMI.
 				dmm_ctx.state = DMM_STATE_HMI;
 			}

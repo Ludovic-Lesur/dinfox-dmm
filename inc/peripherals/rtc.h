@@ -10,6 +10,12 @@
 
 #include "types.h"
 
+/*** RTC macros ***/
+
+// RTC wake-up timer period.
+// Warning: this value must be lower than the watchdog period = 25s.
+#define RTC_WAKEUP_PERIOD_SECONDS	1
+
 /*** RTC structures ***/
 
 typedef enum {

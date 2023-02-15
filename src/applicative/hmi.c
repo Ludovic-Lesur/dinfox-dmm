@@ -32,7 +32,6 @@
 #define HMI_DATA_PAGES_DISPLAYED				3
 #define HMI_DATA_PAGES_DEPTH					32
 
-#define HMI_WAKEUP_PERIOD_SECONDS				1
 #define HMI_UNUSED_DURATION_THRESHOLD_SECONDS	5
 
 #define HMI_STRING_VALUE_BUFFER_SIZE			16
@@ -927,7 +926,6 @@ void HMI_init(void) {
 HMI_status_t HMI_task(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	RTC_status_t rtc_status = RTC_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	// Init context.
 	hmi_ctx.screen = HMI_SCREEN_OFF;
@@ -936,10 +934,6 @@ HMI_status_t HMI_task(void) {
 	// Turn RS485 interface on.
 	lpuart1_status = LPUART1_power_on();
 	LPUART1_status_check(HMI_ERROR_BASE_LPUART);
-	// Start periodic wakeup timer.
-	RTC_clear_wakeup_timer_flag();
-	rtc_status = RTC_start_wakeup_timer(HMI_WAKEUP_PERIOD_SECONDS);
-	RTC_status_check(HMI_ERROR_BASE_RTC);
 	// Process HMI while it is used.
 	while (hmi_ctx.state != HMI_STATE_UNUSED) {
 		// Perform state machine.
@@ -962,7 +956,7 @@ HMI_status_t HMI_task(void) {
 			RTC_clear_wakeup_timer_flag();
 			// Manage unused duration;
 			if (hmi_ctx.irq_flags == 0) {
-				hmi_ctx.unused_duration_seconds += HMI_WAKEUP_PERIOD_SECONDS;
+				hmi_ctx.unused_duration_seconds += RTC_WAKEUP_PERIOD_SECONDS;
 			}
 		}
 		else {
@@ -979,8 +973,6 @@ errors:
 	_HMI_disable_irq();
 	// Turn RS485 interface off.
 	LPUART1_power_off();
-	// Stop periodic wakeup timer.
-	RTC_stop_wakeup_timer();
 	return status;
 }
 

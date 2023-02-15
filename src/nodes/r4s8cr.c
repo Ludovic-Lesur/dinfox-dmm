@@ -31,7 +31,26 @@
 
 #define R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE		1
 
-static const char_t* R4S8CR_STRING_DATA_NAME[R4S8CR_STRING_DATA_INDEX_LAST] = {"RELAY 1 =", "RELAY 2 =", "RELAY 3 =", "RELAY 4 =", "RELAY 5 =", "RELAY 6 =", "RELAY 7 =", "RELAY 8 ="};
+static const char_t* R4S8CR_STRING_DATA_NAME[R4S8CR_STRING_DATA_INDEX_LAST] = {
+	"RELAY 1 =",
+	"RELAY 2 =",
+	"RELAY 3 =",
+	"RELAY 4 =",
+	"RELAY 5 =",
+	"RELAY 6 =",
+	"RELAY 7 =",
+	"RELAY 8 ="
+};
+static const int32_t R4S8CR_ERROR_VALUE[R4S8CR_REGISTER_LAST] = {
+	NODE_ERROR_VALUE_RELAY_STATE,
+	NODE_ERROR_VALUE_RELAY_STATE,
+	NODE_ERROR_VALUE_RELAY_STATE,
+	NODE_ERROR_VALUE_RELAY_STATE,
+	NODE_ERROR_VALUE_RELAY_STATE,
+	NODE_ERROR_VALUE_RELAY_STATE,
+	NODE_ERROR_VALUE_RELAY_STATE,
+	NODE_ERROR_VALUE_RELAY_STATE
+};
 
 /*** R4S8CR local structures ***/
 
@@ -102,7 +121,7 @@ NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_rea
 		status = NODE_ERROR_REGISTER_FORMAT;
 		goto errors;
 	}
-	if ((read_params -> type) != NODE_READ_TYPE_VALUE) {
+	if ((read_params -> type) != NODE_REPLY_TYPE_VALUE) {
 		status = NODE_ERROR_READ_TYPE;
 		goto errors;
 	}
@@ -234,7 +253,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	read_params.format = STRING_FORMAT_BOOLEAN;
 	read_params.timeout_ms = R4S8CR_TIMEOUT_MS;
 	read_params.register_address = R4S8CR_REGISTER_RELAY_1;
-	read_params.type = NODE_READ_TYPE_VALUE;
+	read_params.type = NODE_REPLY_TYPE_VALUE;
 	// Loop on all addresses.
 	for (node_address=DINFOX_RS485_ADDRESS_R4S8CR_START ; node_address<(DINFOX_RS485_ADDRESS_R4S8CR_START + DINFOX_RS485_ADDRESS_RANGE_R4S8CR) ; node_address++) {
 		// Update read parameters.
@@ -280,7 +299,7 @@ NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_da
 	read_params.node_address = rs485_address;
 #endif
 	read_params.register_address = string_data_index;
-	read_params.type = NODE_READ_TYPE_VALUE;
+	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = R4S8CR_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_BOOLEAN;
 	// Read data.
@@ -296,7 +315,9 @@ NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_da
 		NODE_append_string_value((read_data.value == 0) ? "OFF" : "ON");
 	}
 	else {
-		NODE_append_string_value(NODE_STRING_DATA_ERROR);
+		NODE_flush_string_value();
+		NODE_append_string_value(NODE_ERROR_STRING);
+		NODE_update_value(string_data_index, R4S8CR_ERROR_VALUE[string_data_index]);
 	}
 errors:
 	return status;

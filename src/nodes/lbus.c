@@ -31,7 +31,7 @@
 
 #define LBUS_REPLY_PARSING_DELAY_MS	10
 #define LBUS_REPLY_TIMEOUT_MS			100
-#define LBUS_SEQUENCE_TIMEOUT_MS		1000
+#define LBUS_SEQUENCE_TIMEOUT_MS		120000
 
 #define LBUS_COMMAND_PING				"RS"
 #define LBUS_COMMAND_WRITE_REGISTER		"RS$W="
@@ -50,12 +50,6 @@ typedef enum {
 	LBUS_FRAME_FIELD_INDEX_DATA = (LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS + LBUS_ADDRESS_SIZE_BYTES)
 } LBUS_frame_field_index_t;
 #endif
-
-typedef struct {
-	uint32_t timeout_ms;
-	STRING_format_t format; // Expected value format.
-	NODE_read_type_t type;
-} LBUS_reply_parameters_t;
 
 typedef struct {
 	volatile char_t buffer[LBUS_BUFFER_SIZE_BYTES];
@@ -127,69 +121,13 @@ static void _LBUS_flush_replies(void) {
 	lbus_ctx.reply_read_idx = 0;
 }
 
-#ifdef AM
-/* SEND THE COMMAND BUFFER OVER LBUS BUS.
- * @param command:				Command to send.
- * @param destination_address:	LBUS address of the destination board.
- * @return status:				Function execution status.
- */
-static NODE_status_t _LBUS_send(char_t* command, NODE_address_t destination_address) {
-#else
-/* SEND THE COMMAND BUFFER OVER LBUS BUS.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static NODE_status_t _LBUS_send(char_t* command) {
-#endif
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	STRING_status_t string_status = STRING_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-#ifdef AM
-	if (destination_address > DINFOX_RS485_ADDRESS_LBUS_LAST) {
-		status = NODE_ERROR_NODE_ADDRESS;
-		goto errors;
-	}
-#endif
-	// Flush buffer.
-	_LBUS_flush_command();
-#ifdef AM
-	// Add addressing header.
-	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS] = (destination_address | 0x80);
-	lbus_ctx.command_size++;
-	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS] = DINFOX_RS485_ADDRESS_DMM;
-	lbus_ctx.command_size++;
-#endif
-	// Add command.
-	string_status = STRING_append_string(lbus_ctx.command, LBUS_BUFFER_SIZE_BYTES, command, &lbus_ctx.command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
-	// Add LBUS ending character.
-	lbus_ctx.command[lbus_ctx.command_size++] = LBUS_FRAME_END;
-	// Reset replies.
-	_LBUS_flush_replies();
-#ifdef AM
-	// Store slave address to authenticate next data reception.
-	lbus_ctx.expected_source_address = destination_address;
-#endif
-	// Configure reception mode.
-	lpuart1_status = LPUART1_set_rx_mode(LPUART_RX_MODE_ADDRESSED, &LBUS_fill_rx_buffer);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-	// Send command.
-	LPUART1_disable_rx();
-	lpuart1_status = LPUART1_send((uint8_t*) lbus_ctx.command, lbus_ctx.command_size);
-	LPUART1_enable_rx();
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-errors:
-	return status;
-}
-
 /* WAIT FOR RECEIVING A VALUE.
  * @param reply_params:	Pointer to the reply parameters.
  * @param read_data:	Pointer to the reply data.
  * @param reply_status:	Pointer to the reply waiting operation status.
  * @return status:		Function execution status.
  */
-NODE_status_t _LBUS_wait_reply(LBUS_reply_parameters_t* reply_params, NODE_read_data_t* read_data, NODE_access_status_t* reply_status) {
+NODE_status_t _LBUS_wait_reply(NODE_reply_parameters_t* reply_params, NODE_read_data_t* read_data, NODE_access_status_t* reply_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	PARSER_status_t parser_status = PARSER_SUCCESS;
@@ -202,7 +140,7 @@ NODE_status_t _LBUS_wait_reply(LBUS_reply_parameters_t* reply_params, NODE_read_
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if ((reply_params -> type) >= NODE_READ_TYPE_LAST) {
+	if ((reply_params -> type) >= NODE_REPLY_TYPE_LAST) {
 		status = NODE_ERROR_READ_TYPE;
 		goto errors;
 	}
@@ -211,7 +149,7 @@ NODE_status_t _LBUS_wait_reply(LBUS_reply_parameters_t* reply_params, NODE_read_
 	(read_data -> raw) = NULL;
 	(reply_status -> all) = 0;
 	// Directly exit function with success status for none reply type.
-	if ((reply_params -> type) == NODE_READ_TYPE_NONE) goto errors;
+	if ((reply_params -> type) == NODE_REPLY_TYPE_NONE) goto errors;
 	// Main reception loop.
 	while (1) {
 		// Delay.
@@ -243,15 +181,15 @@ NODE_status_t _LBUS_wait_reply(LBUS_reply_parameters_t* reply_params, NODE_read_
 #endif
 				// Parse reply.
 				switch (reply_params -> type) {
-				case NODE_READ_TYPE_RAW:
+				case NODE_REPLY_TYPE_RAW:
 					// Do not parse.
 					parser_status = PARSER_SUCCESS;
 					break;
-				case NODE_READ_TYPE_OK:
+				case NODE_REPLY_TYPE_OK:
 					// Compare to reference string.
 					parser_status = PARSER_compare(&lbus_ctx.reply[lbus_ctx.reply_read_idx].parser, PARSER_MODE_COMMAND, LBUS_REPLY_OK);
 					break;
-				case NODE_READ_TYPE_VALUE:
+				case NODE_REPLY_TYPE_VALUE:
 					// Parse value.
 					parser_status = PARSER_get_parameter(&lbus_ctx.reply[lbus_ctx.reply_read_idx].parser, (reply_params -> format), STRING_CHAR_NULL, &(read_data -> value));
 					break;
@@ -318,27 +256,77 @@ NODE_status_t _LBUS_ping(NODE_access_status_t* ping_status) {
 #endif
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LBUS_reply_parameters_t reply_params;
+	STRING_status_t string_status = STRING_SUCCESS;
+	NODE_command_parameters_t command_params;
+	NODE_reply_parameters_t reply_params;
 	NODE_read_data_t unused_read_data;
-	// Expect OK.
-	reply_params.type = NODE_READ_TYPE_OK;
+	char_t command[LBUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
+	uint8_t command_size = 0;
+	// Build command structure.
+#ifdef AM
+	command_params.node_address = node_address;
+#endif
+	command_params.command = (char_t*) command;
+	// Build reply structure.
+	reply_params.type = NODE_REPLY_TYPE_OK;
 	reply_params.format = STRING_FORMAT_BOOLEAN;
 	reply_params.timeout_ms = LBUS_REPLY_TIMEOUT_MS;
+	// Build read command.
+	string_status = STRING_append_string(command, LBUS_BUFFER_SIZE_BYTES, LBUS_COMMAND_PING, &command_size);
+	STRING_status_check(NODE_ERROR_BASE_STRING);
 	// Send ping command.
-#ifdef AM
-	status = _LBUS_send(LBUS_COMMAND_PING, node_address);
-#else
-	status = _LBUS_send(LBUS_COMMAND_PING);
-#endif
-	if (status != NODE_SUCCESS) goto errors;
-	// Wait reply.
-	status = _LBUS_wait_reply(&reply_params, &unused_read_data, ping_status);
-	if (status != NODE_SUCCESS) goto errors;
+	status = LBUS_send_command(&command_params, &reply_params, &unused_read_data, ping_status);
 errors:
 	return status;
 }
 
 /*** LBUS functions ***/
+
+NODE_status_t LBUS_send_command(NODE_command_parameters_t* command_params, NODE_reply_parameters_t* reply_params, NODE_read_data_t* read_data, NODE_access_status_t* command_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	STRING_status_t string_status = STRING_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+#ifdef AM
+	if ((command_params -> node_address) > DINFOX_RS485_ADDRESS_LBUS_LAST) {
+		status = NODE_ERROR_NODE_ADDRESS;
+		goto errors;
+	}
+#endif
+	// Flush buffer.
+	_LBUS_flush_command();
+#ifdef AM
+	// Add addressing header.
+	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS] = ((command_params -> node_address) | 0x80);
+	lbus_ctx.command_size++;
+	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS] = DINFOX_RS485_ADDRESS_DMM;
+	lbus_ctx.command_size++;
+#endif
+	// Add command.
+	string_status = STRING_append_string(lbus_ctx.command, LBUS_BUFFER_SIZE_BYTES, (command_params -> command), &lbus_ctx.command_size);
+	STRING_status_check(NODE_ERROR_BASE_STRING);
+	// Add LBUS ending character.
+	lbus_ctx.command[lbus_ctx.command_size++] = LBUS_FRAME_END;
+	// Reset replies.
+	_LBUS_flush_replies();
+#ifdef AM
+	// Store slave address to authenticate next data reception.
+	lbus_ctx.expected_source_address = (command_params -> node_address);
+#endif
+	// Configure reception mode.
+	lpuart1_status = LPUART1_set_rx_mode(LPUART_RX_MODE_ADDRESSED, &LBUS_fill_rx_buffer);
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	// Send command.
+	LPUART1_disable_rx();
+	lpuart1_status = LPUART1_send((uint8_t*) lbus_ctx.command, lbus_ctx.command_size);
+	LPUART1_enable_rx();
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	// Wait reply.
+	status = _LBUS_wait_reply(reply_params, read_data, command_status);
+	if (status != NODE_SUCCESS) goto errors;
+errors:
+	return status;
+}
 
 /* READ LBUS NODE REGISTER.
  * @param read_params:	Pointer to the read operation parameters.
@@ -350,29 +338,26 @@ NODE_status_t LBUS_read_register(NODE_read_parameters_t* read_params, NODE_read_
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
-	LBUS_reply_parameters_t reply_params;
+	NODE_command_parameters_t command_params;
+	NODE_reply_parameters_t reply_params;
 	char_t command[LBUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
-	// Copy reply input parameters.
+	// Build command structure.
+#ifdef AM
+	command_params.node_address = (read_params -> node_address);
+#endif
+	command_params.command = (char_t*) command;
+	// Build reply structure.
 	reply_params.type = (read_params -> type);
 	reply_params.format = (read_params -> format);
 	reply_params.timeout_ms = (read_params -> timeout_ms);
-	// Flush command buffer.
-	_LBUS_flush_command();
 	// Build read command.
 	string_status = STRING_append_string(command, LBUS_BUFFER_SIZE_BYTES, LBUS_COMMAND_READ_REGISTER, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	string_status = STRING_append_value(command, LBUS_BUFFER_SIZE_BYTES, (read_params -> register_address), STRING_FORMAT_HEXADECIMAL, 0, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	// Send command.
-#ifdef AM
-	status = _LBUS_send(command, read_params -> node_address);
-#else
-	status = _LBUS_send(command);
-#endif
-	if (status != NODE_SUCCESS) goto errors;
-	// Wait reply.
-	status = _LBUS_wait_reply(&reply_params, read_data, read_status);
+	status = LBUS_send_command(&command_params, &reply_params, read_data, read_status);
 errors:
 	return status;
 }
@@ -386,12 +371,18 @@ NODE_status_t LBUS_write_register(NODE_write_parameters_t* write_params, NODE_ac
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
-	LBUS_reply_parameters_t reply_params;
+	NODE_command_parameters_t command_params;
+	NODE_reply_parameters_t reply_params;
 	NODE_read_data_t unused_read_data;
 	char_t command[LBUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
-	// Copy reply inpuy parameters.
-	reply_params.type = NODE_READ_TYPE_OK;
+	// Build command structure.
+#ifdef AM
+	command_params.node_address = (write_params -> node_address);
+#endif
+	command_params.command = (char_t*) command;
+	// Build reply structure.
+	reply_params.type = NODE_REPLY_TYPE_OK;
 	reply_params.format = (write_params -> format);
 	reply_params.timeout_ms = (write_params -> timeout_ms);
 	// Build read command.
@@ -404,14 +395,7 @@ NODE_status_t LBUS_write_register(NODE_write_parameters_t* write_params, NODE_ac
 	string_status = STRING_append_value(command, LBUS_BUFFER_SIZE_BYTES, (write_params -> value), (write_params -> format), 0, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	// Send command.
-#ifdef AM
-	status = _LBUS_send(command, write_params -> node_address);
-#else
-	status = _LBUS_send(command);
-#endif
-	if (status != NODE_SUCCESS) goto errors;
-	// Wait reply.
-	status = _LBUS_wait_reply(&reply_params, &unused_read_data, write_status);
+	status = LBUS_send_command(&command_params, &reply_params, &unused_read_data, write_status);
 errors:
 	return status;
 }
@@ -441,7 +425,7 @@ NODE_status_t LBUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* no
 	read_params.format = STRING_FORMAT_HEXADECIMAL;
 	read_params.timeout_ms = LBUS_REPLY_TIMEOUT_MS;
 	read_params.register_address = DINFOX_REGISTER_BOARD_ID;
-	read_params.type = NODE_READ_TYPE_VALUE;
+	read_params.type = NODE_REPLY_TYPE_VALUE;
 #ifdef AM
 	// Loop on all addresses.
 	for (node_address=0 ; node_address<=DINFOX_RS485_ADDRESS_LBUS_LAST ; node_address++) {

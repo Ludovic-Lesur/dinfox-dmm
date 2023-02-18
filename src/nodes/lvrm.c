@@ -7,8 +7,8 @@
 
 #include "lvrm.h"
 
+#include "at.h"
 #include "dinfox.h"
-#include "lbus.h"
 #include "mode.h"
 #include "string.h"
 
@@ -87,10 +87,10 @@ NODE_status_t LVRM_update_data(NODE_address_t rs485_address, uint8_t string_data
 #endif
 	read_params.register_address = register_address;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
-	read_params.timeout_ms = LBUS_TIMEOUT_MS;
+	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_DECIMAL;
 	// Read data.
-	status = LBUS_read_register(&read_params, &read_data, &read_status);
+	status = AT_read_register(&read_params, &read_data, &read_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Add data name.
 	NODE_append_string_name((char_t*) LVRM_STRING_DATA_NAME[string_data_index - DINFOX_STRING_DATA_INDEX_LAST]);

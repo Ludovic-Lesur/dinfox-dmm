@@ -118,10 +118,9 @@ typedef struct {
 typedef union {
 	struct {
 		unsigned error_received : 1;
-		unsigned reply_timeout : 1;
 		unsigned parser_error : 1;
+		unsigned reply_timeout : 1;
 		unsigned sequence_timeout : 1;
-		unsigned source_address_mismatch : 1;
 	};
 	uint8_t all;
 } NODE_access_status_t;

@@ -7,8 +7,8 @@
 
 #include "node.h"
 
+#include "at.h"
 #include "dinfox.h"
-#include "lbus.h"
 #include "lpuart.h"
 #include "lvrm.h"
 #include "r4s8cr.h"
@@ -29,7 +29,7 @@
 /*** NODE local structures ***/
 
 typedef enum {
-	NODE_PROTOCOL_LBUS = 0,
+	NODE_PROTOCOL_AT = 0,
 	NODE_PROTOCOL_R4S8CR,
 	NODE_PROTOCOL_LAST
 } NODE_protocol_t;
@@ -96,35 +96,35 @@ typedef struct {
 
 // Note: table is indexed with board ID.
 static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
-	{"LVRM", NODE_PROTOCOL_LBUS, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTERS_FORMAT,
-		{&LBUS_read_register, &LBUS_write_register, &LVRM_update_data, &LVRM_get_sigfox_payload}
+	{"LVRM", NODE_PROTOCOL_AT, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTERS_FORMAT,
+		{&AT_read_register, &AT_write_register, &LVRM_update_data, &LVRM_get_sigfox_payload}
 	},
-	{"BPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"BPSM", NODE_PROTOCOL_AT, 0, 0, NULL,
+		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
-	{"DDRM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"DDRM", NODE_PROTOCOL_AT, 0, 0, NULL,
+		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
-	{"UHFM", NODE_PROTOCOL_LBUS, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTERS_FORMAT,
-		{&LBUS_read_register, &LBUS_write_register, &UHFM_update_data, &UHFM_get_sigfox_payload}
+	{"UHFM", NODE_PROTOCOL_AT, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTERS_FORMAT,
+		{&AT_read_register, &AT_write_register, &UHFM_update_data, &UHFM_get_sigfox_payload}
 	},
-	{"GPSM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"GPSM", NODE_PROTOCOL_AT, 0, 0, NULL,
+		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
-	{"SM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"SM", NODE_PROTOCOL_AT, 0, 0, NULL,
+		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
-	{"DIM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"DIM", NODE_PROTOCOL_AT, 0, 0, NULL,
+		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
-	{"RRM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"RRM", NODE_PROTOCOL_AT, 0, 0, NULL,
+		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
-	{"DMM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"DMM", NODE_PROTOCOL_AT, 0, 0, NULL,
+		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
-	{"MPMCM", NODE_PROTOCOL_LBUS, 0, 0, NULL,
-		{&LBUS_read_register, &LBUS_write_register, NULL, NULL}
+	{"MPMCM", NODE_PROTOCOL_AT, 0, 0, NULL,
+		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
 	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTERS_FORMAT,
 		{&R4S8CR_read_register, &R4S8CR_write_register, &R4S8CR_update_data, &R4S8CR_get_sigfox_payload}},
@@ -226,7 +226,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_p
 	switch (sigfox_payload_type) {
 	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
 		// Check node protocol.
-		if (NODES[node -> board_id].protocol != NODE_PROTOCOL_LBUS) {
+		if (NODES[node -> board_id].protocol != NODE_PROTOCOL_AT) {
 			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
 			goto errors;
 		}
@@ -346,7 +346,7 @@ NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
 	single_string_data.value_ptr = (char_t*) &(node_ctx.data.string_data_value[string_data_index]);
 	// Check node protocol.
 	switch (NODES[node -> board_id].protocol) {
-	case NODE_PROTOCOL_LBUS:
+	case NODE_PROTOCOL_AT:
 		// Check index to update common or specific data.
 		if (string_data_index < DINFOX_STRING_DATA_INDEX_LAST) {
 			status = DINFOX_update_data((node -> address), string_data_index, &single_string_data, node_ctx.data.registers_value);
@@ -456,9 +456,9 @@ NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_
 	write_input.register_address = register_address;
 	// Check node protocol.
 	switch (NODES[node -> board_id].protocol) {
-	case NODE_PROTOCOL_LBUS:
+	case NODE_PROTOCOL_AT:
 		// Specific write parameters.
-		write_input.timeout_ms = LBUS_TIMEOUT_MS;
+		write_input.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
 		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
 		break;
 	case NODE_PROTOCOL_R4S8CR:
@@ -487,7 +487,7 @@ NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, in
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t register_address = string_data_index;
 	// Convert string data index to register.
-	if ((NODES[node ->board_id].protocol == NODE_PROTOCOL_LBUS) && (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST)) {
+	if ((NODES[node ->board_id].protocol == NODE_PROTOCOL_AT) && (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST)) {
 		register_address = (string_data_index + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
 	}
 	// Write register.
@@ -512,7 +512,7 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.list[0].address = DINFOX_RS485_ADDRESS_DMM;
 	NODES_LIST.count++;
 	// Scan LBUS nodes.
-	status = LBUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
+	status = AT_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
 	NODES_LIST.count += nodes_count;

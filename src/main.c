@@ -28,8 +28,6 @@
 #include "sh1106.h"
 // Nodes.
 #include "node.h"
-#include "node_common.h"
-// Applicative.
 #include "dinfox.h"
 #include "error.h"
 #include "hmi.h"
@@ -49,6 +47,7 @@ typedef union {
 typedef enum {
 	DMM_STATE_INIT,
 	DMM_STATE_HMI,
+	DMM_STATE_NODE_TASK,
 	DMM_STATE_OFF,
 	DMM_STATE_SLEEP,
 	DMM_STATE_LAST,
@@ -164,6 +163,7 @@ int main(void) {
 	_DMM_init_hw();
 	// Local variables.
 	RTC_status_t rtc_status = RTC_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
 	// Start periodic wakeup timer.
@@ -176,9 +176,14 @@ int main(void) {
 		// Perform state machine.
 		switch (dmm_ctx.state) {
 		case DMM_STATE_INIT:
+			// Turn RS485 interface on.
+			lpuart1_status = LPUART1_power_on();
+			LPUART1_error_check();
 			// Perform first nodes scan.
 			node_status = NODE_scan();
 			NODE_error_check();
+			// Turn RS485 interface off.
+			LPUART1_power_off();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;
@@ -186,6 +191,13 @@ int main(void) {
 			// Process HMI.
 			hmi_status = HMI_task();
 			HMI_error_check();
+			// Compute next state.
+			dmm_ctx.state = DMM_STATE_OFF;
+			break;
+		case DMM_STATE_NODE_TASK:
+			// Process nodes_task.
+			node_status = NODE_task();
+			NODE_error_check();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;
@@ -204,9 +216,8 @@ int main(void) {
 			if (RTC_get_wakeup_timer_flag() != 0) {
 				// Clear flag.
 				RTC_clear_wakeup_timer_flag();
-				// Perform nodes_task.
-				node_status = NODE_task();
-				NODE_error_check();
+				// Perform node task.
+				dmm_ctx.state = DMM_STATE_NODE_TASK;
 			}
 			// Check HMI activation flag.
 			if (EXTI_get_encoder_switch_flag() != 0) {

@@ -13,16 +13,16 @@
 #include "lptim.h"
 #include "lpuart_reg.h"
 #include "mapping.h"
-#include "node_common.h"
 #include "nvic.h"
 #include "rcc.h"
 #include "rcc_reg.h"
 
 /*** LPUART local macros ***/
 
-#define LPUART_BAUD_RATE 		9600
-#define LPUART_STRING_SIZE_MAX	1000
-#define LPUART_TIMEOUT_COUNT	100000
+#define LPUART_BAUD_RATE_DEFAULT 	1200
+#define LPUART_BRR_VALUE_MIN_LSE	0x0300
+
+#define LPUART_TIMEOUT_COUNT		100000
 //#define LPUART_USE_NRE
 
 /*** LPUART local global variables ***/
@@ -78,6 +78,27 @@ errors:
 	return status;
 }
 
+/* FILL LPUART1 TX BUFFER WITH A NEW BYTE.
+ * @param tx_byte:	Byte to append.
+ * @return status:	Function execution status.
+ */
+static LPUART_status_t _LPUART1_set_baud_rate(uint32_t baud_rate) {
+	// Local variables.
+	LPUART_status_t status = LPUART_SUCCESS;
+	uint32_t brr = 0;
+	// Compute register value.
+	brr = (RCC_LSE_FREQUENCY_HZ * 256);
+	brr /= baud_rate;
+	// Check value.
+	if (brr < LPUART_BRR_VALUE_MIN_LSE) {
+		status = LPUART_ERROR_BAUD_RATE;
+		goto errors;
+	}
+	LPUART1 -> BRR = (brr & 0x000FFFFF); // BRR = (256*fCK)/(baud rate). See p.730 of RM0377 datasheet.
+errors:
+	return status;
+}
+
 /*** LPUART functions ***/
 
 /* CONFIGURE LPUART1.
@@ -85,8 +106,6 @@ errors:
  * @return:	None.
  */
 void LPUART1_init(void) {
-	// Local variables.
-	uint32_t brr = 0;
 	// Select LSE as clock source.
 	RCC -> CCIPR |= (0b11 << 10); // LPUART1SEL='11'.
 	// Enable peripheral clock.
@@ -106,15 +125,9 @@ void LPUART1_init(void) {
 	LPUART1 -> CR1 |= 0x00002822;
 	LPUART1 -> CR2 |= (DINFOX_RS485_ADDRESS_DMM << 24) | (0b1 << 4);
 	LPUART1 -> CR3 |= 0x00805000;
-
-
-	LPUART1 -> CR1 |= 0x00000022;
-	LPUART1 -> CR3 |= 0x00B05000;
-
 	// Baud rate.
-	brr = (RCC_LSE_FREQUENCY_HZ * 256);
-	brr /= LPUART_BAUD_RATE;
-	LPUART1 -> BRR = (brr & 0x000FFFFF); // BRR = (256*fCK)/(baud rate). See p.730 of RM0377 datasheet.
+	_LPUART1_set_baud_rate(LPUART_BAUD_RATE_DEFAULT);
+
 	// Configure interrupt.
 	NVIC_set_priority(NVIC_INTERRUPT_LPUART1, 0);
 	EXTI_configure_line(EXTI_LINE_LPUART1, EXTI_TRIGGER_RISING_EDGE);
@@ -194,15 +207,25 @@ void LPUART1_disable_rx(void) {
 }
 
 /* SET LPUART RECEPTION MODE.
- * @param rx_mode:		Reception mode.
+ * @param config:		Pointer to the LPUART configuration structure.
  * @param rx_callback:	RX callback to call on data reception.
  * @return status:		Function execution status.
  */
-LPUART_status_t LPUART1_set_rx_mode(LPUART_rx_mode_t rx_mode, LPUART_rx_callback_t rx_callback) {
+LPUART_status_t LPUART1_configure(LPUART_config_t* config) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	// Check parameters.
-	switch (rx_mode) {
+	if (config == NULL) {
+		status = LPUART_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Temporary disable peripheral while configuring.
+	LPUART1 -> CR1 &= ~(0b1 << 0); // UE='0'.
+	// Set baud rate.
+	status = _LPUART1_set_baud_rate(config -> baud_rate);
+	if (status != LPUART_SUCCESS) goto errors;
+	// Set RX mode.
+	switch (config -> rx_mode) {
 	case LPUART_RX_MODE_ADDRESSED:
 		// Enable mute mode, address detection and wake up on address match.
 		LPUART1 -> CR1 |= 0x00002800; // MME='1' and WAKE='1'.
@@ -215,10 +238,13 @@ LPUART_status_t LPUART1_set_rx_mode(LPUART_rx_mode_t rx_mode, LPUART_rx_callback
 		break;
 	default:
 		status = LPUART_ERROR_RX_MODE;
-		break;
+		goto errors;
 	}
 	// Store callback (even if NULL).
-	LPUART1_rx_callback = rx_callback;
+	LPUART1_rx_callback = (config -> rx_callback);
+errors:
+	// Enable peripheral.
+	LPUART1 -> CR1 |= (0b1 << 0); // UE='1'.
 	return status;
 }
 
@@ -231,9 +257,7 @@ LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	uint8_t idx = 0;
-#ifdef LPUART_USE_NRE
 	uint32_t loop_count = 0;
-#endif
 	// Check parameters.
 	if (data == NULL) {
 		status = LPUART_ERROR_NULL_PARAMETER;
@@ -245,9 +269,7 @@ LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes) {
 		status = _LPUART1_fill_tx_buffer(data[idx]);
 		if (status != LPUART_SUCCESS) goto errors;
 	}
-#ifdef LPUART_USE_NRE
-	// Wait for TC flag (to avoid echo when enabling RX again).
-	loop_count = 0;
+	// Wait for TC flag.
 	while (((LPUART1 -> ISR) & (0b1 << 6)) == 0) {
 		// Exit if timeout.
 		loop_count++;
@@ -256,7 +278,6 @@ LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes) {
 			goto errors;
 		}
 	}
-#endif
 errors:
 	return status;
 }

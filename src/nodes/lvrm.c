@@ -10,7 +10,6 @@
 #include "dinfox.h"
 #include "lbus.h"
 #include "mode.h"
-#include "node_common.h"
 #include "string.h"
 
 /*** LVRM local macros ***/

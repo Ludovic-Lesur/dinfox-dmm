@@ -9,8 +9,7 @@
 
 #include "lbus.h"
 #include "mode.h"
-#include "node_common.h"
-#include "node_status.h"
+#include "node.h"
 #include "string.h"
 #include "types.h"
 

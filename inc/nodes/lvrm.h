@@ -9,8 +9,7 @@
 #define __LVRM_H__
 
 #include "dinfox.h"
-#include "node_common.h"
-#include "node_status.h"
+#include "node.h"
 #include "string.h"
 #include "types.h"
 

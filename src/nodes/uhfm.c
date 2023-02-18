@@ -10,7 +10,6 @@
 #include "dinfox.h"
 #include "lbus.h"
 #include "mode.h"
-#include "node_common.h"
 #include "string.h"
 
 /*** UHFM local macros ***/
@@ -18,7 +17,7 @@
 #define UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE		5
 #define UHFM_COMMAND_BUFFER_SIZE_BYTES			64
 
-#define UHFM_COMMAND_SEND						"RS$SF="
+#define UHFM_COMMAND_SEND						"AT$SF="
 
 static const char_t* UHFM_STRING_DATA_NAME[UHFM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
 	"VRF ="

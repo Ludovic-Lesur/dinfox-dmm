@@ -11,8 +11,6 @@
 #include "lbus.h"
 #include "lpuart.h"
 #include "lvrm.h"
-#include "node_common.h"
-#include "node_status.h"
 #include "r4s8cr.h"
 #include "rtc.h"
 #include "uhfm.h"
@@ -504,8 +502,7 @@ NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, in
 NODE_status_t NODE_scan(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	uint8_t lbus_nodes_count = 0;
+	uint8_t nodes_count = 0;
 	uint8_t idx = 0;
 	// Reset list.
 	_NODE_flush_list();
@@ -514,14 +511,11 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
 	NODES_LIST.list[0].address = DINFOX_RS485_ADDRESS_DMM;
 	NODES_LIST.count++;
-	// Turn RS485 interface on.
-	lpuart1_status = LPUART1_power_on();
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Scan LBUS nodes.
-	status = LBUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &lbus_nodes_count);
+	status = LBUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
-	NODES_LIST.count += lbus_nodes_count;
+	NODES_LIST.count += nodes_count;
 	// Search UHFM board in nodes list.
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// Check board ID.
@@ -531,13 +525,11 @@ NODE_status_t NODE_scan(void) {
 		}
 	}
 	// Scan R4S8CR nodes.
-	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &lbus_nodes_count);
+	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
-	NODES_LIST.count += lbus_nodes_count;
+	NODES_LIST.count += nodes_count;
 errors:
-	// Turn RS485 interface off.
-	LPUART1_power_off();
 	return status;
 }
 

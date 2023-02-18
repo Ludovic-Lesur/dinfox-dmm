@@ -19,7 +19,6 @@
 #include "lpuart.h"
 #include "mapping.h"
 #include "node.h"
-#include "node_common.h"
 #include "nvic.h"
 #include "pwr.h"
 #include "rtc.h"

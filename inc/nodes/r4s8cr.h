@@ -8,8 +8,7 @@
 #ifndef __R4S8CR_H__
 #define __R4S8CR_H__
 
-#include "node_common.h"
-#include "node_status.h"
+#include "node.h"
 
 /*** R4S8CR macros ***/
 

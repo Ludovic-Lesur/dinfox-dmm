@@ -14,32 +14,32 @@
 #include "lpuart.h"
 #include "mapping.h"
 #include "mode.h"
-#include "node_common.h"
-#include "node_status.h"
+#include "node.h"
 #include "string.h"
 
 /*** LBUS local macros ***/
 
-// Addressing.
-#define LBUS_ADDRESS_MASK				0x7F
-#define LBUS_ADDRESS_SIZE_BYTES			1
-// Framing.
-#define LBUS_FRAME_END					STRING_CHAR_CR
+// Physical interface.
+#define LBUS_BAUD_RATE						1200
+#define LBUS_ADDRESS_MASK					0x7F
+#define LBUS_DESTINATION_ADDRESS_MARKER		0x80
+#define LBUS_ADDRESS_SIZE_BYTES				1
+#define LBUS_FRAME_END						STRING_CHAR_CR
 
-#define LBUS_BUFFER_SIZE_BYTES			64
-#define LBUS_REPLY_BUFFER_DEPTH			16
+#define LBUS_BUFFER_SIZE_BYTES				64
+#define LBUS_REPLY_BUFFER_DEPTH				16
 
 #define LBUS_REPLY_PARSING_DELAY_MS	10
-#define LBUS_REPLY_TIMEOUT_MS			100
-#define LBUS_SEQUENCE_TIMEOUT_MS		120000
+#define LBUS_REPLY_TIMEOUT_MS				100
+#define LBUS_SEQUENCE_TIMEOUT_MS			120000
 
-#define LBUS_COMMAND_PING				"RS"
-#define LBUS_COMMAND_WRITE_REGISTER		"RS$W="
-#define LBUS_COMMAND_READ_REGISTER		"RS$R="
-#define LBUS_COMMAND_SEPARATOR			","
+#define LBUS_COMMAND_PING					"AT"
+#define LBUS_COMMAND_WRITE_REGISTER			"AT$W="
+#define LBUS_COMMAND_READ_REGISTER			"AT$R="
+#define LBUS_COMMAND_SEPARATOR				","
 
-#define LBUS_REPLY_OK					"OK"
-#define LBUS_REPLY_ERROR				"ERROR"
+#define LBUS_REPLY_OK						"OK"
+#define LBUS_REPLY_ERROR					"ERROR"
 
 /*** LBUS local structures ***/
 
@@ -287,6 +287,7 @@ NODE_status_t LBUS_send_command(NODE_command_parameters_t* command_params, NODE_
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	LPUART_config_t lpuart_config;
 #ifdef AM
 	if ((command_params -> node_address) > DINFOX_RS485_ADDRESS_LBUS_LAST) {
 		status = NODE_ERROR_NODE_ADDRESS;
@@ -297,7 +298,7 @@ NODE_status_t LBUS_send_command(NODE_command_parameters_t* command_params, NODE_
 	_LBUS_flush_command();
 #ifdef AM
 	// Add addressing header.
-	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS] = ((command_params -> node_address) | 0x80);
+	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS] = ((command_params -> node_address) | LBUS_DESTINATION_ADDRESS_MARKER);
 	lbus_ctx.command_size++;
 	lbus_ctx.command[LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS] = DINFOX_RS485_ADDRESS_DMM;
 	lbus_ctx.command_size++;
@@ -313,8 +314,11 @@ NODE_status_t LBUS_send_command(NODE_command_parameters_t* command_params, NODE_
 	// Store slave address to authenticate next data reception.
 	lbus_ctx.expected_source_address = (command_params -> node_address);
 #endif
-	// Configure reception mode.
-	lpuart1_status = LPUART1_set_rx_mode(LPUART_RX_MODE_ADDRESSED, &LBUS_fill_rx_buffer);
+	// Configure physical interface.
+	lpuart_config.baud_rate = LBUS_BAUD_RATE;
+	lpuart_config.rx_mode = LPUART_RX_MODE_ADDRESSED;
+	lpuart_config.rx_callback = &LBUS_fill_rx_buffer;
+	lpuart1_status = LPUART1_configure(&lpuart_config);
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Send command.
 	LPUART1_disable_rx();

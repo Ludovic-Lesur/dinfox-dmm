@@ -8,8 +8,7 @@
 #ifndef __DINFOX_H__
 #define __DINFOX_H__
 
-#include "node_common.h"
-#include "node_status.h"
+#include "node.h"
 #include "string.h"
 #include "types.h"
 

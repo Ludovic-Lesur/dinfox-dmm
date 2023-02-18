@@ -9,10 +9,11 @@
 
 #include "dinfox.h"
 #include "lpuart.h"
-#include "node_common.h"
-#include "node_status.h"
+#include "node.h"
 
 /*** R4S8CR local macros ***/
+
+#define R4S8CR_BAUD_RATE					9600
 
 #define R4S8CR_BUFFER_SIZE_BYTES			64
 #define R4S8CR_REPLY_BUFFER_DEPTH			16
@@ -97,6 +98,25 @@ static void _R4S8CR_flush_buffers(void) {
 	r4s8cr_ctx.reply_size = 0;
 }
 
+/* CONFIGURE PHYSICAL INTERFACE.
+ * @param:	None.
+ * @return:	None.
+ */
+static NODE_status_t _R4S8CR_configure_phy(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	LPUART_config_t lpuart_config;
+	// Configure physical interface.
+	lpuart_config.baud_rate = R4S8CR_BAUD_RATE;
+	lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
+	lpuart_config.rx_callback = &R4S8CR_fill_rx_buffer;
+	lpuart1_status = LPUART1_configure(&lpuart_config);
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+errors:
+	return status;
+}
+
 /*** R4S8CR functions ***/
 
 /* READ R4S8CR NODE REGISTER.
@@ -143,10 +163,10 @@ NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_rea
 	r4s8cr_ctx.command[1] = (R4S8CR_COMMAND_READ | relay_box_id);
 	r4s8cr_ctx.command[2] = 0x00;
 	r4s8cr_ctx.command_size = (R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_COMMAND_SIZE_BYTES);
-	// Configure reception mode.
+	// Configure physical interface.
+	status = _R4S8CR_configure_phy();
+	if (status != NODE_SUCCESS) goto errors;
 	LPUART1_disable_rx();
-	lpuart1_status = LPUART1_set_rx_mode(LPUART_RX_MODE_DIRECT, &R4S8CR_fill_rx_buffer);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Send command.
 	lpuart1_status = LPUART1_send(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
@@ -215,10 +235,10 @@ NODE_status_t R4S8CR_write_register(NODE_write_parameters_t* write_params, NODE_
 	r4s8cr_ctx.command[1] = relay_id;
 	r4s8cr_ctx.command[2] = ((write_params -> value) == 0) ? R4S8CR_COMMAND_OFF : R4S8CR_COMMAND_ON;
 	r4s8cr_ctx.command_size = (R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_COMMAND_SIZE_BYTES);
-	// Configure reception mode.
+	// Configure physical interface.
+	status = _R4S8CR_configure_phy();
+	if (status != NODE_SUCCESS) goto errors;
 	LPUART1_disable_rx();
-	lpuart1_status = LPUART1_set_rx_mode(LPUART_RX_MODE_DIRECT, &R4S8CR_fill_rx_buffer);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Send command.
 	lpuart1_status = LPUART1_send(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);

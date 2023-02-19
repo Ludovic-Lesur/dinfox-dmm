@@ -95,6 +95,11 @@ NODE_status_t LVRM_update_data(NODE_data_update_t* data_update) {
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_DECIMAL;
+	// Configure read data.
+	read_data.raw = NULL;
+	read_data.value = 0;
+	read_data.byte_array = NULL;
+	read_data.extracted_length = 0;
 	// Read data.
 	status = AT_read_register(&read_params, &read_data, &read_status);
 	if (status != NODE_SUCCESS) goto errors;
@@ -126,33 +131,33 @@ errors:
 
 /* GET LVRM NODE SIGFOX PAYLOAD.
  * @param integer_data_value:	Pointer to the node registers value.
- * @param sigfox_payload_type:	Sigfox payload type.
- * @param sigfox_payload:		Pointer that will contain the specific sigfox payload of the node.
- * @param sigfox_payload_size:	Pointer to byte that will contain sigfox payload size.
+ * @param ul_payload_type:		Sigfox payload type.
+ * @param ul_payload:			Pointer that will contain the specific sigfox payload of the node.
+ * @param ul_payload_size:		Pointer to byte that will contain sigfox payload size.
  * @return status:				Function execution status.
  */
-NODE_status_t LVRM_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size) {
+NODE_status_t LVRM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LVRM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
 	LVRM_sigfox_payload_data_t sigfox_payload_data;
 	uint8_t idx = 0;
 	// Check parameters.
-	if ((integer_data_value == NULL) || (sigfox_payload == NULL) || (sigfox_payload_size == NULL)) {
+	if ((integer_data_value == NULL) || (ul_payload == NULL) || (ul_payload_size == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Check type.
-	switch (sigfox_payload_type) {
+	switch (ul_payload_type) {
 	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
 		// Build monitoring payload.
 		sigfox_payload_monitoring.vmcu_mv = integer_data_value[DINFOX_REGISTER_VMCU_MV];
 		sigfox_payload_monitoring.tmcu_degrees = integer_data_value[DINFOX_REGISTER_TMCU_DEGREES];
 		// Copy payload.
 		for (idx=0 ; idx<LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-			sigfox_payload[idx] = sigfox_payload_monitoring.frame[idx];
+			ul_payload[idx] = sigfox_payload_monitoring.frame[idx];
 		}
-		(*sigfox_payload_size) = LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+		(*ul_payload_size) = LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE;
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
 		// Build data payload.
@@ -162,9 +167,9 @@ NODE_status_t LVRM_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_p
 		sigfox_payload_data.out_en = integer_data_value[LVRM_REGISTER_OUT_EN];
 		// Copy payload.
 		for (idx=0 ; idx<LVRM_SIGFOX_PAYLOAD_DATA_SIZE ; idx++) {
-			sigfox_payload[idx] = sigfox_payload_data.frame[idx];
+			ul_payload[idx] = sigfox_payload_data.frame[idx];
 		}
-		(*sigfox_payload_size) = LVRM_SIGFOX_PAYLOAD_DATA_SIZE;
+		(*ul_payload_size) = LVRM_SIGFOX_PAYLOAD_DATA_SIZE;
 		break;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;

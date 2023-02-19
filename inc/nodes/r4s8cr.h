@@ -66,7 +66,7 @@ NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_rea
 NODE_status_t R4S8CR_write_register(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);
 NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count);
 NODE_status_t R4S8CR_update_data(NODE_data_update_t* data_update);
-NODE_status_t R4S8CR_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size);
+NODE_status_t R4S8CR_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
 void R4S8CR_fill_rx_buffer(uint8_t rx_byte);
 
 #endif /* AM */

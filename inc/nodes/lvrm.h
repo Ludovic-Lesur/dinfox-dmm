@@ -46,6 +46,6 @@ static const STRING_format_t LVRM_REGISTERS_FORMAT[LVRM_NUMBER_OF_SPECIFIC_REGIS
 /*** LVRM functions ***/
 
 NODE_status_t LVRM_update_data(NODE_data_update_t* data_update);
-NODE_status_t LVRM_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size);
+NODE_status_t LVRM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
 
 #endif /* __LVRM_H__ */

@@ -78,6 +78,7 @@ typedef enum {
 	NODE_REPLY_TYPE_RAW,
 	NODE_REPLY_TYPE_OK,
 	NODE_REPLY_TYPE_VALUE,
+	NODE_REPLY_TYPE_BYTE_ARRAY,
 	NODE_REPLY_TYPE_LAST
 } NODE_reply_type_t;
 
@@ -92,6 +93,9 @@ typedef struct {
 	NODE_reply_type_t type;
 	STRING_format_t format; // Expected value format.
 	uint32_t timeout_ms;
+	// For byte array.
+	uint8_t byte_array_size;
+	uint8_t exact_length;
 } NODE_reply_parameters_t;
 
 typedef struct {
@@ -107,6 +111,8 @@ typedef struct {
 typedef struct {
 	char_t* raw;
 	int32_t value;
+	uint8_t* byte_array;
+	uint8_t extracted_length;
 } NODE_read_data_t;
 
 typedef struct {
@@ -144,7 +150,7 @@ typedef enum {
 	NODE_SIGFOX_PAYLOAD_TYPE_MONITORING,
 	NODE_SIGFOX_PAYLOAD_TYPE_DATA,
 	NODE_SIGFOX_PAYLOAD_TYPE_LAST
-} NODE_sigfox_payload_type_t;
+} NODE_sigfox_ul_payload_type_t;
 
 /*** NODES global variables ***/
 

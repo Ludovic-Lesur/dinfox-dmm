@@ -66,6 +66,11 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 #endif
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
+	// Configure read data.
+	read_data.raw = NULL;
+	read_data.value = 0;
+	read_data.byte_array = NULL;
+	read_data.extracted_length = 0;
 	// Check parameters.
 	if (data_update == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;

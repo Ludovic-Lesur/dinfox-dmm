@@ -26,7 +26,7 @@
 #define AT_BUFFER_SIZE_BYTES		64
 #define AT_REPLY_BUFFER_DEPTH		16
 
-#define AT_REPLY_PARSING_DELAY_MS	10
+#define AT_REPLY_PARSING_DELAY_MS	50
 #define AT_SEQUENCE_TIMEOUT_MS		120000
 
 #define AT_COMMAND_PING				"AT"
@@ -129,16 +129,20 @@ NODE_status_t _AT_wait_reply(NODE_reply_parameters_t* reply_params, NODE_read_da
 		status = NODE_ERROR_READ_TYPE;
 		goto errors;
 	}
+	if (((reply_params -> type) == NODE_REPLY_TYPE_BYTE_ARRAY) && ((read_data -> byte_array) == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
 	// Reset output data.
-	(read_data -> value) = 0;
 	(read_data -> raw) = NULL;
+	(read_data -> value) = 0;
 	(reply_status -> all) = 0;
 	// Directly exit function with success status for none reply type.
 	if ((reply_params -> type) == NODE_REPLY_TYPE_NONE) goto errors;
 	// Main reception loop.
 	while (1) {
 		// Delay.
-		lptim1_status = LPTIM1_delay_milliseconds(AT_REPLY_PARSING_DELAY_MS, 0);
+		lptim1_status = LPTIM1_delay_milliseconds(AT_REPLY_PARSING_DELAY_MS, 1);
 		LPTIM1_status_check(NODE_ERROR_BASE_LPTIM);
 		reply_time_ms += AT_REPLY_PARSING_DELAY_MS;
 		sequence_time_ms += AT_REPLY_PARSING_DELAY_MS;
@@ -167,7 +171,12 @@ NODE_status_t _AT_wait_reply(NODE_reply_parameters_t* reply_params, NODE_read_da
 					// Parse value.
 					parser_status = PARSER_get_parameter(&at_ctx.reply[at_ctx.reply_read_idx].parser, (reply_params -> format), STRING_CHAR_NULL, &(read_data -> value));
 					break;
+				case NODE_REPLY_TYPE_BYTE_ARRAY:
+					// Parse byte array.
+					parser_status = PARSER_get_byte_array(&at_ctx.reply[at_ctx.reply_read_idx].parser, STRING_CHAR_NULL, (reply_params -> byte_array_size), (reply_params -> exact_length), (read_data -> byte_array), &(read_data -> extracted_length));
+					break;
 				default:
+					status = NODE_ERROR_READ_TYPE;
 					break;
 				}
 				// Check status.
@@ -241,6 +250,8 @@ NODE_status_t _AT_ping(NODE_access_status_t* ping_status) {
 	reply_params.type = NODE_REPLY_TYPE_OK;
 	reply_params.format = STRING_FORMAT_BOOLEAN;
 	reply_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
+	reply_params.byte_array_size = 0;
+	reply_params.exact_length = 1;
 	// Build read command.
 	string_status = STRING_append_string(command, AT_BUFFER_SIZE_BYTES, AT_COMMAND_PING, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
@@ -317,6 +328,8 @@ NODE_status_t AT_read_register(NODE_read_parameters_t* read_params, NODE_read_da
 	reply_params.type = (read_params -> type);
 	reply_params.format = (read_params -> format);
 	reply_params.timeout_ms = (read_params -> timeout_ms);
+	reply_params.byte_array_size = 0;
+	reply_params.exact_length = 1;
 	// Build read command.
 	string_status = STRING_append_string(command, AT_BUFFER_SIZE_BYTES, AT_COMMAND_READ_REGISTER, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
@@ -351,6 +364,8 @@ NODE_status_t AT_write_register(NODE_write_parameters_t* write_params, NODE_acce
 	reply_params.type = NODE_REPLY_TYPE_OK;
 	reply_params.format = (write_params -> format);
 	reply_params.timeout_ms = (write_params -> timeout_ms);
+	reply_params.byte_array_size = 0;
+	reply_params.exact_length = 1;
 	// Build read command.
 	string_status = STRING_append_string(command, AT_BUFFER_SIZE_BYTES, AT_COMMAND_WRITE_REGISTER, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
@@ -394,6 +409,11 @@ NODE_status_t AT_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* node
 	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
 	read_params.register_address = DINFOX_REGISTER_BOARD_ID;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
+	// Configure read data.
+	read_data.raw = NULL;
+	read_data.value = 0;
+	read_data.byte_array = NULL;
+	read_data.extracted_length = 0;
 #ifdef AM
 	// Loop on all addresses.
 	for (node_address=0 ; node_address<=DINFOX_NODE_ADDRESS_LBUS_LAST ; node_address++) {

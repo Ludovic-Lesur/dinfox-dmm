@@ -18,6 +18,7 @@
 #define UHFM_COMMAND_BUFFER_SIZE_BYTES			64
 
 #define UHFM_COMMAND_SEND						"AT$SF="
+#define UHFM_COMMAND_READ_DL_PAYLOAD			"AT$DL?"
 
 static const char_t* UHFM_STRING_DATA_NAME[UHFM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
 	"VRF ="
@@ -79,6 +80,11 @@ NODE_status_t UHFM_update_data(NODE_data_update_t* data_update) {
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_DECIMAL;
+	// Configure read data.
+	read_data.raw = NULL;
+	read_data.value = 0;
+	read_data.byte_array = NULL;
+	read_data.extracted_length = 0;
 	// Read data.
 	status = AT_read_register(&read_params, &read_data, &read_status);
 	if (status != NODE_SUCCESS) goto errors;
@@ -105,23 +111,23 @@ errors:
 
 /* GET UHFM NODE SIGFOX PAYLOAD.
  * @param integer_data_value:	Pointer to the node registers value.
- * @param sigfox_payload_type:	Sigfox payload type.
- * @param sigfox_payload:		Pointer that will contain the specific sigfox payload of the node.
- * @param sigfox_payload_size:	Pointer to byte that will contain sigfox payload size.
+ * @param ul_payload_type:		Sigfox payload type.
+ * @param ul_payload:			Pointer that will contain the specific sigfox payload of the node.
+ * @param ul_payload_size:		Pointer to byte that will contain sigfox payload size.
  * @return status:				Function execution status.
  */
-NODE_status_t UHFM_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size) {
+NODE_status_t UHFM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	UHFM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
 	uint8_t idx = 0;
 	// Check parameters.
-	if ((integer_data_value == NULL) || (sigfox_payload == NULL) || (sigfox_payload_size == NULL)) {
+	if ((integer_data_value == NULL) || (ul_payload == NULL) || (ul_payload_size == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Check type.
-	switch (sigfox_payload_type) {
+	switch (ul_payload_type) {
 	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
 		// Build monitoring payload.
 		sigfox_payload_monitoring.vmcu_mv = integer_data_value[DINFOX_REGISTER_VMCU_MV];
@@ -129,13 +135,13 @@ NODE_status_t UHFM_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_p
 		sigfox_payload_monitoring.vrf_mv = integer_data_value[UHFM_REGISTER_VRF_MV];
 		// Copy payload.
 		for (idx=0 ; idx<UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-			sigfox_payload[idx] = sigfox_payload_monitoring.frame[idx];
+			ul_payload[idx] = sigfox_payload_monitoring.frame[idx];
 		}
-		(*sigfox_payload_size) = UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+		(*ul_payload_size) = UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE;
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
 		// None data frame.
-		(*sigfox_payload_size) = 0;
+		(*ul_payload_size) = 0;
 		break;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
@@ -166,11 +172,21 @@ NODE_status_t UHFM_send_sigfox_message(UHFM_sigfox_message_t* sigfox_message, NO
 	STRING_status_t string_status = STRING_SUCCESS;
 	NODE_command_parameters_t command_params;
 	NODE_reply_parameters_t reply_params;
-	NODE_read_data_t unused_read_data;
+	NODE_read_data_t read_data;
 	char_t command[UHFM_COMMAND_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
 	uint8_t idx = 0;
 	uint32_t timeout_ms = 0;
+	// Set command parameters.
+#ifdef AM
+	command_params.node_address = node_address;
+#endif
+	command_params.command = (char_t*) command;
+	// Configure read data.
+	read_data.raw = NULL;
+	read_data.value = 0;
+	read_data.byte_array = (sigfox_message -> dl_payload);
+	read_data.extracted_length = 0;
 	// Build command.
 	string_status = STRING_append_string(command, UHFM_COMMAND_BUFFER_SIZE_BYTES, UHFM_COMMAND_SEND, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
@@ -190,17 +206,31 @@ NODE_status_t UHFM_send_sigfox_message(UHFM_sigfox_message_t* sigfox_message, NO
 	else {
 		timeout_ms = 10000;
 	}
-	// Build command structure.
-#ifdef AM
-	command_params.node_address = node_address;
-#endif
-	command_params.command = (char_t*) command;
 	// Build reply structure.
 	reply_params.type = NODE_REPLY_TYPE_OK;
 	reply_params.format = STRING_FORMAT_BOOLEAN;
 	reply_params.timeout_ms = timeout_ms;
 	// Send command.
-	status = AT_send_command(&command_params, &reply_params, &unused_read_data, send_status);
+	status = AT_send_command(&command_params, &reply_params, &read_data, send_status);
+	if (status != NODE_SUCCESS) goto errors;
+	// Read DL payload if needed.
+	if ((sigfox_message -> bidirectional_flag) != 0) {
+		// Flush command.
+		for (idx=0 ; idx<UHFM_COMMAND_BUFFER_SIZE_BYTES ; idx++) command[idx] = STRING_CHAR_NULL;
+		command_size = 0;
+		// Build command.
+		string_status = STRING_append_string(command, UHFM_COMMAND_BUFFER_SIZE_BYTES, UHFM_COMMAND_READ_DL_PAYLOAD, &command_size);
+		STRING_status_check(NODE_ERROR_BASE_STRING);
+		// Build reply structure.
+		reply_params.type = NODE_REPLY_TYPE_BYTE_ARRAY;
+		reply_params.format = STRING_FORMAT_HEXADECIMAL;
+		reply_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
+		reply_params.byte_array_size = UHFM_SIGFOX_DL_PAYLOAD_SIZE;
+		reply_params.exact_length = 1;
+		// Send command.
+		status = AT_send_command(&command_params, &reply_params, &read_data, send_status);
+		if (status != NODE_SUCCESS) goto errors;
+	}
 errors:
 	return status;
 }

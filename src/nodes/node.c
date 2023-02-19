@@ -40,13 +40,13 @@ typedef enum {
 typedef NODE_status_t (*NODE_read_register_t)(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status);
 typedef NODE_status_t (*NODE_write_register_t)(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);
 typedef NODE_status_t (*NODE_update_data_t)(NODE_data_update_t* data_update);
-typedef NODE_status_t (*NODE_get_sigfox_payload_t)(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size);
+typedef NODE_status_t (*NODE_get_sigfox_payload_t)(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
 
 typedef struct {
 	NODE_read_register_t read_register;
 	NODE_write_register_t write_register;
 	NODE_update_data_t update_data;
-	NODE_get_sigfox_payload_t get_sigfox_payload;
+	NODE_get_sigfox_payload_t get_sigfox_ul_payload;
 } NODE_functions_t;
 
 typedef struct {
@@ -65,7 +65,7 @@ typedef union {
 		unsigned board_id : 8;
 		uint8_t node_data[NODE_SIGFOX_PAYLOAD_SIZE_MAX - 2];
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} NODE_sigfox_payload_t;
+} NODE_sigfox_ul_payload_t;
 
 typedef union {
 	uint8_t frame[NODE_SIGFOX_PAYLOAD_STARTUP_SIZE];
@@ -92,11 +92,14 @@ typedef struct {
 #else
 	uint8_t uhfm_connected;
 #endif
-	NODE_sigfox_payload_t sigfox_payload;
-	uint8_t sigfox_payload_size;
-	uint32_t sigfox_seconds_count;
-	uint8_t sigfox_node_list_index;
-	NODE_sigfox_payload_type_t sigfox_payload_type_index;
+	// Uplink.
+	NODE_sigfox_ul_payload_t sigfox_ul_payload;
+	uint8_t sigfox_ul_payload_size;
+	uint32_t sigfox_ul_seconds_count;
+	uint8_t sigfox_ul_node_list_index;
+	NODE_sigfox_ul_payload_type_t sigfox_ul_payload_type_index;
+	// Downlink.
+	uint8_t sigfox_dl_payload[UHFM_SIGFOX_DL_PAYLOAD_SIZE];
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -104,7 +107,7 @@ typedef struct {
 // Note: table is indexed with board ID.
 static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	{"LVRM", NODE_PROTOCOL_AT, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTERS_FORMAT,
-		{&AT_read_register, &AT_write_register, &LVRM_update_data, &LVRM_get_sigfox_payload}
+		{&AT_read_register, &AT_write_register, &LVRM_update_data, &LVRM_get_sigfox_ul_payload}
 	},
 	{"BPSM", NODE_PROTOCOL_AT, 0, 0, NULL,
 		{&AT_read_register, &AT_write_register, NULL, NULL}
@@ -113,7 +116,7 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
 	{"UHFM", NODE_PROTOCOL_AT, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTERS_FORMAT,
-		{&AT_read_register, &AT_write_register, &UHFM_update_data, &UHFM_get_sigfox_payload}
+		{&AT_read_register, &AT_write_register, &UHFM_update_data, &UHFM_get_sigfox_ul_payload}
 	},
 	{"GPSM", NODE_PROTOCOL_AT, 0, 0, NULL,
 		{&AT_read_register, &AT_write_register, NULL, NULL}
@@ -135,7 +138,7 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	},
 #ifdef AM
 	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTERS_FORMAT,
-		{&R4S8CR_read_register, &R4S8CR_write_register, &R4S8CR_update_data, &R4S8CR_get_sigfox_payload}},
+		{&R4S8CR_read_register, &R4S8CR_write_register, &R4S8CR_update_data, &R4S8CR_get_sigfox_ul_payload}},
 #endif
 };
 static NODE_context_t node_ctx;
@@ -213,9 +216,10 @@ void _NODE_flush_list(void) {
 /* SEND NODE DATA THROUGH RADIO.
  * @param node:					Node to monitor by radio.
  * @param sigfox_payload_type:	Type of data to send.
+ * @param bidirectional_flag:	Downlink request flag.
  * @return status:				Function execution status.
  */
-NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_payload_type) {
+NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t bidirectional_flag) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t sigfox_payload_specific_size;
@@ -225,20 +229,20 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_p
 	uint8_t idx = 0;
 	// Check board ID.
 	_NODE_check_node_and_board_id();
-	_NODE_check_function_pointer(get_sigfox_payload);
+	_NODE_check_function_pointer(get_sigfox_ul_payload);
 	// Reset payload.
-	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_payload.frame[idx] = 0x00;
-	node_ctx.sigfox_payload_size = 0;
+	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_ul_payload.frame[idx] = 0x00;
+	node_ctx.sigfox_ul_payload_size = 0;
 	// Add board ID and node address.
-	node_ctx.sigfox_payload.board_id = (node -> board_id);
+	node_ctx.sigfox_ul_payload.board_id = (node -> board_id);
 #ifdef AM
-	node_ctx.sigfox_payload.node_address = (node -> address);
+	node_ctx.sigfox_ul_payload.node_address = (node -> address);
 #else
 	node_ctx.sigfox_payload.node_address = DINFOX_NODE_ADDRESS_BROADCAST;
 #endif
-	node_ctx.sigfox_payload_size = 2;
+	node_ctx.sigfox_ul_payload_size = 2;
 	// Add specific payload.
-	switch (sigfox_payload_type) {
+	switch (ul_payload_type) {
 	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
 		// Check node protocol.
 		if (NODES[node -> board_id].protocol != NODE_PROTOCOL_AT) {
@@ -254,21 +258,21 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_p
 		sigfox_payload_startup.dirty_flag = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG];
 		// Add specific data to global paylaod.
 		for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_STARTUP_SIZE ; idx++) {
-			node_ctx.sigfox_payload.node_data[idx] = sigfox_payload_startup.frame[idx];
+			node_ctx.sigfox_ul_payload.node_data[idx] = sigfox_payload_startup.frame[idx];
 		}
-		node_ctx.sigfox_payload_size += NODE_SIGFOX_PAYLOAD_STARTUP_SIZE;
+		node_ctx.sigfox_ul_payload_size += NODE_SIGFOX_PAYLOAD_STARTUP_SIZE;
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
 		// Execute function of the corresponding board ID.
-		status = NODES[node -> board_id].functions.get_sigfox_payload(node_ctx.data.registers_value, sigfox_payload_type, node_ctx.sigfox_payload.node_data, &sigfox_payload_specific_size);
+		status = NODES[node -> board_id].functions.get_sigfox_ul_payload(node_ctx.data.registers_value, ul_payload_type, node_ctx.sigfox_ul_payload.node_data, &sigfox_payload_specific_size);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check returned pointer.
 		if (sigfox_payload_specific_size == 0) {
 			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
 			goto errors;
 		}
-		node_ctx.sigfox_payload_size += sigfox_payload_specific_size;
+		node_ctx.sigfox_ul_payload_size += sigfox_payload_specific_size;
 		break;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
@@ -284,10 +288,10 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_p
 		goto errors;
 	}
 	// Build Sigfox message structure.
-	sigfox_message.ul_payload = (uint8_t*) node_ctx.sigfox_payload.frame;
-	sigfox_message.ul_payload_size = node_ctx.sigfox_payload_size;
-	sigfox_message.bidirectional_flag = 0;
-	sigfox_message.dl_payload = NULL;
+	sigfox_message.ul_payload = (uint8_t*) node_ctx.sigfox_ul_payload.frame;
+	sigfox_message.ul_payload_size = node_ctx.sigfox_ul_payload_size;
+	sigfox_message.bidirectional_flag = bidirectional_flag;
+	sigfox_message.dl_payload = (uint8_t*) node_ctx.sigfox_dl_payload;
 	// Send message.
 #ifdef AM
 	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &send_status);
@@ -313,9 +317,9 @@ void NODE_init(void) {
 	// Reset node list.
 	_NODE_flush_list();
 	// Init context.
-	node_ctx.sigfox_seconds_count = NODE_SIGFOX_PERIOD_SECONDS;
-	node_ctx.sigfox_node_list_index = 0;
-	node_ctx.sigfox_payload_type_index = 0;
+	node_ctx.sigfox_ul_seconds_count = NODE_SIGFOX_PERIOD_SECONDS;
+	node_ctx.sigfox_ul_node_list_index = 0;
+	node_ctx.sigfox_ul_payload_type_index = 0;
 }
 
 /* GET NODE BOARD NAME.
@@ -587,21 +591,21 @@ NODE_status_t NODE_task(void) {
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	uint32_t loop_count = 0;
 	// Increment time.
-	node_ctx.sigfox_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
+	node_ctx.sigfox_ul_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
 	// Check Sigfox period.
-	if (node_ctx.sigfox_seconds_count >= NODE_SIGFOX_PERIOD_SECONDS) {
+	if (node_ctx.sigfox_ul_seconds_count >= NODE_SIGFOX_PERIOD_SECONDS) {
 		// Reset count.
-		node_ctx.sigfox_seconds_count = 0;
+		node_ctx.sigfox_ul_seconds_count = 0;
 		// Turn bus interface on.
 		lpuart1_status = LPUART1_power_on();
 		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 		// Search next Sigfox message to send.
 		do {
 			// Update node data.
-			status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_node_list_index]));
+			status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]));
 			if (status == NODE_SUCCESS) {
 				// Send data through radio.
-				status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_node_list_index]), node_ctx.sigfox_payload_type_index);
+				status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, 0);
 				// Handle all errors except not supported and empty payload.
 				if ((status != NODE_SUCCESS) && (status != NODE_ERROR_NOT_SUPPORTED) && (status != NODE_ERROR_SIGFOX_PAYLOAD_EMPTY)) goto errors;
 			}
@@ -610,14 +614,14 @@ NODE_status_t NODE_task(void) {
 				if (status != NODE_ERROR_NOT_SUPPORTED) goto errors;
 			}
 			// Increment payload type index.
-			node_ctx.sigfox_payload_type_index++;
-			if (node_ctx.sigfox_payload_type_index >= NODE_SIGFOX_PAYLOAD_TYPE_LAST) {
+			node_ctx.sigfox_ul_payload_type_index++;
+			if (node_ctx.sigfox_ul_payload_type_index >= NODE_SIGFOX_PAYLOAD_TYPE_LAST) {
 				// Switch to next node.
-				node_ctx.sigfox_payload_type_index = 0;
-				node_ctx.sigfox_node_list_index++;
-				if (node_ctx.sigfox_node_list_index >= NODES_LIST.count) {
+				node_ctx.sigfox_ul_payload_type_index = 0;
+				node_ctx.sigfox_ul_node_list_index++;
+				if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
 					// Come back to first node.
-					node_ctx.sigfox_node_list_index = 0;
+					node_ctx.sigfox_ul_node_list_index = 0;
 				}
 			}
 			// Exit if timeout.

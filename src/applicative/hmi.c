@@ -47,11 +47,13 @@
 
 static const char_t* HMI_TITLE_NODES_LIST = "NODES LIST";
 
+static const char_t* HMI_TEXT_ERROR = "ERROR";
+static const char_t* HMI_TEXT_NA = "N/A";
+
 static const char_t* HMI_MESSAGE_NODES_SCAN_RUNNING[HMI_DATA_PAGES_DISPLAYED] = {"NODES SCAN", "RUNNING", "..."};
 static const char_t* HMI_MESSAGE_UNSUPPORTED_NODE[HMI_DATA_PAGES_DISPLAYED] = {"UNSUPPORTED", "NODE", STRING_NULL};
 static const char_t* HMI_MESSAGE_NONE_MEASUREMENT[HMI_DATA_PAGES_DISPLAYED] = {"NONE", "MEASUREMENT", "ON THIS NODE"};
-static const char_t* HMI_MESSAGE_ERROR = "ERROR";
-static const char_t* HMI_NA = "N/A";
+static const char_t* HMI_MESSAGE_READING_DATA[HMI_DATA_PAGES_DISPLAYED] = {"READING DATA", "...", STRING_NULL};
 
 /*** HMI local structures ***/
 
@@ -271,12 +273,12 @@ static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 		node_status = NODE_get_name(&hmi_ctx.node, &text_ptr_1);
 		switch (node_status) {
 		case NODE_SUCCESS:
-			text_ptr_2 = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_NA;
+			text_ptr_2 = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_TEXT_NA;
 			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, text_ptr_2, &hmi_ctx.text_width);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			break;
 		case NODE_ERROR_NOT_SUPPORTED:
-			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_NA, &hmi_ctx.text_width);
+			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TEXT_NA, &hmi_ctx.text_width);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			break;
 		default:
@@ -288,7 +290,7 @@ static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 #ifdef AM
 		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.node.address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
 #else
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_NA, &hmi_ctx.text_width);
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TEXT_NA, &hmi_ctx.text_width);
 #endif
 		STRING_status_check(HMI_ERROR_BASE_STRING);
 		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
@@ -437,10 +439,10 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			node_status = NODE_get_name(&hmi_ctx.node, &text_ptr_1);
 			switch (node_status) {
 			case NODE_SUCCESS:
-				string_copy.source = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_NA;
+				string_copy.source = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_TEXT_NA;
 				break;
 			case NODE_ERROR_NOT_SUPPORTED:
-				string_copy.source = (char_t*) HMI_NA;
+				string_copy.source = (char_t*) HMI_TEXT_NA;
 				break;
 			default:
 				NODE_status_check(HMI_ERROR_BASE_NODE);
@@ -456,7 +458,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 #ifdef AM
 			status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
 #else
-			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_NA, &hmi_ctx.text_width);
+			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TEXT_NA, &hmi_ctx.text_width);
 #endif
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			string_copy.source = (char_t*) hmi_ctx.text;
@@ -480,6 +482,20 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 		}
 		break;
 	case HMI_SCREEN_NODE_DATA:
+		// Print temporary screen during data reading.
+		string_copy.justification = STRING_JUSTIFICATION_CENTER;
+		string_copy.flush_flag = 1;
+		// Lines loop.
+		for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
+			string_copy.source = (char_t*) HMI_MESSAGE_READING_DATA[idx];
+			string_copy.destination = (char_t*) hmi_ctx.data[idx];
+			string_status = STRING_copy(&string_copy);
+			STRING_status_check(HMI_ERROR_BASE_STRING);
+		}
+		status = _HMI_print_data();
+		if (status != HMI_SUCCESS) goto errors;
+		// Flush buffers.
+		_HMI_data_flush();
 		// Update all node data.
 		node_status = NODE_update_all_data(&hmi_ctx.node);
 		switch (node_status) {
@@ -553,7 +569,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 		string_copy.justification = STRING_JUSTIFICATION_CENTER;
 		string_copy.flush_flag = 1;
 		// Line 1.
-		string_copy.source = (char_t*) HMI_MESSAGE_ERROR;
+		string_copy.source = (char_t*) HMI_TEXT_ERROR;
 		string_copy.destination = (char_t*) hmi_ctx.data[0];
 		string_status = STRING_copy(&string_copy);
 		STRING_status_check(HMI_ERROR_BASE_STRING);

@@ -30,7 +30,7 @@ static const char_t* DINFOX_STRING_DATA_UNIT[DINFOX_STRING_DATA_INDEX_LAST] = {
 	"mV"
 };
 static const int32_t DINFOX_ERROR_VALUE[DINFOX_REGISTER_LAST] = {
-	NODE_ERROR_VALUE_RS485_ADDRESS,
+	NODE_ERROR_VALUE_NODE_ADDRESS,
 	NODE_ERROR_VALUE_BOARD_ID,
 	NODE_ERROR_VALUE_VERSION,
 	NODE_ERROR_VALUE_VERSION,
@@ -48,13 +48,10 @@ static const int32_t DINFOX_ERROR_VALUE[DINFOX_REGISTER_LAST] = {
 /*** DINFOX functions ***/
 
 /* UPDATE COMMON MEASUREMENTS OF DINFOX NODES.
- * @param rs485_address:		RS485 address.
- * @param string_data_index:	Data index to read.
- * @param single_string_data:	Pointer to the data string to be filled.
- * @param registers_value:		Registers value table.
- * @return status:				Function execution status.
+ * @param data_update:	Pointer to the data update structure.
+ * @return status:		Function execution status.
  */
-NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value) {
+NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -65,25 +62,29 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 	uint8_t buffer_size = 0;
 	// Common reply parameters.
 #ifdef AM
-	read_params.node_address = rs485_address;
+	read_params.node_address = (data_update -> node_address);
 #endif
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
 	// Check parameters.
-	if ((single_string_data == NULL) || (registers_value == NULL)) {
+	if (data_update == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if (((data_update -> name_ptr) == NULL) || ((data_update -> value_ptr) == NULL) || ((data_update -> registers_value_ptr) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Check index.
-	if (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST) {
+	if ((data_update -> string_data_index) >= DINFOX_STRING_DATA_INDEX_LAST) {
 		status = NODE_ERROR_STRING_DATA_INDEX;
 		goto errors;
 	}
 	// Add data name.
-	NODE_append_string_name((char_t*) DINFOX_STRING_DATA_NAME[string_data_index]);
+	NODE_append_string_name((char_t*) DINFOX_STRING_DATA_NAME[data_update -> string_data_index]);
 	buffer_size = 0;
 	// Check index.
-	switch (string_data_index) {
+	switch (data_update -> string_data_index) {
 	case DINFOX_STRING_DATA_INDEX_HW_VERSION:
 		// Hardware version major.
 		read_params.register_address = DINFOX_REGISTER_HW_VERSION_MAJOR;
@@ -259,7 +260,7 @@ NODE_status_t DINFOX_update_data(NODE_address_t rs485_address, uint8_t string_da
 	}
 	// Add unit if no error.
 	if (error_flag == 0) {
-		NODE_append_string_value((char_t*) DINFOX_STRING_DATA_UNIT[string_data_index]);
+		NODE_append_string_value((char_t*) DINFOX_STRING_DATA_UNIT[data_update -> string_data_index]);
 	}
 errors:
 	return status;

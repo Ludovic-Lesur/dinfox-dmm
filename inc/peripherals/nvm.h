@@ -23,7 +23,7 @@ typedef enum {
 } NVM_status_t;
 
 typedef enum {
-	NVM_ADDRESS_RS485_ADDRESS = 0,
+	NVM_ADDRESS_SELF_ADDRESS = 0,
 	NVM_ADDRESS_LAST
 } NVM_address_t;
 

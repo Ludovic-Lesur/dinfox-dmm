@@ -1,5 +1,5 @@
 /*
- * rs485.c
+ * lbus.c
  *
  *  Created on: 28 oct 2022
  *      Author: Ludo
@@ -18,8 +18,6 @@
 /*** LBUS local macros ***/
 
 // Physical interface.
-#define LBUS_BAUD_RATE						1200
-#define LBUS_ADDRESS_MASK					0x7F
 #define LBUS_DESTINATION_ADDRESS_MARKER		0x80
 #define LBUS_ADDRESS_SIZE_BYTES				1
 
@@ -50,8 +48,8 @@ static LBUS_context_t lbus_ctx;
  */
 void LBUS_init(void) {
 	// Init context.
-	lbus_ctx.self_address = DINFOX_RS485_ADDRESS_DMM;
-	lbus_ctx.expected_slave_address = DINFOX_RS485_ADDRESS_BROADCAST;
+	lbus_ctx.self_address = DINFOX_NODE_ADDRESS_DMM;
+	lbus_ctx.expected_slave_address = DINFOX_NODE_ADDRESS_BROADCAST;
 	lbus_ctx.source_address_mismatch = 0;
 	lbus_ctx.rx_byte_count = 0;
 }

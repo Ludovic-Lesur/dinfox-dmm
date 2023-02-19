@@ -43,8 +43,12 @@ static const STRING_format_t UHFM_REGISTERS_FORMAT[UHFM_NUMBER_OF_SPECIFIC_REGIS
 
 /*** UHFM functions ***/
 
-NODE_status_t UHFM_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value);
+NODE_status_t UHFM_update_data(NODE_data_update_t* data_update);
 NODE_status_t UHFM_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size);
-NODE_status_t UHFM_send_sigfox_message(NODE_address_t rs485_address, UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status);
+#ifdef AM
+NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_address, UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status);
+#else
+NODE_status_t UHFM_send_sigfox_message(UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status);
+#endif
 
 #endif /* __UHFM_H__ */

@@ -176,13 +176,13 @@ int main(void) {
 		// Perform state machine.
 		switch (dmm_ctx.state) {
 		case DMM_STATE_INIT:
-			// Turn RS485 interface on.
+			// Turn bus interface on.
 			lpuart1_status = LPUART1_power_on();
 			LPUART1_error_check();
 			// Perform first nodes scan.
 			node_status = NODE_scan();
 			NODE_error_check();
-			// Turn RS485 interface off.
+			// Turn bus interface off.
 			LPUART1_power_off();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;

@@ -258,6 +258,7 @@ NODE_status_t AT_send_command(NODE_command_parameters_t* command_params, NODE_re
 	STRING_status_t string_status = STRING_SUCCESS;
 #ifdef DM
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	LPUART_config_t lpuart_config;
 #endif
 	// Flush buffer.
 	_AT_flush_command();
@@ -268,12 +269,20 @@ NODE_status_t AT_send_command(NODE_command_parameters_t* command_params, NODE_re
 	at_ctx.command[at_ctx.command_size++] = AT_FRAME_END;
 	// Reset replies.
 	_AT_flush_replies();
-	// Send command.
+	// Disable receiver.
 	LPUART1_disable_rx();
 #ifdef AM
+	// Send command.
 	status = LBUS_send((command_params -> node_address), (uint8_t*) at_ctx.command, at_ctx.command_size);
 	if (status != NODE_SUCCESS) goto errors;
 #else
+	// Configure physical interface.
+	lpuart_config.baud_rate = LBUS_BAUD_RATE;
+	lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
+	lpuart_config.rx_callback = &AT_fill_rx_buffer;
+	lpuart1_status = LPUART1_configure(&lpuart_config);
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	// Send command.
 	lpuart1_status = LPUART1_send((uint8_t*) at_ctx.command, at_ctx.command_size);
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 #endif
@@ -369,7 +378,9 @@ NODE_status_t AT_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* node
 	NODE_read_parameters_t read_params;
 	NODE_read_data_t read_data;
 	NODE_access_status_t read_status;
+#ifdef AM
 	NODE_address_t node_address = 0;
+#endif
 	uint8_t node_list_idx = 0;
 	// Check parameters.
 	if ((nodes_list == NULL) || (nodes_count == NULL)) {
@@ -385,7 +396,7 @@ NODE_status_t AT_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* node
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 #ifdef AM
 	// Loop on all addresses.
-	for (node_address=0 ; node_address<=DINFOX_RS485_ADDRESS_LBUS_LAST ; node_address++) {
+	for (node_address=0 ; node_address<=DINFOX_NODE_ADDRESS_LBUS_LAST ; node_address++) {
 		// Ping address.
 		status = _AT_ping(node_address, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
@@ -420,7 +431,6 @@ NODE_status_t AT_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* node
 		// Node found (even if an error was returned after ping command).
 		(*nodes_count)++;
 		// Store address and reset board ID.
-		nodes_list[node_list_idx].address = node_address;
 		nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_ERROR;
 		// Get board ID.
 		status = AT_read_register(&read_params, &read_data, &read_status);
@@ -451,8 +461,10 @@ void AT_fill_rx_buffer(uint8_t rx_byte) {
 		at_ctx.reply[at_ctx.reply_write_idx].line_end_flag = 1;
 		// Switch buffer.
 		at_ctx.reply_write_idx = (at_ctx.reply_write_idx + 1) % AT_REPLY_BUFFER_DEPTH;
+#ifdef AM
 		// Reset LBUS layer.
 		LBUS_reset();
+#endif
 	}
 	else {
 		// Store incoming byte.

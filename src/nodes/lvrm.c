@@ -59,13 +59,10 @@ typedef union {
 /*** LVRM functions ***/
 
 /* RETRIEVE SPECIFIC DATA OF LVRM NODE.
- * @param rs485_address:		RS485 address of the node to update.
- * @param string_data_index:	Node string data index.
- * @param single_string_data:	Pointer to the data string to be filled.
- * @param registers_value:		Registers value table.
- * @return status:				Function execution status.
+ * @param data_update:	Pointer to the data update structure.
+ * @return status:		Function execution status.
  */
-NODE_status_t LVRM_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value) {
+NODE_status_t LVRM_update_data(NODE_data_update_t* data_update) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -74,16 +71,25 @@ NODE_status_t LVRM_update_data(NODE_address_t rs485_address, uint8_t string_data
 	NODE_access_status_t read_status;
 	uint8_t register_address = 0;
 	uint8_t buffer_size = 0;
+	// Check parameters.
+	if (data_update == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if (((data_update -> name_ptr) == NULL) || ((data_update -> value_ptr) == NULL) || ((data_update -> registers_value_ptr) == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
 	// Check index.
-	if ((string_data_index < DINFOX_STRING_DATA_INDEX_LAST) || (string_data_index >= LVRM_STRING_DATA_INDEX_LAST)) {
+	if (((data_update -> string_data_index) < DINFOX_STRING_DATA_INDEX_LAST) || ((data_update -> string_data_index) >= LVRM_STRING_DATA_INDEX_LAST)) {
 		status = NODE_ERROR_STRING_DATA_INDEX;
 		goto errors;
 	}
 	// Convert to register address.
-	register_address = (string_data_index + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
+	register_address = ((data_update -> string_data_index) + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
 	// Read parameters.
 #ifdef AM
-	read_params.node_address = rs485_address;
+	read_params.node_address = (data_update -> node_address);
 #endif
 	read_params.register_address = register_address;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
@@ -93,19 +99,19 @@ NODE_status_t LVRM_update_data(NODE_address_t rs485_address, uint8_t string_data
 	status = AT_read_register(&read_params, &read_data, &read_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Add data name.
-	NODE_append_string_name((char_t*) LVRM_STRING_DATA_NAME[string_data_index - DINFOX_STRING_DATA_INDEX_LAST]);
+	NODE_append_string_name((char_t*) LVRM_STRING_DATA_NAME[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
 	buffer_size = 0;
 	// Add data value.
 	if (read_status.all == 0) {
 		// Specific print for relay.
-		if (string_data_index == LVRM_STRING_DATA_INDEX_OUT_EN) {
+		if ((data_update -> string_data_index) == LVRM_STRING_DATA_INDEX_OUT_EN) {
 			NODE_append_string_value((read_data.value == 0) ? "OFF" : "ON");
 		}
 		else {
 			NODE_append_string_value(read_data.raw);
 		}
 		// Add unit.
-		NODE_append_string_value((char_t*) LVRM_STRING_DATA_UNIT[string_data_index - DINFOX_STRING_DATA_INDEX_LAST]);
+		NODE_append_string_value((char_t*) LVRM_STRING_DATA_UNIT[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
 		// Update integer data.
 		NODE_update_value(register_address, read_data.value);
 	}

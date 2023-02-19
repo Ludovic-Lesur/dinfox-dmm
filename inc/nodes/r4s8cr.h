@@ -8,12 +8,15 @@
 #ifndef __R4S8CR_H__
 #define __R4S8CR_H__
 
+#include "mode.h"
 #include "node.h"
+
+#ifdef AM
 
 /*** R4S8CR macros ***/
 
 #define R4S8CR_TIMEOUT_MS		100
-#define R4S8CR_RS485_ADDRESS	0xFF
+#define R4S8CR_NODE_ADDRESS		0xFF
 
 /*** R4S8CR structures ***/
 
@@ -62,8 +65,10 @@ static const STRING_format_t R4S8CR_REGISTERS_FORMAT[R4S8CR_REGISTER_LAST] = {
 NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status);
 NODE_status_t R4S8CR_write_register(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);
 NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count);
-NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value);
+NODE_status_t R4S8CR_update_data(NODE_data_update_t* data_update);
 NODE_status_t R4S8CR_get_sigfox_payload(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size);
 void R4S8CR_fill_rx_buffer(uint8_t rx_byte);
+
+#endif /* AM */
 
 #endif /* __R4S8CR_H__ */

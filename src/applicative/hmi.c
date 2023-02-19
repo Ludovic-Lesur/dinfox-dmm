@@ -51,7 +51,7 @@ static const char_t* HMI_MESSAGE_NODES_SCAN_RUNNING[HMI_DATA_PAGES_DISPLAYED] = 
 static const char_t* HMI_MESSAGE_UNSUPPORTED_NODE[HMI_DATA_PAGES_DISPLAYED] = {"UNSUPPORTED", "NODE", STRING_NULL};
 static const char_t* HMI_MESSAGE_NONE_MEASUREMENT[HMI_DATA_PAGES_DISPLAYED] = {"NONE", "MEASUREMENT", "ON THIS NODE"};
 static const char_t* HMI_MESSAGE_ERROR = "ERROR";
-static const char_t* HMI_UNSUPPORTED_NODE_NAME = "----";
+static const char_t* HMI_NA = "N/A";
 
 /*** HMI local structures ***/
 
@@ -105,7 +105,7 @@ typedef struct {
 	char_t navigation_right[HMI_DATA_PAGES_DISPLAYED][HMI_NAVIGATION_ZONE_WIDTH_CHAR + 1];
 	SH1106_horizontal_line_t sh1106_line;
 	// Current node.
-	NODE_t rs485_node;
+	NODE_t node;
 } HMI_context_t;
 
 /*** HMI local global variables ***/
@@ -268,15 +268,15 @@ static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 		STRING_status_check(HMI_ERROR_BASE_STRING);
 		break;
 	case HMI_SCREEN_NODE_DATA:
-		node_status = NODE_get_name(&hmi_ctx.rs485_node, &text_ptr_1);
+		node_status = NODE_get_name(&hmi_ctx.node, &text_ptr_1);
 		switch (node_status) {
 		case NODE_SUCCESS:
-			text_ptr_2 = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_UNSUPPORTED_NODE_NAME;
+			text_ptr_2 = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_NA;
 			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, text_ptr_2, &hmi_ctx.text_width);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			break;
 		case NODE_ERROR_NOT_SUPPORTED:
-			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_UNSUPPORTED_NODE_NAME, &hmi_ctx.text_width);
+			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_NA, &hmi_ctx.text_width);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			break;
 		default:
@@ -285,7 +285,11 @@ static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 		}
 		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
 		STRING_status_check(HMI_ERROR_BASE_STRING);
-		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.rs485_node.address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+#ifdef AM
+		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.node.address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+#else
+		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_NA, &hmi_ctx.text_width);
+#endif
 		STRING_status_check(HMI_ERROR_BASE_STRING);
 		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
 		STRING_status_check(HMI_ERROR_BASE_STRING);
@@ -359,7 +363,7 @@ static HMI_status_t _HMI_update_data(void) {
 		status = HMI_ERROR_SCREEN;
 		goto errors;
 	}
-	node_status = NODE_update_data(&hmi_ctx.rs485_node, hmi_ctx.data_index);
+	node_status = NODE_update_data(&hmi_ctx.node, hmi_ctx.data_index);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);
@@ -369,7 +373,7 @@ static HMI_status_t _HMI_update_data(void) {
 		goto errors;
 	}
 	// Read data.
-	node_status = NODE_read_string_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, &text_ptr_1, &text_ptr_2);
+	node_status = NODE_read_string_data(&hmi_ctx.node, hmi_ctx.data_index, &text_ptr_1, &text_ptr_2);
 	// Check status and pointers.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);
@@ -425,16 +429,18 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 				goto errors;
 			}
 			// Build node.
-			hmi_ctx.rs485_node.address = NODES_LIST.list[idx].address;
-			hmi_ctx.rs485_node.board_id = NODES_LIST.list[idx].board_id;
+#ifdef AM
+			hmi_ctx.node.address = NODES_LIST.list[idx].address;
+#endif
+			hmi_ctx.node.board_id = NODES_LIST.list[idx].board_id;
 			// Get board name.
-			node_status = NODE_get_name(&hmi_ctx.rs485_node, &text_ptr_1);
+			node_status = NODE_get_name(&hmi_ctx.node, &text_ptr_1);
 			switch (node_status) {
 			case NODE_SUCCESS:
-				string_copy.source = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_UNSUPPORTED_NODE_NAME;
+				string_copy.source = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_NA;
 				break;
 			case NODE_ERROR_NOT_SUPPORTED:
-				string_copy.source = (char_t*) HMI_UNSUPPORTED_NODE_NAME;
+				string_copy.source = (char_t*) HMI_NA;
 				break;
 			default:
 				NODE_status_check(HMI_ERROR_BASE_NODE);
@@ -445,9 +451,13 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			string_copy.flush_flag = 1;
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
-			// Print RS485 address.
+			// Print node address.
 			_HMI_text_flush();
+#ifdef AM
 			status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+#else
+			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_NA, &hmi_ctx.text_width);
+#endif
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			string_copy.source = (char_t*) hmi_ctx.text;
 			string_copy.justification = STRING_JUSTIFICATION_RIGHT;
@@ -471,7 +481,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 		break;
 	case HMI_SCREEN_NODE_DATA:
 		// Update all node data.
-		node_status = NODE_update_all_data(&hmi_ctx.rs485_node);
+		node_status = NODE_update_all_data(&hmi_ctx.node);
 		switch (node_status) {
 		case NODE_SUCCESS:
 			// Go to next step.
@@ -494,7 +504,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			break;
 		}
 		// Get number of lines.
-		node_status = NODE_get_last_string_data_index(&hmi_ctx.rs485_node, &last_string_data_index);
+		node_status = NODE_get_last_string_data_index(&hmi_ctx.node, &last_string_data_index);
 		NODE_status_check(HMI_ERROR_BASE_NODE);
 		// Check result.
 		if (last_string_data_index == 0) {
@@ -518,7 +528,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 				goto errors;
 			}
 			// Read data.
-			node_status = NODE_read_string_data(&hmi_ctx.rs485_node, idx, &text_ptr_1, &text_ptr_2);
+			node_status = NODE_read_string_data(&hmi_ctx.node, idx, &text_ptr_1, &text_ptr_2);
 			NODE_status_check(HMI_ERROR_BASE_NODE);
 			// Update pointer.
 			string_copy.destination = (char_t*) hmi_ctx.data[idx];
@@ -646,8 +656,10 @@ static HMI_status_t _HMI_irq_callback_encoder_switch(void) {
 	switch (hmi_ctx.screen) {
 	case HMI_SCREEN_NODES_LIST:
 		// Update current node.
-		hmi_ctx.rs485_node.address = NODES_LIST.list[hmi_ctx.data_index].address;
-		hmi_ctx.rs485_node.board_id = NODES_LIST.list[hmi_ctx.data_index].board_id;
+#ifdef AM
+		hmi_ctx.node.address = NODES_LIST.list[hmi_ctx.data_index].address;
+#endif
+		hmi_ctx.node.board_id = NODES_LIST.list[hmi_ctx.data_index].board_id;
 		// Update screen.
 		status = _HMI_update(HMI_SCREEN_NODE_DATA, 1, 1);
 		break;
@@ -718,7 +730,7 @@ static HMI_status_t _HMI_irq_callback_cmd_on(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	NODE_access_status_t write_status;
 	// Execute node register write function.
-	node_status = NODE_write_string_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, 1, &write_status);
+	node_status = NODE_write_string_data(&hmi_ctx.node, hmi_ctx.data_index, 1, &write_status);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);
@@ -745,7 +757,7 @@ static HMI_status_t _HMI_irq_callback_cmd_off(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	NODE_access_status_t write_status;
 	// Execute node register write function.
-	node_status = NODE_write_string_data(&hmi_ctx.rs485_node, hmi_ctx.data_index, 0, &write_status);
+	node_status = NODE_write_string_data(&hmi_ctx.node, hmi_ctx.data_index, 0, &write_status);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);
@@ -878,8 +890,10 @@ errors:
  */
 void HMI_init(void) {
 	// Init context.
-	hmi_ctx.rs485_node.address = 0xFF;
-	hmi_ctx.rs485_node.board_id = DINFOX_BOARD_ID_ERROR;
+#ifdef AM
+	hmi_ctx.node.address = 0xFF;
+#endif
+	hmi_ctx.node.board_id = DINFOX_BOARD_ID_ERROR;
 	_HMI_reset_navigation();
 	// Init callbacks.
 	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_SWITCH] = &_HMI_irq_callback_encoder_switch;
@@ -930,7 +944,7 @@ HMI_status_t HMI_task(void) {
 	hmi_ctx.screen = HMI_SCREEN_OFF;
 	hmi_ctx.state = ((hmi_ctx.irq_flags & (0b1 << HMI_IRQ_ENCODER_SWITCH)) != 0) ? HMI_STATE_INIT : HMI_STATE_UNUSED;
 	hmi_ctx.unused_duration_seconds = 0;
-	// Turn RS485 interface on.
+	// Turn bus interface on.
 	lpuart1_status = LPUART1_power_on();
 	LPUART1_status_check(HMI_ERROR_BASE_LPUART);
 	// Process HMI while it is used.
@@ -970,7 +984,7 @@ errors:
 	// Turn HMI off.
 	I2C1_power_off();
 	_HMI_disable_irq();
-	// Turn RS485 interface off.
+	// Turn bus interface off.
 	LPUART1_power_off();
 	return status;
 }

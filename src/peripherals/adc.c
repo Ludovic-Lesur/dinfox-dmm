@@ -25,17 +25,6 @@
 #define ADC_VREFINT_VOLTAGE_MV			((VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (ADC_FULL_SCALE_12BITS))
 #define ADC_VMCU_DEFAULT_MV				3000
 
-#define ADC_VOLTAGE_DIVIDER_RATIO_VIN	10
-#define ADC_VOLTAGE_DIVIDER_RATIO_VSRC	10
-#define ADC_VOLTAGE_DIVIDER_RATIO_VSTR	2
-#define ADC_VOLTAGE_DIVIDER_RATIO_VCOM	10
-#define ADC_VOLTAGE_DIVIDER_RATIO_VOUT	10
-#define ADC_VOLTAGE_DIVIDER_RATIO_VBKP	2
-
-#define ADC_LT6106_VOLTAGE_GAIN			59
-#define ADC_LT6106_SHUNT_RESISTOR_MOHMS	10
-#define ADC_LT6106_OFFSET_CURRENT_UA	25000 // 250µV MAXIMUM / 10mR = 25mA.
-
 #define ADC_TIMEOUT_COUNT				1000000
 
 /*** ADC local structures ***/
@@ -49,6 +38,18 @@ typedef enum {
 	ADC_CHANNEL_LAST = 19
 } ADC_channel_t;
 
+typedef enum {
+	ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION = 0,
+	ADC_CONVERSION_TYPE_VOLTAGE_AMPLIFICATION,
+	ADC_CONVERSION_TYPE_LAST
+} ADC_conversion_t;
+
+typedef struct {
+	ADC_channel_t channel;
+	ADC_conversion_t gain_type;
+	uint32_t gain;
+} ADC_input_t;
+
 typedef struct {
 	uint32_t vrefint_12bits;
 	uint32_t data[ADC_DATA_INDEX_LAST];
@@ -57,6 +58,11 @@ typedef struct {
 
 /*** ADC local global variables ***/
 
+static const ADC_input_t ADC_INPUTS[ADC_DATA_INDEX_LAST] = {
+	{ADC_CHANNEL_VUSB, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2},
+	{ADC_CHANNEL_VHMI, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2},
+	{ADC_CHANNEL_VRS, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 10},
+};
 static ADC_context_t adc_ctx;
 
 /*** ADC local functions ***/
@@ -174,53 +180,33 @@ errors:
 	return status;
 }
 
-/* COMPUTE USB VOLTAGE.
+/* COMPUTE ALL ADC CHANNELS.
  * @param:			None.
  * @return status:	Function execution status.
  */
-static ADC_status_t _ADC1_compute_vusb(void) {
+static ADC_status_t _ADC1_compute_all_channels(void) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
-	uint32_t vusb_12bits = 0;
-	// Get raw result.
-	status = _ADC1_filtered_conversion(ADC_CHANNEL_VUSB, &vusb_12bits);
-	if (status != ADC_SUCCESS) goto errors;
-	// Convert to mV using VREFINT.
-	adc_ctx.data[ADC_DATA_INDEX_VUSB_MV] = (ADC_VREFINT_VOLTAGE_MV * vusb_12bits * ADC_VOLTAGE_DIVIDER_RATIO_VIN) / (adc_ctx.vrefint_12bits);
-errors:
-	return status;
-}
-
-/* COMPUTE RS485 BUS VOLTAGE.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static ADC_status_t _ADC1_compute_vrs(void) {
-	// Local variables.
-	ADC_status_t status = ADC_SUCCESS;
-	uint32_t vrs_12bits = 0;
-	// Get raw result.
-	status = _ADC1_filtered_conversion(ADC_CHANNEL_VRS, &vrs_12bits);
-	if (status != ADC_SUCCESS) goto errors;
-	// Convert to mV using VREFINT.
-	adc_ctx.data[ADC_DATA_INDEX_VRS_MV] = (ADC_VREFINT_VOLTAGE_MV * vrs_12bits * ADC_VOLTAGE_DIVIDER_RATIO_VCOM) / (adc_ctx.vrefint_12bits);
-errors:
-	return status;
-}
-
-/* COMPUTE HMI SUPPLY VOLTAGE.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static ADC_status_t _ADC1_compute_vhmi(void) {
-	// Local variables.
-	ADC_status_t status = ADC_SUCCESS;
-	uint32_t vhmi_12bits = 0;
-	// Get raw result.
-	status = _ADC1_filtered_conversion(ADC_CHANNEL_VHMI, &vhmi_12bits);
-	if (status != ADC_SUCCESS) goto errors;
-	// Convert to mV using VREFINT.
-	adc_ctx.data[ADC_DATA_INDEX_VHMI_MV] = (ADC_VREFINT_VOLTAGE_MV * vhmi_12bits * ADC_VOLTAGE_DIVIDER_RATIO_VSRC) / (adc_ctx.vrefint_12bits);
+	uint8_t idx = 0;
+	uint32_t voltage_12bits = 0;
+	// Channels loop.
+	for (idx=0 ; idx<ADC_DATA_INDEX_LAST ; idx++) {
+		// Get raw result.
+		status = _ADC1_filtered_conversion(ADC_INPUTS[idx].channel, &voltage_12bits);
+		if (status != ADC_SUCCESS) goto errors;
+		// Convert to mV using VREFINT.
+		switch (ADC_INPUTS[idx].gain_type) {
+		case ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION:
+			adc_ctx.data[idx] = (ADC_VREFINT_VOLTAGE_MV * voltage_12bits * ADC_INPUTS[idx].gain) / (adc_ctx.vrefint_12bits);
+			break;
+		case ADC_CONVERSION_TYPE_VOLTAGE_AMPLIFICATION:
+			adc_ctx.data[idx] = (ADC_VREFINT_VOLTAGE_MV * voltage_12bits) / (adc_ctx.vrefint_12bits * ADC_INPUTS[idx].gain);
+			break;
+		default:
+			status = ADC_ERROR_CONVERSION_TYPE;
+			goto errors;
+		}
+	}
 errors:
 	return status;
 }
@@ -308,14 +294,11 @@ ADC_status_t ADC1_perform_measurements(void) {
 	// Perform measurements.
 	status = _ADC1_compute_vrefint();
 	if (status != ADC_SUCCESS) goto errors;
-	status = _ADC1_compute_vusb();
-	if (status != ADC_SUCCESS) goto errors;
-	status = _ADC1_compute_vrs();
-	if (status != ADC_SUCCESS) goto errors;
-	status = _ADC1_compute_vhmi();
-	if (status != ADC_SUCCESS) goto errors;
 	_ADC1_compute_vmcu();
 	status = _ADC1_compute_tmcu();
+	if (status != ADC_SUCCESS) goto errors;
+	status = _ADC1_compute_all_channels();
+	if (status != ADC_SUCCESS) goto errors;
 errors:
 	// Switch internal voltage reference off.
 	ADC1 -> CCR &= ~(0b11 << 22); // TSEN='0' and VREFEF='0'.

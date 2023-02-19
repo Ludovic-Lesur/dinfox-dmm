@@ -9,7 +9,10 @@
 
 #include "dinfox.h"
 #include "lpuart.h"
+#include "mode.h"
 #include "node.h"
+
+#ifdef AM
 
 /*** R4S8CR local macros ***/
 
@@ -149,17 +152,17 @@ NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_rea
 		status = NODE_ERROR_REGISTER_ADDRESS;
 		goto errors;
 	}
-	if (((read_params -> node_address) < DINFOX_RS485_ADDRESS_R4S8CR_START) || ((read_params -> node_address) >= (DINFOX_RS485_ADDRESS_R4S8CR_START + DINFOX_RS485_ADDRESS_RANGE_R4S8CR))) {
+	if (((read_params -> node_address) < DINFOX_NODE_ADDRESS_R4S8CR_START) || ((read_params -> node_address) >= (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
 		status = NODE_ERROR_NODE_ADDRESS;
 		goto errors;
 	}
 	// Convert node address to ID.
-	relay_box_id = ((read_params -> node_address) - DINFOX_RS485_ADDRESS_R4S8CR_START + 1) & 0x0F;
+	relay_box_id = ((read_params -> node_address) - DINFOX_NODE_ADDRESS_R4S8CR_START + 1) & 0x0F;
 	// Flush buffers and status.
 	_R4S8CR_flush_buffers();
 	(read_status -> all) = 0;
 	// Build command.
-	r4s8cr_ctx.command[0] = R4S8CR_RS485_ADDRESS;
+	r4s8cr_ctx.command[0] = R4S8CR_NODE_ADDRESS;
 	r4s8cr_ctx.command[1] = (R4S8CR_COMMAND_READ | relay_box_id);
 	r4s8cr_ctx.command[2] = 0x00;
 	r4s8cr_ctx.command_size = (R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_COMMAND_SIZE_BYTES);
@@ -219,19 +222,19 @@ NODE_status_t R4S8CR_write_register(NODE_write_parameters_t* write_params, NODE_
 		status = NODE_ERROR_REGISTER_ADDRESS;
 		goto errors;
 	}
-	if (((write_params -> node_address) < DINFOX_RS485_ADDRESS_R4S8CR_START) || ((write_params -> node_address) >= (DINFOX_RS485_ADDRESS_R4S8CR_START + DINFOX_RS485_ADDRESS_RANGE_R4S8CR))) {
+	if (((write_params -> node_address) < DINFOX_NODE_ADDRESS_R4S8CR_START) || ((write_params -> node_address) >= (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
 		status = NODE_ERROR_NODE_ADDRESS;
 		goto errors;
 	}
 	// Convert node address to ID.
-	relay_box_id = ((write_params -> node_address) - DINFOX_RS485_ADDRESS_R4S8CR_START + 1) & 0x0F;
+	relay_box_id = ((write_params -> node_address) - DINFOX_NODE_ADDRESS_R4S8CR_START + 1) & 0x0F;
 	relay_id = ((relay_box_id - 1) * 8) + (write_params -> register_address) + 1;
 	// No reply after write operation.
 	(write_status -> all) = 0;
 	// Flush buffers.
 	_R4S8CR_flush_buffers();
 	// Build command.
-	r4s8cr_ctx.command[0] = R4S8CR_RS485_ADDRESS;
+	r4s8cr_ctx.command[0] = R4S8CR_NODE_ADDRESS;
 	r4s8cr_ctx.command[1] = relay_id;
 	r4s8cr_ctx.command[2] = ((write_params -> value) == 0) ? R4S8CR_COMMAND_OFF : R4S8CR_COMMAND_ON;
 	r4s8cr_ctx.command_size = (R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_COMMAND_SIZE_BYTES);
@@ -275,7 +278,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	read_params.register_address = R4S8CR_REGISTER_RELAY_1;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	// Loop on all addresses.
-	for (node_address=DINFOX_RS485_ADDRESS_R4S8CR_START ; node_address<(DINFOX_RS485_ADDRESS_R4S8CR_START + DINFOX_RS485_ADDRESS_RANGE_R4S8CR) ; node_address++) {
+	for (node_address=DINFOX_NODE_ADDRESS_R4S8CR_START ; node_address<(DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR) ; node_address++) {
 		// Update read parameters.
 		read_params.node_address = node_address;
 		// Ping address.
@@ -294,14 +297,11 @@ errors:
 	return status;
 }
 
-/* RETRIEVE SPECIFIC DATA OF RS48CR NODE.
- * @param rs485_address:		RS485 address of the node to update.
- * @param string_data_index:	Node string data index.
- * @param single_string_data:	Pointer to the data string to be filled.
- * @param registers_value:		Registers value table.
- * @return status:				Function execution status.
+/* RETRIEVE SPECIFIC DATA OF R4S8CR NODE.
+ * @param data_update:	Pointer to the data update structure.
+ * @return status:		Function execution status.
  */
-NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value) {
+NODE_status_t R4S8CR_update_data(NODE_data_update_t* data_update) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -309,16 +309,25 @@ NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_da
 	NODE_read_data_t read_data;
 	NODE_access_status_t read_status;
 	uint8_t buffer_size = 0;
+	// Check parameters.
+	if (data_update == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if (((data_update -> name_ptr) == NULL) || ((data_update -> value_ptr) == NULL) || ((data_update -> registers_value_ptr) == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
 	// Check index.
-	if (string_data_index >= R4S8CR_STRING_DATA_INDEX_LAST) {
+	if ((data_update -> string_data_index) >= R4S8CR_STRING_DATA_INDEX_LAST) {
 		status = NODE_ERROR_STRING_DATA_INDEX;
 		goto errors;
 	}
 	// Common read input parameters.
 #ifdef AM
-	read_params.node_address = rs485_address;
+	read_params.node_address = (data_update -> node_address);
 #endif
-	read_params.register_address = string_data_index;
+	read_params.register_address = (data_update -> string_data_index);
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = R4S8CR_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_BOOLEAN;
@@ -326,18 +335,18 @@ NODE_status_t R4S8CR_update_data(NODE_address_t rs485_address, uint8_t string_da
 	status = R4S8CR_read_register(&read_params, &read_data, &read_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Add data name.
-	NODE_append_string_name((char_t*) R4S8CR_STRING_DATA_NAME[string_data_index]);
+	NODE_append_string_name((char_t*) R4S8CR_STRING_DATA_NAME[(data_update -> string_data_index)]);
 	buffer_size = 0;
 	// Add data value.
 	if (read_status.all == 0) {
 		// Update integer data.
-		NODE_update_value(string_data_index, read_data.value);
+		NODE_update_value((data_update -> string_data_index), read_data.value);
 		NODE_append_string_value((read_data.value == 0) ? "OFF" : "ON");
 	}
 	else {
 		NODE_flush_string_value();
 		NODE_append_string_value(NODE_ERROR_STRING);
-		NODE_update_value(string_data_index, R4S8CR_ERROR_VALUE[string_data_index]);
+		NODE_update_value((data_update -> string_data_index), R4S8CR_ERROR_VALUE[(data_update -> string_data_index)]);
 	}
 errors:
 	return status;
@@ -400,3 +409,5 @@ void R4S8CR_fill_rx_buffer(uint8_t rx_byte) {
 	// Manage index.
 	r4s8cr_ctx.reply_size = (r4s8cr_ctx.reply_size + 1) % R4S8CR_BUFFER_SIZE_BYTES;
 }
+
+#endif /* AM */

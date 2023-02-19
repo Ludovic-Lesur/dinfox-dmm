@@ -19,7 +19,7 @@
 #define NODE_STRING_BUFFER_SIZE			32
 
 #define NODE_ERROR_STRING				"ERROR"
-#define NODE_ERROR_VALUE_RS485_ADDRESS	0xFF
+#define NODE_ERROR_VALUE_NODE_ADDRESS	0xFF
 #define NODE_ERROR_VALUE_BOARD_ID		0xFF
 #define NODE_ERROR_VALUE_VERSION		0xFF
 #define NODE_ERROR_VALUE_COMMIT_INDEX	0xFF
@@ -57,10 +57,14 @@ typedef enum {
 	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } NODE_status_t;
 
+#ifdef AM
 typedef uint8_t	NODE_address_t;
+#endif
 
 typedef struct {
+#ifdef AM
 	NODE_address_t address;
+#endif
 	uint8_t board_id;
 } NODE_t;
 
@@ -126,9 +130,14 @@ typedef union {
 } NODE_access_status_t;
 
 typedef struct {
+#ifdef AM
+	NODE_address_t node_address;
+#endif
+	uint8_t string_data_index;
 	char_t* name_ptr;
 	char_t* value_ptr;
-} NODE_single_string_data_t;
+	int32_t* registers_value_ptr;
+} NODE_data_update_t;
 
 typedef enum {
 	NODE_SIGFOX_PAYLOAD_TYPE_STARTUP = 0,
@@ -161,25 +170,25 @@ NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_
 NODE_status_t NODE_task(void);
 
 #define NODE_append_string_name(str) { \
-	string_status = STRING_append_string((single_string_data -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
+	string_status = STRING_append_string((data_update -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
 	STRING_status_check(NODE_ERROR_BASE_STRING); \
 }
 
 #define NODE_append_string_value(str) { \
-	string_status = STRING_append_string((single_string_data -> value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
+	string_status = STRING_append_string((data_update -> value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
 	STRING_status_check(NODE_ERROR_BASE_STRING); \
 }
 
 #define NODE_flush_string_value(void) { \
 	uint8_t char_idx = 0; \
 	for (char_idx=0 ; char_idx<NODE_STRING_BUFFER_SIZE ; char_idx++) { \
-		(single_string_data -> value_ptr)[char_idx] = STRING_CHAR_NULL; \
+		(data_update -> value_ptr)[char_idx] = STRING_CHAR_NULL; \
 	} \
 	buffer_size = 0; \
 }
 
 #define NODE_update_value(addr, val) { \
-	registers_value[addr] = val; \
+	(data_update -> registers_value_ptr)[addr] = val; \
 }
 
 #define NODE_status_check(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; }}

@@ -11,6 +11,7 @@
 #include "dinfox.h"
 #include "lpuart.h"
 #include "lvrm.h"
+#include "mode.h"
 #include "r4s8cr.h"
 #include "rtc.h"
 #include "uhfm.h"
@@ -30,13 +31,15 @@
 
 typedef enum {
 	NODE_PROTOCOL_AT = 0,
+#ifdef AM
 	NODE_PROTOCOL_R4S8CR,
+#endif
 	NODE_PROTOCOL_LAST
 } NODE_protocol_t;
 
 typedef NODE_status_t (*NODE_read_register_t)(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status);
 typedef NODE_status_t (*NODE_write_register_t)(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);
-typedef NODE_status_t (*NODE_update_data_t)(NODE_address_t rs485_address, uint8_t string_data_index, NODE_single_string_data_t* single_string_data, int32_t* registers_value);
+typedef NODE_status_t (*NODE_update_data_t)(NODE_data_update_t* data_update);
 typedef NODE_status_t (*NODE_get_sigfox_payload_t)(int32_t* integer_data_value, NODE_sigfox_payload_type_t sigfox_payload_type, uint8_t* sigfox_payload, uint8_t* sigfox_payload_size);
 
 typedef struct {
@@ -58,7 +61,7 @@ typedef struct {
 typedef union {
 	uint8_t frame[NODE_SIGFOX_PAYLOAD_SIZE_MAX];
 	struct {
-		unsigned rs485_address : 8;
+		unsigned node_address : 8;
 		unsigned board_id : 8;
 		uint8_t node_data[NODE_SIGFOX_PAYLOAD_SIZE_MAX - 2];
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
@@ -84,7 +87,11 @@ typedef struct {
 
 typedef struct {
 	NODE_data_t data;
+#ifdef AM
 	NODE_address_t uhfm_address;
+#else
+	uint8_t uhfm_connected;
+#endif
 	NODE_sigfox_payload_t sigfox_payload;
 	uint8_t sigfox_payload_size;
 	uint32_t sigfox_seconds_count;
@@ -126,8 +133,10 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	{"MPMCM", NODE_PROTOCOL_AT, 0, 0, NULL,
 		{&AT_read_register, &AT_write_register, NULL, NULL}
 	},
+#ifdef AM
 	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTERS_FORMAT,
 		{&R4S8CR_read_register, &R4S8CR_write_register, &R4S8CR_update_data, &R4S8CR_get_sigfox_payload}},
+#endif
 };
 static NODE_context_t node_ctx;
 
@@ -193,7 +202,9 @@ void _NODE_flush_list(void) {
 	uint8_t idx = 0;
 	// Reset node list.
 	for (idx=0 ; idx<NODES_LIST_SIZE_MAX ; idx++) {
+#ifdef AM
 		NODES_LIST.list[idx].address = 0xFF;
+#endif
 		NODES_LIST.list[idx].board_id = DINFOX_BOARD_ID_ERROR;
 	}
 	NODES_LIST.count = 0;
@@ -218,9 +229,13 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_p
 	// Reset payload.
 	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_payload.frame[idx] = 0x00;
 	node_ctx.sigfox_payload_size = 0;
-	// Add board ID and RS485 address.
+	// Add board ID and node address.
 	node_ctx.sigfox_payload.board_id = (node -> board_id);
-	node_ctx.sigfox_payload.rs485_address = (node -> address);
+#ifdef AM
+	node_ctx.sigfox_payload.node_address = (node -> address);
+#else
+	node_ctx.sigfox_payload.node_address = DINFOX_NODE_ADDRESS_BROADCAST;
+#endif
 	node_ctx.sigfox_payload_size = 2;
 	// Add specific payload.
 	switch (sigfox_payload_type) {
@@ -260,7 +275,11 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_p
 		goto errors;
 	}
 	// Check UHFM board availability.
-	if (node_ctx.uhfm_address == DINFOX_RS485_ADDRESS_BROADCAST) {
+#ifdef AM
+	if (node_ctx.uhfm_address == DINFOX_NODE_ADDRESS_BROADCAST) {
+#else
+	if (node_ctx.uhfm_connected == 0) {
+#endif
 		status = NODE_ERROR_NONE_RADIO_MODULE;
 		goto errors;
 	}
@@ -270,7 +289,11 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_payload_type_t sigfox_p
 	sigfox_message.bidirectional_flag = 0;
 	sigfox_message.dl_payload = NULL;
 	// Send message.
+#ifdef AM
 	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &send_status);
+#else
+	status = UHFM_send_sigfox_message(&sigfox_message, &send_status);
+#endif
 	if (status != NODE_SUCCESS) goto errors;
 	// Check send status.
 	if (send_status.all != 0) {
@@ -296,7 +319,7 @@ void NODE_init(void) {
 }
 
 /* GET NODE BOARD NAME.
- * @param rs485_node:		Node to get name of.
+ * @param node:				Node to get name of.
  * @param board_name_ptr:	Pointer to string that will contain board name.
  * @return status:			Function execution status.
  */
@@ -312,9 +335,9 @@ errors:
 }
 
 /* GET NODE LAST STRING INDEX.
- * @param rs485_node:				Node to get name of.
+ * @param node:						Node to get name of.
  * @param last_string_data_index:	Pointer to byte that will contain last string index.
- * @return status:				Function execution status.
+ * @return status:					Function execution status.
  */
 NODE_status_t NODE_get_last_string_data_index(NODE_t* node, uint8_t* last_string_data_index) {
 	// Local variables.
@@ -335,29 +358,36 @@ errors:
 NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_single_string_data_t single_string_data;
+	NODE_data_update_t data_update;
 	// Check board ID.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(update_data);
 	// Flush line.
 	_NODE_flush_string_data_value(string_data_index);
 	// Update pointers.
-	single_string_data.name_ptr = (char_t*) &(node_ctx.data.string_data_name[string_data_index]);
-	single_string_data.value_ptr = (char_t*) &(node_ctx.data.string_data_value[string_data_index]);
+#ifdef AM
+	data_update.node_address = (node -> address);
+#endif
+	data_update.string_data_index = string_data_index;
+	data_update.name_ptr = (char_t*) &(node_ctx.data.string_data_name[string_data_index]);
+	data_update.value_ptr = (char_t*) &(node_ctx.data.string_data_value[string_data_index]);
+	data_update.registers_value_ptr = (int32_t*) node_ctx.data.registers_value;
 	// Check node protocol.
 	switch (NODES[node -> board_id].protocol) {
 	case NODE_PROTOCOL_AT:
 		// Check index to update common or specific data.
 		if (string_data_index < DINFOX_STRING_DATA_INDEX_LAST) {
-			status = DINFOX_update_data((node -> address), string_data_index, &single_string_data, node_ctx.data.registers_value);
+			status = DINFOX_update_data(&data_update);
 		}
 		else {
-			status = NODES[node -> board_id].functions.update_data((node -> address), string_data_index, &single_string_data, node_ctx.data.registers_value);
+			status = NODES[node -> board_id].functions.update_data(&data_update);
 		}
 		break;
+#ifdef AM
 	case NODE_PROTOCOL_R4S8CR:
-		status = NODES[node -> board_id].functions.update_data((node -> address), string_data_index, &single_string_data, node_ctx.data.registers_value);
+		status = NODES[node -> board_id].functions.update_data(&data_update);
 		break;
+#endif
 	default:
 		status = NODE_ERROR_PROTOCOL;
 		break;
@@ -461,11 +491,13 @@ NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_
 		write_input.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
 		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
 		break;
+#ifdef AM
 	case NODE_PROTOCOL_R4S8CR:
 		// Specific write parameters.
 		write_input.timeout_ms = R4S8CR_TIMEOUT_MS;
 		write_input.format = NODES[node -> board_id].registers_format[register_address];
 		break;
+#endif
 	default:
 		status = NODE_ERROR_PROTOCOL;
 		break;
@@ -506,10 +538,16 @@ NODE_status_t NODE_scan(void) {
 	uint8_t idx = 0;
 	// Reset list.
 	_NODE_flush_list();
-	node_ctx.uhfm_address = DINFOX_RS485_ADDRESS_BROADCAST;
+#ifdef AM
+	node_ctx.uhfm_address = DINFOX_NODE_ADDRESS_BROADCAST;
+#else
+	node_ctx.uhfm_connected = 0;
+#endif
 	// Add master board to the list.
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
-	NODES_LIST.list[0].address = DINFOX_RS485_ADDRESS_DMM;
+#ifdef AM
+	NODES_LIST.list[0].address = DINFOX_NODE_ADDRESS_DMM;
+#endif
 	NODES_LIST.count++;
 	// Scan LBUS nodes.
 	status = AT_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
@@ -520,15 +558,21 @@ NODE_status_t NODE_scan(void) {
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// Check board ID.
 		if (NODES_LIST.list[idx].board_id == DINFOX_BOARD_ID_UHFM) {
+#ifdef AM
 			node_ctx.uhfm_address = NODES_LIST.list[idx].address;
+#else
+			node_ctx.uhfm_connected = 1;
+#endif
 			break;
 		}
 	}
+#ifdef AM
 	// Scan R4S8CR nodes.
 	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
 	NODES_LIST.count += nodes_count;
+#endif
 errors:
 	return status;
 }
@@ -548,7 +592,7 @@ NODE_status_t NODE_task(void) {
 	if (node_ctx.sigfox_seconds_count >= NODE_SIGFOX_PERIOD_SECONDS) {
 		// Reset count.
 		node_ctx.sigfox_seconds_count = 0;
-		// Turn RS485 interface on.
+		// Turn bus interface on.
 		lpuart1_status = LPUART1_power_on();
 		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 		// Search next Sigfox message to send.
@@ -587,7 +631,7 @@ NODE_status_t NODE_task(void) {
 		while (status != NODE_SUCCESS);
 	}
 errors:
-	// Turn RS485 interface off.
+	// Turn bus interface off.
 	LPUART1_power_off();
 	return status;
 }

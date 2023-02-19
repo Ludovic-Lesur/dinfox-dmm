@@ -123,7 +123,7 @@ void LPUART1_init(void) {
 #endif
 	// Configure peripheral in addressed mode by default.
 	LPUART1 -> CR1 |= 0x00002822;
-	LPUART1 -> CR2 |= (DINFOX_RS485_ADDRESS_DMM << 24) | (0b1 << 4);
+	LPUART1 -> CR2 |= (DINFOX_NODE_ADDRESS_DMM << 24) | (0b1 << 4);
 	LPUART1 -> CR3 |= 0x00805000;
 	// Baud rate.
 	_LPUART1_set_baud_rate(LPUART_BAUD_RATE_DEFAULT);
@@ -137,7 +137,7 @@ void LPUART1_init(void) {
 	LPUART1 -> CR1 |= (0b1 << 0); // UE='1'.
 }
 
-/* TURN RS485 INTERFACE ON.
+/* TURN BUS INTERFACE ON.
  * @param:			None.
  * @return status:	Function execution status.
  */
@@ -145,7 +145,7 @@ LPUART_status_t LPUART1_power_on(void) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
-	// Turn RS485 transceiver on.
+	// Turn transceiver on.
 	GPIO_write(&GPIO_TRX_POWER_ENABLE, 1);
 	// Connect pins to LPUART peripheral.
 	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
@@ -158,7 +158,7 @@ errors:
 	return status;
 }
 
-/* TURN RS485 INTERFACE OFF.
+/* TURN BUS INTERFACE OFF.
  * @param:	None.
  * @return:	None.
  */
@@ -167,7 +167,7 @@ void LPUART1_power_off(void) {
 	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
-	// Turn RS485 transceiver on.
+	// Turn transceiver on.
 	GPIO_write(&GPIO_TRX_POWER_ENABLE, 0);
 }
 
@@ -186,7 +186,6 @@ void LPUART1_enable_rx(void) {
 	// Enable receiver.
 	LPUART1 -> CR1 |= (0b1 << 2); // RE='1'.
 #ifdef LPUART_USE_NRE
-	// Enable RS485 receiver.
 	GPIO_write(&GPIO_LPUART1_NRE, 0);
 #endif
 }
@@ -196,11 +195,10 @@ void LPUART1_enable_rx(void) {
  * @return:	None.
  */
 void LPUART1_disable_rx(void) {
+	// Disable receiver.
 #ifdef LPUART_USE_NRE
-	// Disable RS485 receiver.
 	GPIO_write(&GPIO_LPUART1_NRE, 1);
 #endif
-	// Disable receiver.
 	LPUART1 -> CR1 &= ~(0b1 << 2); // RE='0'.
 	// Disable interrupt.
 	NVIC_disable_interrupt(NVIC_INTERRUPT_LPUART1);

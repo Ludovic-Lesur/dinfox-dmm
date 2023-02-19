@@ -13,12 +13,13 @@
 #include "lpuart.h"
 #include "types.h"
 
-#ifdef AM
-
 /*** LBUS macros ***/
 
+#define LBUS_BAUD_RATE		1200
 #define LBUS_ADDRESS_MASK	0x7F
 #define LBUS_ADDRESS_LAST	LBUS_ADDRESS_MASK
+
+#ifdef AM
 
 /*** LBUS functions ***/
 

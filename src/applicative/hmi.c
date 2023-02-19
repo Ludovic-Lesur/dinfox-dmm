@@ -488,7 +488,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 		// Lines loop.
 		for (idx=0 ; idx<HMI_DATA_PAGES_DISPLAYED ; idx++) {
 			string_copy.source = (char_t*) HMI_MESSAGE_READING_DATA[idx];
-			string_copy.destination = (char_t*) hmi_ctx.data[idx];
+			string_copy.destination = (char_t*) hmi_ctx.data[hmi_ctx.data_offset_index + idx];
 			string_status = STRING_copy(&string_copy);
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 		}
@@ -943,9 +943,9 @@ void HMI_init(void) {
 	GPIO_configure(&GPIO_ENC_CHB, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	EXTI_configure_gpio(&GPIO_ENC_CHB, EXTI_TRIGGER_RISING_EDGE);
 	// Set interrupts priority.
-	NVIC_set_priority(NVIC_INTERRUPT_EXTI_0_1, 0);
+	NVIC_set_priority(NVIC_INTERRUPT_EXTI_0_1, 1);
 	NVIC_set_priority(NVIC_INTERRUPT_EXTI_2_3, 1);
-	NVIC_set_priority(NVIC_INTERRUPT_EXTI_4_15, 2);
+	NVIC_set_priority(NVIC_INTERRUPT_EXTI_4_15, 1);
 }
 
 /* MAIN TASK OF HMI.

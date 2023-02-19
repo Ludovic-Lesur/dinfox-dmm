@@ -8,7 +8,6 @@
 #include "tim.h"
 
 #include "mapping.h"
-#include "mode.h"
 #include "nvic.h"
 #include "rcc.h"
 #include "rcc_reg.h"
@@ -133,7 +132,7 @@ void TIM3_init(void) {
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 1); // TIM3EN='1'.
 	// Set PWM frequency.
-	TIM3 -> ARR = TIM3_ARR_VALUE; // Timer input clock is SYSCLK (PSC=0 by default).
+	TIM3 -> ARR = TIM3_ARR_VALUE;
 	// Configure channels 1-4 in PWM mode 1 (OCxM='110' and OCxPE='1').
 	TIM3 -> CCMR1 |= (0b110 << 12) | (0b1 << 11) | (0b110 << 4) | (0b1 << 3);
 	TIM3 -> CCMR2 |= (0b110 << 12) | (0b1 << 11) | (0b110 << 4) | (0b1 << 3);
@@ -184,6 +183,10 @@ void TIM3_stop(void) {
  * @return:	None.
  */
 void TIM22_init(void) {
+	// Init context.
+	tim22_ctx.dimming_lut_idx = 0;
+	tim22_ctx.dimming_lut_direction = 0;
+	tim22_ctx.single_blink_done = 1;
 	// Enable peripheral clock.
 	RCC -> APB2ENR |= (0b1 << 5); // TIM22EN='1'.
 	// Configure period.
@@ -193,7 +196,7 @@ void TIM22_init(void) {
 	// Enable interrupt.
 	TIM22 -> DIER |= (0b1 << 0);
 	// Set interrupt priority.
-	NVIC_set_priority(NVIC_INTERRUPT_TIM22, NVIC_PRIORITY_MIN);
+	NVIC_set_priority(NVIC_INTERRUPT_TIM22, 3);
 }
 
 /* START TIM22 PERIPHERAL.

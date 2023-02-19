@@ -214,6 +214,7 @@ NODE_status_t _AT_wait_reply(NODE_reply_parameters_t* reply_params, NODE_read_da
 			(reply_status -> sequence_timeout) = 1;
 			break;
 		}
+		IWDG_reload();
 	}
 errors:
 	return status;

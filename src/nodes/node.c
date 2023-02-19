@@ -24,7 +24,8 @@
 #define NODE_SIGFOX_PAYLOAD_STARTUP_SIZE	8
 #define NODE_SIGFOX_PAYLOAD_SIZE_MAX		12
 
-#define NODE_SIGFOX_PERIOD_SECONDS			300
+#define NODE_SIGFOX_UL_PERIOD_SECONDS		300
+#define NODE_SIGFOX_DL_PERIOD_SECONDS		3600
 #define NODE_SIGFOX_LOOP_MAX				100
 
 /*** NODE local structures ***/
@@ -36,6 +37,13 @@ typedef enum {
 #endif
 	NODE_PROTOCOL_LAST
 } NODE_protocol_t;
+
+typedef enum {
+	NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE = 0,
+	NODE_DOWNLINK_OPERATION_CODE_TOGGLE_OFF_ON,
+	NODE_DOWNLINK_OPERATION_CODE_TOGGLE_ON_OFF,
+	NODE_DOWNLINK_OPERATION_CODE_LAST
+} NODE_downlink_operation_code_t;
 
 typedef NODE_status_t (*NODE_read_register_t)(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status);
 typedef NODE_status_t (*NODE_write_register_t)(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);
@@ -59,13 +67,24 @@ typedef struct {
 } NODE_descriptor_t;
 
 typedef union {
-	uint8_t frame[NODE_SIGFOX_PAYLOAD_SIZE_MAX];
+	uint8_t frame[UHFM_SIGFOX_UL_PAYLOAD_SIZE_MAX];
 	struct {
 		unsigned node_address : 8;
 		unsigned board_id : 8;
 		uint8_t node_data[NODE_SIGFOX_PAYLOAD_SIZE_MAX - 2];
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } NODE_sigfox_ul_payload_t;
+
+typedef union {
+	uint8_t frame[UHFM_SIGFOX_DL_PAYLOAD_SIZE];
+	struct {
+		unsigned node_address : 8;
+		unsigned board_id : 8;
+		unsigned register_address : 8;
+		unsigned operation_code : 8;
+		unsigned data : 32;
+	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+} NODE_sigfox_dl_payload_t;
 
 typedef union {
 	uint8_t frame[NODE_SIGFOX_PAYLOAD_STARTUP_SIZE];
@@ -94,12 +113,13 @@ typedef struct {
 #endif
 	// Uplink.
 	NODE_sigfox_ul_payload_t sigfox_ul_payload;
+	NODE_sigfox_ul_payload_type_t sigfox_ul_payload_type_index;
 	uint8_t sigfox_ul_payload_size;
 	uint32_t sigfox_ul_seconds_count;
 	uint8_t sigfox_ul_node_list_index;
-	NODE_sigfox_ul_payload_type_t sigfox_ul_payload_type_index;
 	// Downlink.
-	uint8_t sigfox_dl_payload[UHFM_SIGFOX_DL_PAYLOAD_SIZE];
+	NODE_sigfox_dl_payload_t sigfox_dl_payload;
+	uint32_t sigfox_dl_seconds_count;
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -291,7 +311,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 	sigfox_message.ul_payload = (uint8_t*) node_ctx.sigfox_ul_payload.frame;
 	sigfox_message.ul_payload_size = node_ctx.sigfox_ul_payload_size;
 	sigfox_message.bidirectional_flag = bidirectional_flag;
-	sigfox_message.dl_payload = (uint8_t*) node_ctx.sigfox_dl_payload;
+	sigfox_message.dl_payload = (uint8_t*) node_ctx.sigfox_dl_payload.frame;
 	// Send message.
 #ifdef AM
 	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &send_status);
@@ -307,6 +327,50 @@ errors:
 	return status;
 }
 
+/* PARSE SIGFOX DL PAYLOAD AND EXECUTE CORRESPONDING ACTION.
+ * @param:	None.
+ * @return:	None.
+ */
+NODE_status_t _NODE_execute_downlink(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t write_status;
+	uint8_t address_match = 0;
+	uint8_t idx = 0;
+#ifdef AM
+	// Search board in nodes list.
+	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
+		// Compare address
+		if (NODES_LIST.list[idx].address == node_ctx.sigfox_dl_payload.node_address) {
+			address_match = 1;
+			break;
+		}
+	}
+	// Check flag.
+	if (address_match == 0) {
+		status = NODE_ERROR_DOWNLINK_NODE_ADDRESS;
+		goto errors;
+	}
+	// Check board ID.
+	if (NODES_LIST.list[idx].board_id != node_ctx.sigfox_dl_payload.board_id) {
+		status = NODE_ERROR_DOWNLINK_BOARD_ID;
+		goto errors;
+	}
+#endif
+	// Check operation code.
+	switch (node_ctx.sigfox_dl_payload.operation_code) {
+	case NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE:
+		// Perform write operation.
+		status = NODE_write_register(&NODES_LIST.list[idx], node_ctx.sigfox_dl_payload.register_address, node_ctx.sigfox_dl_payload.data, &write_status);
+		break;
+	default:
+		status = NODE_ERROR_DOWNLINK_OPERATION_CODE;
+		break;
+	}
+errors:
+	return status;
+}
+
 /*** NODE functions ***/
 
 /* INIT NODE LAYER.
@@ -317,9 +381,10 @@ void NODE_init(void) {
 	// Reset node list.
 	_NODE_flush_list();
 	// Init context.
-	node_ctx.sigfox_ul_seconds_count = NODE_SIGFOX_PERIOD_SECONDS;
+	node_ctx.sigfox_ul_seconds_count = NODE_SIGFOX_UL_PERIOD_SECONDS;
 	node_ctx.sigfox_ul_node_list_index = 0;
 	node_ctx.sigfox_ul_payload_type_index = 0;
+	node_ctx.sigfox_dl_seconds_count = NODE_SIGFOX_DL_PERIOD_SECONDS;
 }
 
 /* GET NODE BOARD NAME.
@@ -590,12 +655,20 @@ NODE_status_t NODE_task(void) {
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	uint32_t loop_count = 0;
+	uint8_t bidirectional_flag = 0;
 	// Increment time.
 	node_ctx.sigfox_ul_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
-	// Check Sigfox period.
-	if (node_ctx.sigfox_ul_seconds_count >= NODE_SIGFOX_PERIOD_SECONDS) {
+	node_ctx.sigfox_dl_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
+	// Check uplink period.
+	if (node_ctx.sigfox_ul_seconds_count >= NODE_SIGFOX_UL_PERIOD_SECONDS) {
 		// Reset count.
 		node_ctx.sigfox_ul_seconds_count = 0;
+		// Check downlink period.
+		if (node_ctx.sigfox_dl_seconds_count >= NODE_SIGFOX_DL_PERIOD_SECONDS) {
+			// Reset count and set bidirectional flag.
+			node_ctx.sigfox_dl_seconds_count = 0;
+			bidirectional_flag = 1;
+		}
 		// Turn bus interface on.
 		lpuart1_status = LPUART1_power_on();
 		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
@@ -605,7 +678,7 @@ NODE_status_t NODE_task(void) {
 			status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]));
 			if (status == NODE_SUCCESS) {
 				// Send data through radio.
-				status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, 0);
+				status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, bidirectional_flag);
 				// Handle all errors except not supported and empty payload.
 				if ((status != NODE_SUCCESS) && (status != NODE_ERROR_NOT_SUPPORTED) && (status != NODE_ERROR_SIGFOX_PAYLOAD_EMPTY)) goto errors;
 			}
@@ -633,6 +706,10 @@ NODE_status_t NODE_task(void) {
 
 		}
 		while (status != NODE_SUCCESS);
+	}
+	// Execute downlink operation if needed.
+	if (bidirectional_flag != 0) {
+		status = _NODE_execute_downlink();
 	}
 errors:
 	// Turn bus interface off.

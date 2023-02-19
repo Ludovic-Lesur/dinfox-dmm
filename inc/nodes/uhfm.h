@@ -15,7 +15,8 @@
 
 /*** UHFM macros ***/
 
-#define UHFM_SIGFOX_DL_PAYLOAD_SIZE		8
+#define UHFM_SIGFOX_UL_PAYLOAD_SIZE_MAX		12
+#define UHFM_SIGFOX_DL_PAYLOAD_SIZE			8
 
 /*** UHFM structures ***/
 

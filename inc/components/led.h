@@ -35,6 +35,7 @@ typedef enum {
 /*** LED functions ***/
 
 void LED_init(void);
+LED_status_t LED_set_color(LED_color_t color);
 LED_status_t LED_start_single_blink(LED_color_t color, uint32_t blink_duration_ms);
 uint8_t LED_is_single_blink_done(void);
 void LED_stop_blink(void);

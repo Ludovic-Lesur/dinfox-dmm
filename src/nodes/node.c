@@ -115,11 +115,11 @@ typedef struct {
 	NODE_sigfox_ul_payload_t sigfox_ul_payload;
 	NODE_sigfox_ul_payload_type_t sigfox_ul_payload_type_index;
 	uint8_t sigfox_ul_payload_size;
-	uint32_t sigfox_ul_seconds_count;
+	uint32_t sigfox_ul_next_time_seconds;
 	uint8_t sigfox_ul_node_list_index;
 	// Downlink.
 	NODE_sigfox_dl_payload_t sigfox_dl_payload;
-	uint32_t sigfox_dl_seconds_count;
+	uint32_t sigfox_dl_next_time_seconds;
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -381,10 +381,11 @@ void NODE_init(void) {
 	// Reset node list.
 	_NODE_flush_list();
 	// Init context.
-	node_ctx.sigfox_ul_seconds_count = NODE_SIGFOX_UL_PERIOD_SECONDS;
 	node_ctx.sigfox_ul_node_list_index = 0;
+	node_ctx.sigfox_ul_next_time_seconds = 0;
+
 	node_ctx.sigfox_ul_payload_type_index = 0;
-	node_ctx.sigfox_dl_seconds_count = NODE_SIGFOX_DL_PERIOD_SECONDS;
+	node_ctx.sigfox_dl_next_time_seconds = 0;
 }
 
 /* GET NODE BOARD NAME.
@@ -657,17 +658,14 @@ NODE_status_t NODE_task(void) {
 	uint32_t loop_count = 0;
 	uint8_t bidirectional_flag = 0;
 	uint8_t node_update_required = 1;
-	// Increment time.
-	node_ctx.sigfox_ul_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
-	node_ctx.sigfox_dl_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
 	// Check uplink period.
-	if (node_ctx.sigfox_ul_seconds_count >= NODE_SIGFOX_UL_PERIOD_SECONDS) {
-		// Reset count.
-		node_ctx.sigfox_ul_seconds_count = 0;
+	if (RTC_get_time_seconds() >= node_ctx.sigfox_ul_next_time_seconds) {
+		// Update next time.
+		node_ctx.sigfox_ul_next_time_seconds += NODE_SIGFOX_UL_PERIOD_SECONDS;
 		// Check downlink period.
-		if (node_ctx.sigfox_dl_seconds_count >= NODE_SIGFOX_DL_PERIOD_SECONDS) {
-			// Reset count and set bidirectional flag.
-			node_ctx.sigfox_dl_seconds_count = 0;
+		if (RTC_get_time_seconds() >= node_ctx.sigfox_dl_next_time_seconds) {
+			// Update next time and set bidirectional flag.
+			node_ctx.sigfox_dl_next_time_seconds += NODE_SIGFOX_DL_PERIOD_SECONDS;
 			bidirectional_flag = 1;
 		}
 		// Turn bus interface on.

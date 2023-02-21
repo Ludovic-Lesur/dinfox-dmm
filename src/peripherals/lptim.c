@@ -8,6 +8,7 @@
 #include "lptim.h"
 
 #include "exti.h"
+#include "exti_reg.h"
 #include "iwdg.h"
 #include "lptim_reg.h"
 #include "nvic.h"
@@ -43,6 +44,7 @@ void __attribute__((optimize("-O0"))) LPTIM1_IRQHandler(void) {
 		// Clear flag.
 		LPTIM1 -> ICR |= (0b1 << 1);
 	}
+	EXTI -> PR |= (0b1 << EXTI_LINE_LPTIM1);
 }
 
 /* WRITE ARR REGISTER.
@@ -154,4 +156,60 @@ errors:
 	// Disable timer.
 	LPTIM1 -> CR &= ~(0b1 << 0); // Disable LPTIM1 (ENABLE='0').
 	return status;
+}
+
+/* START LPTIM.
+ * @param delay_ms:		Number of milliseconds to wait.
+ * @return status:		Function execution status.
+ */
+LPTIM_status_t LPTIM1_start(uint32_t delay_ms) {
+	// Local variables.
+	LPTIM_status_t status = LPTIM_SUCCESS;
+	uint32_t arr = 0;
+	// Check delay.
+	if ((delay_ms > LPTIM_DELAY_MS_MAX) || (delay_ms > (IWDG_REFRESH_PERIOD_SECONDS * 1000))) {
+		status = LPTIM_ERROR_DELAY_OVERFLOW;
+		goto errors;
+	}
+	if (delay_ms < LPTIM_DELAY_MS_MIN) {
+		status = LPTIM_ERROR_DELAY_UNDERFLOW;
+		goto errors;
+	}
+	// Enable timer.
+	LPTIM1 -> CR |= (0b1 << 0); // Enable LPTIM1 (ENABLE='1').
+	// Reset counter and flags.
+	LPTIM1 -> CNT &= 0xFFFF0000;
+	LPTIM1 -> ICR |= (0b1111111 << 0);
+	// Compute ARR value.
+	arr = ((delay_ms * lptim_clock_frequency_hz) / (1000)) & 0x0000FFFF;
+	status = _LPTIM1_write_arr(arr);
+	if (status != LPTIM_SUCCESS) goto errors;
+	// Enable interrupt.
+	NVIC_enable_interrupt(NVIC_INTERRUPT_LPTIM1);
+	lptim_wake_up = 0;
+	// Start timer.
+	LPTIM1 -> CR |= (0b1 << 1); // SNGSTRT='1'.
+errors:
+	return status;
+}
+
+/* STOP LPTIM.
+ * @param delay_ms:		Number of milliseconds to wait.
+ * @return status:		Function execution status.
+ */
+void LPTIM1_stop(void) {
+	// Disable interrupt.
+	NVIC_disable_interrupt(NVIC_INTERRUPT_LPTIM1);
+	// Clear flag.
+	LPTIM1 -> ICR |= (0b1 << 1);
+	// Stop timer.
+	LPTIM1 -> CR &= ~(0b1 << 0); // Disable LPTIM1 (ENABLE='0').
+}
+
+/* READ LPTIM WAKE-UP FLAG.
+ * @param:					None.
+ * @return lptim_wake_up:	LPTIM wake-up flag.
+ */
+uint8_t LPTIM1_get_wake_up_flag(void) {
+	return lptim_wake_up;
 }

@@ -162,15 +162,9 @@ int main(void) {
 	_DMM_init_context();
 	_DMM_init_hw();
 	// Local variables.
-	RTC_status_t rtc_status = RTC_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
-	// Start periodic wakeup timer.
-	EXTI_clear_all_flags();
-	RTC_clear_wakeup_timer_flag();
-	rtc_status = RTC_start_wakeup_timer(RTC_WAKEUP_PERIOD_SECONDS);
-	RTC_error_check();
 	// Main loop.
 	while (1) {
 		// Perform state machine.
@@ -212,19 +206,16 @@ int main(void) {
 			PWR_enter_stop_mode();
 			// Wake-up
 			IWDG_reload();
-			// Check RTC flag.
-			if (RTC_get_wakeup_timer_flag() != 0) {
-				// Clear flag.
-				RTC_clear_wakeup_timer_flag();
-				// Perform node task.
-				dmm_ctx.state = DMM_STATE_NODE_TASK;
-			}
 			// Check HMI activation flag.
 			if (EXTI_get_encoder_switch_flag() != 0) {
 				// Clear flag.
 				EXTI_clear_encoder_switch_flag();
 				// Start HMI.
 				dmm_ctx.state = DMM_STATE_HMI;
+			}
+			else {
+				// Perform node task.
+				dmm_ctx.state = DMM_STATE_NODE_TASK;
 			}
 			break;
 		default:

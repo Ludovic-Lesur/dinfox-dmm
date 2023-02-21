@@ -28,6 +28,54 @@ void LED_init(void) {
 	GPIO_configure(&GPIO_LED_BLUE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 }
 
+/* SET STATIC LED COLOR.
+ * @param led_color:	Color to set.
+ * @return status:		Function execution status.
+ */
+LED_status_t LED_set_color(LED_color_t color) {
+	// Local variables.
+	LED_status_t status = LED_SUCCESS;
+	// Turn off by default.
+	LED_init();
+	// Check color.
+	switch (color) {
+	case LED_COLOR_OFF:
+		// Nothing to do.
+		break;
+	case LED_COLOR_RED:
+		GPIO_write(&GPIO_LED_RED, 0);
+		break;
+	case LED_COLOR_GREEN:
+		GPIO_write(&GPIO_LED_GREEN, 0);
+		break;
+	case LED_COLOR_YELLOW:
+		GPIO_write(&GPIO_LED_RED, 0);
+		GPIO_write(&GPIO_LED_GREEN, 0);
+		break;
+	case LED_COLOR_BLUE:
+		GPIO_write(&GPIO_LED_BLUE, 0);
+		break;
+	case LED_COLOR_MAGENTA:
+		GPIO_write(&GPIO_LED_RED, 0);
+		GPIO_write(&GPIO_LED_BLUE, 0);
+		break;
+	case LED_COLOR_CYAN:
+		GPIO_write(&GPIO_LED_GREEN, 0);
+		GPIO_write(&GPIO_LED_BLUE, 0);
+		break;
+	case LED_COLOR_WHITE:
+		GPIO_write(&GPIO_LED_RED, 0);
+		GPIO_write(&GPIO_LED_GREEN, 0);
+		GPIO_write(&GPIO_LED_BLUE, 0);
+		break;
+	default:
+		status = LED_ERROR_COLOR;
+		goto errors;
+	}
+errors:
+	return status;
+}
+
 /* START A SINGLE LED BLINK.
  * @param led_color:		Color to set.
  * @param blink_period_ms:	Blink duration in ms.

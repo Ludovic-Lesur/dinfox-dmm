@@ -21,7 +21,6 @@
 #include "node.h"
 #include "nvic.h"
 #include "pwr.h"
-#include "rtc.h"
 #include "sh1106.h"
 #include "string.h"
 #include "types.h"
@@ -94,7 +93,6 @@ typedef struct {
 	HMI_screen_t screen;
 	volatile uint8_t irq_flags;
 	HMI_irq_callback_t irq_callbacks[HMI_IRQ_LAST];
-	uint8_t unused_duration_seconds;
 	// Screen.
 	char_t text[HMI_DATA_ZONE_WIDTH_CHAR + 1];
 	uint8_t text_width;
@@ -956,10 +954,10 @@ HMI_status_t HMI_task(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
 	// Init context.
 	hmi_ctx.screen = HMI_SCREEN_OFF;
 	hmi_ctx.state = ((hmi_ctx.irq_flags & (0b1 << HMI_IRQ_ENCODER_SWITCH)) != 0) ? HMI_STATE_INIT : HMI_STATE_UNUSED;
-	hmi_ctx.unused_duration_seconds = 0;
 	// Turn bus interface on.
 	lpuart1_status = LPUART1_power_on();
 	LPUART1_status_check(HMI_ERROR_BASE_LPUART);
@@ -972,32 +970,27 @@ HMI_status_t HMI_task(void) {
 			hmi_ctx.status = status;
 			_HMI_update(HMI_SCREEN_ERROR, 1, 1);
 			// Delay and exit.
-			LPTIM1_delay_milliseconds(5000, 1);
+			lptim1_status = LPTIM1_delay_milliseconds((HMI_UNUSED_DURATION_THRESHOLD_SECONDS * 1000), 1);
+			LPTIM1_status_check(HMI_ERROR_BASE_LPTIM);
 			goto errors;
 		}
-		// Enter sleep mode.
-		PWR_enter_sleep_mode();
+		// Start auto power-off timer.
+		lptim1_status = LPTIM1_start(HMI_UNUSED_DURATION_THRESHOLD_SECONDS * 1000);
+		LPTIM1_status_check(HMI_ERROR_BASE_LPTIM);
+		// Enter stop mode.
+		PWR_enter_stop_mode();
 		// Wake-up.
 		IWDG_reload();
-		// Check RTC flag.
-		if (RTC_get_wakeup_timer_flag() != 0) {
-			// Clear flag.
-			RTC_clear_wakeup_timer_flag();
-			// Manage unused duration;
-			if (hmi_ctx.irq_flags == 0) {
-				hmi_ctx.unused_duration_seconds += RTC_WAKEUP_PERIOD_SECONDS;
-			}
-		}
-		else {
-			hmi_ctx.unused_duration_seconds = 0;
-		}
-		// Auto power off.
-		if (hmi_ctx.unused_duration_seconds >= HMI_UNUSED_DURATION_THRESHOLD_SECONDS) {
+		LPTIM1_stop();
+		// Check LPTIM flag.
+		if ((LPTIM1_get_wake_up_flag() != 0) && (hmi_ctx.irq_flags == 0)) {
+			// Auto power-off.
 			hmi_ctx.state = HMI_STATE_UNUSED;
 		}
 	}
 errors:
 	// Turn HMI off.
+	LPTIM1_stop();
 	I2C1_power_off();
 	_HMI_disable_irq();
 	// Turn bus interface off.

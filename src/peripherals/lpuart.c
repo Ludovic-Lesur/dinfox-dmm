@@ -9,6 +9,7 @@
 
 #include "dinfox.h"
 #include "exti.h"
+#include "exti_reg.h"
 #include "gpio.h"
 #include "lptim.h"
 #include "lpuart_reg.h"
@@ -53,6 +54,7 @@ void LPUART1_IRQHandler(void) {
 		// Clear ORE flag.
 		LPUART1 -> ICR |= (0b1 << 3);
 	}
+	EXTI -> PR |= (0b1 << EXTI_LINE_LPUART1);
 }
 
 /* FILL LPUART1 TX BUFFER WITH A NEW BYTE.
@@ -127,7 +129,6 @@ void LPUART1_init(void) {
 	LPUART1 -> CR3 |= 0x00805000;
 	// Baud rate.
 	_LPUART1_set_baud_rate(LPUART_BAUD_RATE_DEFAULT);
-
 	// Configure interrupt.
 	NVIC_set_priority(NVIC_INTERRUPT_LPUART1, 0);
 	EXTI_configure_line(EXTI_LINE_LPUART1, EXTI_TRIGGER_RISING_EDGE);

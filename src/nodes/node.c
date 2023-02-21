@@ -656,6 +656,7 @@ NODE_status_t NODE_task(void) {
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	uint32_t loop_count = 0;
 	uint8_t bidirectional_flag = 0;
+	uint8_t node_update_required = 1;
 	// Increment time.
 	node_ctx.sigfox_ul_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
 	node_ctx.sigfox_dl_seconds_count += RTC_WAKEUP_PERIOD_SECONDS;
@@ -674,8 +675,14 @@ NODE_status_t NODE_task(void) {
 		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 		// Search next Sigfox message to send.
 		do {
-			// Update node data.
-			status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]));
+			// Update node data if needed.
+			if (node_update_required != 0) {
+				status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]));
+				node_update_required = 0;
+			}
+			else {
+				status = NODE_SUCCESS;
+			}
 			if (status == NODE_SUCCESS) {
 				// Send data through radio.
 				status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, bidirectional_flag);
@@ -692,6 +699,7 @@ NODE_status_t NODE_task(void) {
 				// Switch to next node.
 				node_ctx.sigfox_ul_payload_type_index = 0;
 				node_ctx.sigfox_ul_node_list_index++;
+				node_update_required = 1;
 				if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
 					// Come back to first node.
 					node_ctx.sigfox_ul_node_list_index = 0;

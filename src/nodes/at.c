@@ -142,7 +142,7 @@ NODE_status_t _AT_wait_reply(NODE_reply_parameters_t* reply_params, NODE_read_da
 	// Main reception loop.
 	while (1) {
 		// Delay.
-		lptim1_status = LPTIM1_delay_milliseconds(AT_REPLY_PARSING_DELAY_MS, 1);
+		lptim1_status = LPTIM1_delay_milliseconds(AT_REPLY_PARSING_DELAY_MS, LPTIM_DELAY_MODE_STOP);
 		LPTIM1_status_check(NODE_ERROR_BASE_LPTIM);
 		reply_time_ms += AT_REPLY_PARSING_DELAY_MS;
 		sequence_time_ms += AT_REPLY_PARSING_DELAY_MS;

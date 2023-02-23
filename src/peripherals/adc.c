@@ -245,7 +245,7 @@ ADC_status_t ADC1_init(void) {
 	}
 	// Enable ADC voltage regulator.
 	ADC1 -> CR |= (0b1 << 28);
-	lptim1_status = LPTIM1_delay_milliseconds(5, 0);
+	lptim1_status = LPTIM1_delay_milliseconds(5, LPTIM_DELAY_MODE_ACTIVE);
 	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
 	// ADC configuration.
 	ADC1 -> CCR |= (0b1 << 25); // Enable low frequency clock (LFMEN='1').
@@ -286,10 +286,12 @@ ADC_status_t ADC1_perform_measurements(void) {
 	}
 	// Enable voltage dividers.
 	GPIO_write(&GPIO_MNTR_EN, 1);
+	// Wait voltage dividers stabilization.
+	lptim1_status = LPTIM1_delay_milliseconds(100, LPTIM_DELAY_MODE_STOP);
+	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
 	// Wake-up VREFINT and temperature sensor.
 	ADC1 -> CCR |= (0b11 << 22); // TSEN='1' and VREFEF='1'.
-	// Wait internal reference and voltage dividers stabilization.
-	lptim1_status = LPTIM1_delay_milliseconds(100, 0);
+	lptim1_status = LPTIM1_delay_milliseconds(10, LPTIM_DELAY_MODE_ACTIVE);
 	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
 	// Perform measurements.
 	status = _ADC1_compute_vrefint();

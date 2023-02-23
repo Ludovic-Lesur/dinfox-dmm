@@ -8,7 +8,6 @@
 #include "rtc.h"
 
 #include "exti.h"
-#include "exti_reg.h"
 #include "nvic.h"
 #include "rcc_reg.h"
 #include "rtc_reg.h"
@@ -41,7 +40,7 @@ void __attribute__((optimize("-O0"))) RTC_IRQHandler(void) {
 		}
 		// Clear flags.
 		RTC -> ISR &= ~(0b1 << 10); // WUTF='0'.
-		EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);
+		EXTI_clear_flag(EXTI_LINE_RTC_WAKEUP_TIMER);
 	}
 }
 
@@ -113,7 +112,7 @@ RTC_status_t _RTC_start_wakeup_timer(void) {
 	RTC -> WUTR = (RTC_WAKEUP_PERIOD_SECONDS - 1);
 	// Clear flags.
 	RTC -> ISR &= ~(0b1 << 10); // WUTF='0'.
-	EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);
+	EXTI_clear_flag(EXTI_LINE_RTC_WAKEUP_TIMER);
 	// Enable interrupt.
 	RTC -> CR |= (0b1 << 14); // WUTE='1'.
 	// Start timer.
@@ -197,7 +196,7 @@ RTC_status_t __attribute__((optimize("-O0"))) RTC_init(uint8_t* rtc_use_lse, uin
 	// Disable interrupt and clear all flags.
 	RTC -> CR &= ~(0b1 << 14);
 	RTC -> ISR &= 0xFFFE0000;
-	EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);
+	EXTI_clear_flag(EXTI_LINE_RTC_WAKEUP_TIMER);
 	// Set interrupt priority.
 	NVIC_set_priority(NVIC_INTERRUPT_RTC, 3);
 	NVIC_enable_interrupt(NVIC_INTERRUPT_RTC);

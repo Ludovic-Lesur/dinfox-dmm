@@ -862,7 +862,7 @@ static HMI_status_t _HMI_state_machine(void) {
 		// Display DINFox logo.
 		sh1106_status = SH1106_print_image(DINFOX_LOGO);
 		SH1106_status_check(HMI_ERROR_BASE_SH1106);
-		lptim1_status = LPTIM1_delay_milliseconds(1000, 1);
+		lptim1_status = LPTIM1_delay_milliseconds(1000, LPTIM_DELAY_MODE_STOP);
 		LPTIM1_status_check(HMI_ERROR_BASE_LPTIM);
 		SH1106_clear();
 		// Enable external interrupts.
@@ -970,7 +970,7 @@ HMI_status_t HMI_task(void) {
 			hmi_ctx.status = status;
 			_HMI_update(HMI_SCREEN_ERROR, 1, 1);
 			// Delay and exit.
-			lptim1_status = LPTIM1_delay_milliseconds((HMI_UNUSED_DURATION_THRESHOLD_SECONDS * 1000), 1);
+			lptim1_status = LPTIM1_delay_milliseconds((HMI_UNUSED_DURATION_THRESHOLD_SECONDS * 1000), LPTIM_DELAY_MODE_STOP);
 			LPTIM1_status_check(HMI_ERROR_BASE_LPTIM);
 			goto errors;
 		}

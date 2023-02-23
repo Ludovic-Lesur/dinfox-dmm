@@ -9,7 +9,6 @@
 
 #include "dinfox.h"
 #include "exti.h"
-#include "exti_reg.h"
 #include "gpio.h"
 #include "lptim.h"
 #include "lpuart_reg.h"
@@ -54,7 +53,7 @@ void LPUART1_IRQHandler(void) {
 		// Clear ORE flag.
 		LPUART1 -> ICR |= (0b1 << 3);
 	}
-	EXTI -> PR |= (0b1 << EXTI_LINE_LPUART1);
+	EXTI_clear_flag(EXTI_LINE_LPUART1);
 }
 
 /* FILL LPUART1 TX BUFFER WITH A NEW BYTE.
@@ -153,7 +152,7 @@ LPUART_status_t LPUART1_power_on(void) {
 	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
 	// Power on delay.
-	lptim1_status = LPTIM1_delay_milliseconds(100, 1);
+	lptim1_status = LPTIM1_delay_milliseconds(100, LPTIM_DELAY_MODE_STOP);
 	LPTIM1_status_check(LPUART_ERROR_BASE_LPTIM);
 errors:
 	return status;

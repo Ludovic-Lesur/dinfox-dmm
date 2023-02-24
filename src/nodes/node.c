@@ -28,6 +28,8 @@
 #define NODE_SIGFOX_DL_PERIOD_SECONDS		21600
 #define NODE_SIGFOX_LOOP_MAX				100
 
+#define NODE_ACTIONS_DEPTH					10
+
 /*** NODE local structures ***/
 
 typedef enum {
@@ -76,17 +78,6 @@ typedef union {
 } NODE_sigfox_ul_payload_t;
 
 typedef union {
-	uint8_t frame[UHFM_SIGFOX_DL_PAYLOAD_SIZE];
-	struct {
-		unsigned node_address : 8;
-		unsigned board_id : 8;
-		unsigned register_address : 8;
-		unsigned operation_code : 8;
-		unsigned data : 32;
-	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} NODE_sigfox_dl_payload_t;
-
-typedef union {
 	uint8_t frame[NODE_SIGFOX_PAYLOAD_STARTUP_SIZE];
 	struct {
 		unsigned reset_reason : 8;
@@ -97,6 +88,24 @@ typedef union {
 		unsigned dirty_flag : 4;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } NODE_sigfox_payload_startup_t;
+
+typedef union {
+	uint8_t frame[UHFM_SIGFOX_DL_PAYLOAD_SIZE];
+	struct {
+		unsigned node_address : 8;
+		unsigned board_id : 8;
+		unsigned register_address : 8;
+		unsigned operation_code : 8;
+		unsigned data : 32;
+	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+} NODE_sigfox_dl_payload_t;
+
+typedef struct {
+	NODE_t* node;
+	uint8_t register_address;
+	int32_t register_value;
+	uint32_t timestamp_seconds;
+} NODE_action_t;
 
 typedef struct {
 	char_t string_data_name[NODE_STRING_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
@@ -120,6 +129,9 @@ typedef struct {
 	// Downlink.
 	NODE_sigfox_dl_payload_t sigfox_dl_payload;
 	uint32_t sigfox_dl_next_time_seconds;
+	// Write actions list.
+	NODE_action_t actions[NODE_ACTIONS_DEPTH];
+	uint8_t actions_index;
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -327,14 +339,57 @@ errors:
 	return status;
 }
 
-/* PARSE SIGFOX DL PAYLOAD AND EXECUTE CORRESPONDING ACTION.
- * @param:	None.
- * @return:	None.
+/* REMOVE ACTION IN LIST.
+ * @param action_index:	Action to remove.
+ * @return status:		Function execution status.
+ */
+	NODE_status_t _NODE_remove_action(uint8_t action_index) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Check parameter.
+	if (action_index >= NODE_ACTIONS_DEPTH) {
+		status = NODE_ERROR_ACTION_INDEX;
+		goto errors;
+	}
+	node_ctx.actions[action_index].node = NULL;
+	node_ctx.actions[action_index].register_address = 0x00;
+	node_ctx.actions[action_index].register_value = 0;
+	node_ctx.actions[action_index].timestamp_seconds = 0;
+errors:
+	return status;
+}
+
+/* RECORD NEW ACTION IN LIST.
+ * @param action:	Pointer to the action to store.
+ * @return status:	Function execution status.
+ */
+NODE_status_t _NODE_record_action(NODE_action_t* action) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Check parameter.
+	if (action == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Store action.
+	node_ctx.actions[node_ctx.actions_index].node = (action -> node);
+	node_ctx.actions[node_ctx.actions_index].register_address = (action -> register_address);
+	node_ctx.actions[node_ctx.actions_index].register_value = (action -> register_value);
+	node_ctx.actions[node_ctx.actions_index].timestamp_seconds = (action -> timestamp_seconds);
+	// Increment index.
+	node_ctx.actions_index = (node_ctx.actions_index + 1) % NODE_ACTIONS_DEPTH;
+errors:
+	return status;
+}
+
+/* PARSE SIGFOX DL PAYLOAD.
+ * @param:			None.
+ * @return status:	Function execution status..
  */
 NODE_status_t _NODE_execute_downlink(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t write_status;
+	NODE_action_t action;
 	uint8_t address_match = 0;
 	uint8_t idx = 0;
 #ifdef AM
@@ -357,15 +412,65 @@ NODE_status_t _NODE_execute_downlink(void) {
 		goto errors;
 	}
 #endif
+	// Create action structure.
+	action.node = &NODES_LIST.list[idx];
+	action.register_address = node_ctx.sigfox_dl_payload.register_address;
 	// Check operation code.
 	switch (node_ctx.sigfox_dl_payload.operation_code) {
 	case NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE:
-		// Perform write operation.
-		status = NODE_write_register(&NODES_LIST.list[idx], node_ctx.sigfox_dl_payload.register_address, node_ctx.sigfox_dl_payload.data, &write_status);
+		// Instantaneous write operation.
+		action.register_value = node_ctx.sigfox_dl_payload.data;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		break;
+	case NODE_DOWNLINK_OPERATION_CODE_TOGGLE_OFF_ON:
+		// Instantaneous OFF command.
+		action.register_value = 0;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		// Program ON command.
+		action.register_value = 1;
+		action.timestamp_seconds = RTC_get_time_seconds() + node_ctx.sigfox_dl_payload.data;
+		_NODE_record_action(&action);
+		break;
+	case NODE_DOWNLINK_OPERATION_CODE_TOGGLE_ON_OFF:
+		// Instantaneous ON command.
+		action.register_value = 1;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		// Program OFF command.
+		action.register_value = 0;
+		action.timestamp_seconds = RTC_get_time_seconds() + node_ctx.sigfox_dl_payload.data;
+		_NODE_record_action(&action);
 		break;
 	default:
 		status = NODE_ERROR_DOWNLINK_OPERATION_CODE;
 		break;
+	}
+errors:
+	return status;
+}
+
+/* CHECK AND EXECUTE NODE ACTIONS.
+ * @param:			None.
+ * @return status:	Function execution status..
+ */
+NODE_status_t _NODE_execute_actions(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t write_status;
+	uint8_t idx = 0;
+	// Loop on action table.
+	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) {
+		// Check NODE pointer and timestamp.
+		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
+			// Perform write operation.
+			status = NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].register_address, node_ctx.actions[idx].register_value, &write_status);
+			if (status != NODE_SUCCESS) goto errors;
+			// Remove action.
+			status = _NODE_remove_action(idx);
+			if (status != NODE_SUCCESS) goto errors;
+		}
 	}
 errors:
 	return status;
@@ -378,14 +483,17 @@ errors:
  * @return:	None.
  */
 void NODE_init(void) {
+	// Local variables.
+	uint8_t idx = 0;
 	// Reset node list.
 	_NODE_flush_list();
 	// Init context.
 	node_ctx.sigfox_ul_node_list_index = 0;
 	node_ctx.sigfox_ul_next_time_seconds = 0;
-
 	node_ctx.sigfox_ul_payload_type_index = 0;
 	node_ctx.sigfox_dl_next_time_seconds = 0;
+	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
+	node_ctx.actions_index = 0;
 }
 
 /* GET NODE BOARD NAME.
@@ -658,6 +766,9 @@ NODE_status_t NODE_task(void) {
 	uint32_t loop_count = 0;
 	uint8_t bidirectional_flag = 0;
 	uint8_t node_update_required = 1;
+	// Turn bus interface on.
+	lpuart1_status = LPUART1_power_on();
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Check uplink period.
 	if (RTC_get_time_seconds() >= node_ctx.sigfox_ul_next_time_seconds) {
 		// Update next time.
@@ -668,9 +779,6 @@ NODE_status_t NODE_task(void) {
 			node_ctx.sigfox_dl_next_time_seconds += NODE_SIGFOX_DL_PERIOD_SECONDS;
 			bidirectional_flag = 1;
 		}
-		// Turn bus interface on.
-		lpuart1_status = LPUART1_power_on();
-		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 		// Search next Sigfox message to send.
 		do {
 			// Update node data if needed.
@@ -716,7 +824,10 @@ NODE_status_t NODE_task(void) {
 	// Execute downlink operation if needed.
 	if (bidirectional_flag != 0) {
 		status = _NODE_execute_downlink();
+		if (status != NODE_SUCCESS) goto errors;
 	}
+	// Execute node actions.
+	status = _NODE_execute_actions();
 errors:
 	// Turn bus interface off.
 	LPUART1_power_off();

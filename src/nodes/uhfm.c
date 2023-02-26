@@ -7,7 +7,7 @@
 
 #include "uhfm.h"
 
-#include "at.h"
+#include "at_bus.h"
 #include "dinfox.h"
 #include "mode.h"
 #include "string.h"
@@ -78,7 +78,7 @@ NODE_status_t UHFM_update_data(NODE_data_update_t* data_update) {
 #endif
 	read_params.register_address = register_address;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
-	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
+	read_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_DECIMAL;
 	// Configure read data.
 	read_data.raw = NULL;
@@ -86,7 +86,7 @@ NODE_status_t UHFM_update_data(NODE_data_update_t* data_update) {
 	read_data.byte_array = NULL;
 	read_data.extracted_length = 0;
 	// Read data.
-	status = AT_read_register(&read_params, &read_data, &read_status);
+	status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Add data name.
 	NODE_append_string_name((char_t*) UHFM_STRING_DATA_NAME[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
@@ -211,7 +211,7 @@ NODE_status_t UHFM_send_sigfox_message(UHFM_sigfox_message_t* sigfox_message, NO
 	reply_params.format = STRING_FORMAT_BOOLEAN;
 	reply_params.timeout_ms = timeout_ms;
 	// Send command.
-	status = AT_send_command(&command_params, &reply_params, &read_data, send_status);
+	status = AT_BUS_send_command(&command_params, &reply_params, &read_data, send_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Read DL payload if needed.
 	if ((sigfox_message -> bidirectional_flag) != 0) {
@@ -224,11 +224,11 @@ NODE_status_t UHFM_send_sigfox_message(UHFM_sigfox_message_t* sigfox_message, NO
 		// Build reply structure.
 		reply_params.type = NODE_REPLY_TYPE_BYTE_ARRAY;
 		reply_params.format = STRING_FORMAT_HEXADECIMAL;
-		reply_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
+		reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 		reply_params.byte_array_size = UHFM_SIGFOX_DL_PAYLOAD_SIZE;
 		reply_params.exact_length = 1;
 		// Send command.
-		status = AT_send_command(&command_params, &reply_params, &read_data, send_status);
+		status = AT_BUS_send_command(&command_params, &reply_params, &read_data, send_status);
 		if (status != NODE_SUCCESS) goto errors;
 	}
 errors:

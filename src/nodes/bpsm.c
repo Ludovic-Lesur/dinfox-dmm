@@ -7,7 +7,7 @@
 
 #include "bpsm.h"
 
-#include "at.h"
+#include "at_bus.h"
 #include "dinfox.h"
 #include "mode.h"
 #include "string.h"
@@ -102,7 +102,7 @@ NODE_status_t BPSM_update_data(NODE_data_update_t* data_update) {
 #endif
 	read_params.register_address = register_address;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
-	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
+	read_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_DECIMAL;
 	// Configure read data.
 	read_data.raw = NULL;
@@ -110,7 +110,7 @@ NODE_status_t BPSM_update_data(NODE_data_update_t* data_update) {
 	read_data.byte_array = NULL;
 	read_data.extracted_length = 0;
 	// Read data.
-	status = AT_read_register(&read_params, &read_data, &read_status);
+	status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Add data name.
 	NODE_append_string_name((char_t*) BPSM_STRING_DATA_NAME[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);

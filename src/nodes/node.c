@@ -7,7 +7,7 @@
 
 #include "node.h"
 
-#include "at.h"
+#include "at_bus.h"
 #include "bpsm.h"
 #include "ddrm.h"
 #include "dinfox.h"
@@ -35,7 +35,7 @@
 /*** NODE local structures ***/
 
 typedef enum {
-	NODE_PROTOCOL_AT = 0,
+	NODE_PROTOCOL_AT_BUS = 0,
 #ifdef AM
 	NODE_PROTOCOL_R4S8CR,
 #endif
@@ -140,35 +140,35 @@ typedef struct {
 
 // Note: table is indexed with board ID.
 static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
-	{"LVRM", NODE_PROTOCOL_AT, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTERS_FORMAT,
-		{&AT_read_register, &AT_write_register, &LVRM_update_data, &LVRM_get_sigfox_ul_payload}
+	{"LVRM", NODE_PROTOCOL_AT_BUS, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTERS_FORMAT,
+		{&AT_BUS_read_register, &AT_BUS_write_register, &LVRM_update_data, &LVRM_get_sigfox_ul_payload}
 	},
-	{"BPSM", NODE_PROTOCOL_AT, BPSM_REGISTER_LAST, BPSM_STRING_DATA_INDEX_LAST, (STRING_format_t*) BPSM_REGISTERS_FORMAT,
-		{&AT_read_register, &AT_write_register, &BPSM_update_data, &BPSM_get_sigfox_ul_payload}
+	{"BPSM", NODE_PROTOCOL_AT_BUS, BPSM_REGISTER_LAST, BPSM_STRING_DATA_INDEX_LAST, (STRING_format_t*) BPSM_REGISTERS_FORMAT,
+		{&AT_BUS_read_register, &AT_BUS_write_register, &BPSM_update_data, &BPSM_get_sigfox_ul_payload}
 	},
-	{"DDRM", NODE_PROTOCOL_AT, DDRM_REGISTER_LAST, DDRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DDRM_REGISTERS_FORMAT,
-		{&AT_read_register, &AT_write_register, &DDRM_update_data, &DDRM_get_sigfox_ul_payload}
+	{"DDRM", NODE_PROTOCOL_AT_BUS, DDRM_REGISTER_LAST, DDRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DDRM_REGISTERS_FORMAT,
+		{&AT_BUS_read_register, &AT_BUS_write_register, &DDRM_update_data, &DDRM_get_sigfox_ul_payload}
 	},
-	{"UHFM", NODE_PROTOCOL_AT, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTERS_FORMAT,
-		{&AT_read_register, &AT_write_register, &UHFM_update_data, &UHFM_get_sigfox_ul_payload}
+	{"UHFM", NODE_PROTOCOL_AT_BUS, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTERS_FORMAT,
+		{&AT_BUS_read_register, &AT_BUS_write_register, &UHFM_update_data, &UHFM_get_sigfox_ul_payload}
 	},
-	{"GPSM", NODE_PROTOCOL_AT, 0, 0, NULL,
-		{&AT_read_register, &AT_write_register, NULL, NULL}
+	{"GPSM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"SM", NODE_PROTOCOL_AT, 0, 0, NULL,
-		{&AT_read_register, &AT_write_register, NULL, NULL}
+	{"SM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"DIM", NODE_PROTOCOL_AT, 0, 0, NULL,
-		{&AT_read_register, &AT_write_register, NULL, NULL}
+	{"DIM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"RRM", NODE_PROTOCOL_AT, 0, 0, NULL,
-		{&AT_read_register, &AT_write_register, NULL, NULL}
+	{"RRM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"DMM", NODE_PROTOCOL_AT, 0, 0, NULL,
-		{&AT_read_register, &AT_write_register, NULL, NULL}
+	{"DMM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"MPMCM", NODE_PROTOCOL_AT, 0, 0, NULL,
-		{&AT_read_register, &AT_write_register, NULL, NULL}
+	{"MPMCM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
 #ifdef AM
 	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTERS_FORMAT,
@@ -247,6 +247,63 @@ void _NODE_flush_list(void) {
 	NODES_LIST.count = 0;
 }
 
+/* WRITE NODE DATA.
+ * @param node:				Node to write.
+ * @param register_address:	Register address/
+ * @param value:			Value to write in corresponding register.
+ * @param write_status:		Pointer to the writing operation status.
+ * @return status:			Function execution status.
+ */
+NODE_status_t _NODE_write_register(NODE_t* node, uint8_t register_address, int32_t value, NODE_access_status_t* write_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_write_parameters_t write_input;
+	// Check node and board ID.
+	_NODE_check_node_and_board_id();
+	_NODE_check_function_pointer(write_register);
+	// Check write status.
+	if (write_status == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Check register address.
+	if (NODES[node -> board_id].last_register_address == 0) {
+		status = NODE_ERROR_NOT_SUPPORTED;
+		goto errors;
+	}
+	if (register_address >= (NODES[node -> board_id].last_register_address)) {
+		status = NODE_ERROR_REGISTER_ADDRESS;
+		goto errors;
+	}
+	// Common write parameters.
+#ifdef AM
+	write_input.node_address = (node -> address);
+#endif
+	write_input.value = value;
+	write_input.register_address = register_address;
+	// Check node protocol.
+	switch (NODES[node -> board_id].protocol) {
+	case NODE_PROTOCOL_AT_BUS:
+		// Specific write parameters.
+		write_input.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
+		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
+		break;
+#ifdef AM
+	case NODE_PROTOCOL_R4S8CR:
+		// Specific write parameters.
+		write_input.timeout_ms = R4S8CR_TIMEOUT_MS;
+		write_input.format = NODES[node -> board_id].registers_format[register_address];
+		break;
+#endif
+	default:
+		status = NODE_ERROR_PROTOCOL;
+		break;
+	}
+	status = NODES[node -> board_id].functions.write_register(&write_input, write_status);
+errors:
+	return status;
+}
+
 /* SEND NODE DATA THROUGH RADIO.
  * @param node:					Node to monitor by radio.
  * @param sigfox_payload_type:	Type of data to send.
@@ -279,7 +336,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 	switch (ul_payload_type) {
 	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
 		// Check node protocol.
-		if (NODES[node -> board_id].protocol != NODE_PROTOCOL_AT) {
+		if (NODES[node -> board_id].protocol != NODE_PROTOCOL_AT_BUS) {
 			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
 			goto errors;
 		}
@@ -467,7 +524,7 @@ NODE_status_t _NODE_execute_actions(void) {
 		// Check NODE pointer and timestamp.
 		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
 			// Perform write operation.
-			status = NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].register_address, node_ctx.actions[idx].register_value, &write_status);
+			status = _NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].register_address, node_ctx.actions[idx].register_value, &write_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Remove action.
 			status = _NODE_remove_action(idx);
@@ -554,7 +611,7 @@ NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
 	data_update.registers_value_ptr = (int32_t*) node_ctx.data.registers_value;
 	// Check node protocol.
 	switch (NODES[node -> board_id].protocol) {
-	case NODE_PROTOCOL_AT:
+	case NODE_PROTOCOL_AT_BUS:
 		// Check index to update common or specific data.
 		if (string_data_index < DINFOX_STRING_DATA_INDEX_LAST) {
 			status = DINFOX_update_data(&data_update);
@@ -637,73 +694,16 @@ errors:
  * @param write_status:			Pointer to the writing operation status.
  * @return status:				Function execution status.
  */
-NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_t value, NODE_access_status_t* write_status) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	NODE_write_parameters_t write_input;
-	// Check node and board ID.
-	_NODE_check_node_and_board_id();
-	_NODE_check_function_pointer(write_register);
-	// Check write status.
-	if (write_status == NULL) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	// Check register address.
-	if (NODES[node -> board_id].last_register_address == 0) {
-		status = NODE_ERROR_NOT_SUPPORTED;
-		goto errors;
-	}
-	if (register_address >= (NODES[node -> board_id].last_register_address)) {
-		status = NODE_ERROR_REGISTER_ADDRESS;
-		goto errors;
-	}
-	// Common write parameters.
-#ifdef AM
-	write_input.node_address = (node -> address);
-#endif
-	write_input.value = value;
-	write_input.register_address = register_address;
-	// Check node protocol.
-	switch (NODES[node -> board_id].protocol) {
-	case NODE_PROTOCOL_AT:
-		// Specific write parameters.
-		write_input.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
-		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
-		break;
-#ifdef AM
-	case NODE_PROTOCOL_R4S8CR:
-		// Specific write parameters.
-		write_input.timeout_ms = R4S8CR_TIMEOUT_MS;
-		write_input.format = NODES[node -> board_id].registers_format[register_address];
-		break;
-#endif
-	default:
-		status = NODE_ERROR_PROTOCOL;
-		break;
-	}
-	status = NODES[node -> board_id].functions.write_register(&write_input, write_status);
-errors:
-	return status;
-}
-
-/* WRITE NODE DATA.
- * @param node:					Node to write.
- * @param string_data_index:	Node string data index.
- * @param value:				Value to write in corresponding register.
- * @param write_status:			Pointer to the writing operation status.
- * @return status:				Function execution status.
- */
 NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t register_address = string_data_index;
 	// Convert string data index to register.
-	if ((NODES[node ->board_id].protocol == NODE_PROTOCOL_AT) && (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST)) {
+	if ((NODES[node ->board_id].protocol == NODE_PROTOCOL_AT_BUS) && (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST)) {
 		register_address = (string_data_index + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
 	}
 	// Write register.
-	status = NODE_write_register(node, register_address, value, write_status);
+	status = _NODE_write_register(node, register_address, value, write_status);
 	return status;
 }
 
@@ -730,7 +730,7 @@ NODE_status_t NODE_scan(void) {
 #endif
 	NODES_LIST.count++;
 	// Scan LBUS nodes.
-	status = AT_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
+	status = AT_BUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
 	NODES_LIST.count += nodes_count;

@@ -7,7 +7,7 @@
 
 #include "lbus.h"
 
-#include "at.h"
+#include "at_bus.h"
 #include "dinfox.h"
 #include "lpuart.h"
 #include "node.h"
@@ -119,7 +119,7 @@ void LBUS_fill_rx_buffer(uint8_t rx_byte) {
 	default:
 		// Transmit command to applicative layer.
 		if (lbus_ctx.source_address_mismatch == 0) {
-			AT_fill_rx_buffer(rx_byte);
+			AT_BUS_fill_rx_buffer(rx_byte);
 		}
 		break;
 	}

@@ -7,7 +7,7 @@
 
 #include "dinfox.h"
 
-#include "at.h"
+#include "at_bus.h"
 #include "mode.h"
 #include "node.h"
 #include "string.h"
@@ -65,7 +65,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 	read_params.node_address = (data_update -> node_address);
 #endif
 	read_params.type = NODE_REPLY_TYPE_VALUE;
-	read_params.timeout_ms = AT_DEFAULT_TIMEOUT_MS;
+	read_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	// Configure read data.
 	read_data.raw = NULL;
 	read_data.value = 0;
@@ -94,7 +94,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// Hardware version major.
 		read_params.register_address = DINFOX_REGISTER_HW_VERSION_MAJOR;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -110,7 +110,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// Hardware version minor.
 		read_params.register_address = DINFOX_REGISTER_HW_VERSION_MINOR;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -129,7 +129,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// Software version major.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_MAJOR;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -145,7 +145,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// Software version minor.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_MINOR;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -162,7 +162,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// Software version commit index.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -179,7 +179,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// Software version commit ID.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_COMMIT_ID;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -191,7 +191,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// Software version dirty flag.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -211,7 +211,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// Reset flags.
 		read_params.register_address = DINFOX_REGISTER_RESET_REASON;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -229,7 +229,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// MCU temperature.
 		read_params.register_address = DINFOX_REGISTER_TMCU_DEGREES;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {
@@ -246,7 +246,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		// MCU voltage.
 		read_params.register_address = DINFOX_REGISTER_VMCU_MV;
 		read_params.format = DINFOX_REGISTERS_FORMAT[read_params.register_address];
-		status = AT_read_register(&read_params, &read_data, &read_status);
+		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply.
 		if (read_status.all == 0) {

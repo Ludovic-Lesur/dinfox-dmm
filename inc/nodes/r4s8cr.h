@@ -21,11 +21,6 @@
 /*** R4S8CR structures ***/
 
 typedef enum {
-	R4S8CR_SUCCESS = 0,
-	R4S8CR_ERROR_BASE_LAST = 0x0100
-} R4S8CR_status_t;
-
-typedef enum {
 	R4S8CR_REGISTER_RELAY_1 = 0,
 	R4S8CR_REGISTER_RELAY_2,
 	R4S8CR_REGISTER_RELAY_3,

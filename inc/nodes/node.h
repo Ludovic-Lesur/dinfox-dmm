@@ -173,10 +173,6 @@ NODE_status_t NODE_get_last_string_data_index(NODE_t* node, uint8_t* last_string
 NODE_status_t NODE_read_string_data(NODE_t* node, uint8_t string_data_index, char_t** string_data_name_ptr, char_t** string_data_value_ptr);
 NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_access_status_t* write_status);
 
-NODE_status_t NODE_get_last_register_address(NODE_t* node, uint8_t* last_register_address);
-NODE_status_t NODE_read_register(NODE_t* node, uint8_t register_address, int32_t* value, NODE_access_status_t* read_status);
-NODE_status_t NODE_write_register(NODE_t* node, uint8_t register_address, int32_t value, NODE_access_status_t* write_status);
-
 NODE_status_t NODE_task(void);
 
 #define NODE_append_string_name(str) { \

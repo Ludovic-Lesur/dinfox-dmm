@@ -9,6 +9,7 @@
 
 #include "at.h"
 #include "bpsm.h"
+#include "ddrm.h"
 #include "dinfox.h"
 #include "lpuart.h"
 #include "lvrm.h"
@@ -145,8 +146,8 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	{"BPSM", NODE_PROTOCOL_AT, BPSM_REGISTER_LAST, BPSM_STRING_DATA_INDEX_LAST, (STRING_format_t*) BPSM_REGISTERS_FORMAT,
 		{&AT_read_register, &AT_write_register, &BPSM_update_data, &BPSM_get_sigfox_ul_payload}
 	},
-	{"DDRM", NODE_PROTOCOL_AT, 0, 0, NULL,
-		{&AT_read_register, &AT_write_register, NULL, NULL}
+	{"DDRM", NODE_PROTOCOL_AT, DDRM_REGISTER_LAST, DDRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DDRM_REGISTERS_FORMAT,
+		{&AT_read_register, &AT_write_register, &DDRM_update_data, &DDRM_get_sigfox_ul_payload}
 	},
 	{"UHFM", NODE_PROTOCOL_AT, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTERS_FORMAT,
 		{&AT_read_register, &AT_write_register, &UHFM_update_data, &UHFM_get_sigfox_ul_payload}

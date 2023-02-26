@@ -1,68 +1,77 @@
 /*
- * lvrm.c
+ * bpsm.c
  *
- *  Created on: 22 jan. 2023
+ *  Created on: 26 feb. 2023
  *      Author: Ludo
  */
 
-#include "lvrm.h"
+#include "bpsm.h"
 
 #include "at.h"
 #include "dinfox.h"
 #include "mode.h"
 #include "string.h"
 
-/*** LVRM local macros ***/
+/*** BPSM local macros ***/
 
-#define LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
-#define LVRM_SIGFOX_PAYLOAD_DATA_SIZE			7
+#define BPSM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
+#define BPSM_SIGFOX_PAYLOAD_DATA_SIZE			7
 
-static const char_t* LVRM_STRING_DATA_NAME[LVRM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
-	"VCOM =",
-	"VOUT =",
-	"IOUT =",
-	"RELAY ="
+static const char_t* BPSM_STRING_DATA_NAME[BPSM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
+	"VSRC =",
+	"VSTR =",
+	"VBKP =",
+	"CHRG_EN =",
+	"CHRG_ST =",
+	"BKP_EN ="
 };
-static const char_t* LVRM_STRING_DATA_UNIT[LVRM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
+static const char_t* BPSM_STRING_DATA_UNIT[BPSM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
 	"mV",
 	"mV",
-	"uA",
+	"mV",
+	STRING_NULL,
+	STRING_NULL,
 	STRING_NULL
 };
-static const int32_t LVRM_ERROR_VALUE[LVRM_NUMBER_OF_SPECIFIC_REGISTERS] = {
+static const int32_t BPSM_ERROR_VALUE[BPSM_NUMBER_OF_SPECIFIC_REGISTERS] = {
 	NODE_ERROR_VALUE_ANALOG_16BITS,
 	NODE_ERROR_VALUE_ANALOG_16BITS,
-	NODE_ERROR_VALUE_ANALOG_23BITS,
+	NODE_ERROR_VALUE_ANALOG_16BITS,
+	NODE_ERROR_VALUE_BOOLEAN,
+	NODE_ERROR_VALUE_BOOLEAN,
 	NODE_ERROR_VALUE_BOOLEAN
 };
 
-/*** LVRM local structures ***/
+/*** BPSM local structures ***/
 
 typedef union {
-	uint8_t frame[LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE];
+	uint8_t frame[BPSM_SIGFOX_PAYLOAD_MONITORING_SIZE];
 	struct {
 		unsigned vmcu_mv : 16;
 		unsigned tmcu_degrees : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} LVRM_sigfox_payload_monitoring_t;
+} BPSM_sigfox_payload_monitoring_t;
 
 typedef union {
-	uint8_t frame[LVRM_SIGFOX_PAYLOAD_DATA_SIZE];
+	uint8_t frame[BPSM_SIGFOX_PAYLOAD_DATA_SIZE];
 	struct {
-		unsigned vcom_mv : 16;
-		unsigned vout_mv : 16;
-		unsigned iout_ua : 23;
-		unsigned relay_enable : 1;
+		unsigned vsrc_mv : 16;
+		unsigned vstr_mv : 16;
+		unsigned vbkp_mv : 16;
+		unsigned unused : 5;
+		unsigned charge_status : 1;
+		unsigned charge_enable : 1;
+		unsigned backup_enable : 1;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} LVRM_sigfox_payload_data_t;
+} BPSM_sigfox_payload_data_t;
 
-/*** LVRM functions ***/
+/*** BPSM functions ***/
 
-/* RETRIEVE SPECIFIC DATA OF LVRM NODE.
+/* RETRIEVE SPECIFIC DATA OF BPSM NODE.
  * @param data_update:	Pointer to the data update structure.
  * @return status:		Function execution status.
  */
-NODE_status_t LVRM_update_data(NODE_data_update_t* data_update) {
+NODE_status_t BPSM_update_data(NODE_data_update_t* data_update) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -81,7 +90,7 @@ NODE_status_t LVRM_update_data(NODE_data_update_t* data_update) {
 		goto errors;
 	}
 	// Check index.
-	if (((data_update -> string_data_index) < DINFOX_STRING_DATA_INDEX_LAST) || ((data_update -> string_data_index) >= LVRM_STRING_DATA_INDEX_LAST)) {
+	if (((data_update -> string_data_index) < DINFOX_STRING_DATA_INDEX_LAST) || ((data_update -> string_data_index) >= BPSM_STRING_DATA_INDEX_LAST)) {
 		status = NODE_ERROR_STRING_DATA_INDEX;
 		goto errors;
 	}
@@ -104,43 +113,46 @@ NODE_status_t LVRM_update_data(NODE_data_update_t* data_update) {
 	status = AT_read_register(&read_params, &read_data, &read_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Add data name.
-	NODE_append_string_name((char_t*) LVRM_STRING_DATA_NAME[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
+	NODE_append_string_name((char_t*) BPSM_STRING_DATA_NAME[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
 	buffer_size = 0;
 	// Add data value.
 	if (read_status.all == 0) {
-		// Specific print for relay.
-		if ((data_update -> string_data_index) == LVRM_STRING_DATA_INDEX_RELAY_ENABLE) {
+		// Specific print for boolean data.
+		if (((data_update -> string_data_index) == BPSM_STRING_DATA_INDEX_CHARGE_ENABLE) ||
+			((data_update -> string_data_index) == BPSM_STRING_DATA_INDEX_CHARGE_STATUS) ||
+			((data_update -> string_data_index) == BPSM_STRING_DATA_INDEX_BACKUP_ENABLE))
+		{
 			NODE_append_string_value((read_data.value == 0) ? "OFF" : "ON");
 		}
 		else {
 			NODE_append_string_value(read_data.raw);
 		}
 		// Add unit.
-		NODE_append_string_value((char_t*) LVRM_STRING_DATA_UNIT[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
+		NODE_append_string_value((char_t*) BPSM_STRING_DATA_UNIT[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
 		// Update integer data.
 		NODE_update_value(register_address, read_data.value);
 	}
 	else {
 		NODE_flush_string_value();
 		NODE_append_string_value(NODE_ERROR_STRING);
-		NODE_update_value(register_address, LVRM_ERROR_VALUE[register_address]);
+		NODE_update_value(register_address, BPSM_ERROR_VALUE[register_address]);
 	}
 errors:
 	return status;
 }
 
-/* GET LVRM NODE SIGFOX PAYLOAD.
+/* GET BPSM NODE SIGFOX PAYLOAD.
  * @param integer_data_value:	Pointer to the node registers value.
  * @param ul_payload_type:		Sigfox payload type.
  * @param ul_payload:			Pointer that will contain the specific sigfox payload of the node.
  * @param ul_payload_size:		Pointer to byte that will contain sigfox payload size.
  * @return status:				Function execution status.
  */
-NODE_status_t LVRM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size) {
+NODE_status_t BPSM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LVRM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
-	LVRM_sigfox_payload_data_t sigfox_payload_data;
+	BPSM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
+	BPSM_sigfox_payload_data_t sigfox_payload_data;
 	uint8_t idx = 0;
 	// Check parameters.
 	if ((integer_data_value == NULL) || (ul_payload == NULL) || (ul_payload_size == NULL)) {
@@ -154,22 +166,24 @@ NODE_status_t LVRM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfo
 		sigfox_payload_monitoring.vmcu_mv = integer_data_value[DINFOX_REGISTER_VMCU_MV];
 		sigfox_payload_monitoring.tmcu_degrees = integer_data_value[DINFOX_REGISTER_TMCU_DEGREES];
 		// Copy payload.
-		for (idx=0 ; idx<LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
+		for (idx=0 ; idx<BPSM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
 			ul_payload[idx] = sigfox_payload_monitoring.frame[idx];
 		}
-		(*ul_payload_size) = LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+		(*ul_payload_size) = BPSM_SIGFOX_PAYLOAD_MONITORING_SIZE;
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
 		// Build data payload.
-		sigfox_payload_data.vcom_mv = integer_data_value[LVRM_REGISTER_VCOM_MV];
-		sigfox_payload_data.vout_mv = integer_data_value[LVRM_REGISTER_VOUT_MV];
-		sigfox_payload_data.iout_ua = integer_data_value[LVRM_REGISTER_IOUT_UA];
-		sigfox_payload_data.relay_enable = integer_data_value[LVRM_REGISTER_RELAY_ENABLE];
+		sigfox_payload_data.vsrc_mv = integer_data_value[BPSM_REGISTER_VSRC_MV];
+		sigfox_payload_data.vstr_mv = integer_data_value[BPSM_REGISTER_VSTR_MV];
+		sigfox_payload_data.vbkp_mv = integer_data_value[BPSM_REGISTER_VBKP_MV];
+		sigfox_payload_data.charge_enable = integer_data_value[BPSM_REGISTER_CHARGE_ENABLE];
+		sigfox_payload_data.charge_status = integer_data_value[BPSM_REGISTER_CHARGE_STATUS];
+		sigfox_payload_data.backup_enable = integer_data_value[BPSM_REGISTER_BACKUP_ENABLE];
 		// Copy payload.
-		for (idx=0 ; idx<LVRM_SIGFOX_PAYLOAD_DATA_SIZE ; idx++) {
+		for (idx=0 ; idx<BPSM_SIGFOX_PAYLOAD_DATA_SIZE ; idx++) {
 			ul_payload[idx] = sigfox_payload_data.frame[idx];
 		}
-		(*ul_payload_size) = LVRM_SIGFOX_PAYLOAD_DATA_SIZE;
+		(*ul_payload_size) = BPSM_SIGFOX_PAYLOAD_DATA_SIZE;
 		break;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;

@@ -57,7 +57,6 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 	NODE_read_parameters_t read_params;
 	NODE_read_data_t read_data;
 	NODE_access_status_t read_status;
-	uint8_t error_flag = 0;
 	uint8_t buffer_size = 0;
 	// Common reply parameters.
 	read_params.node_address = (data_update -> node_address);
@@ -102,7 +101,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
-			break;
+			goto errors;
 		}
 		// Hardware version minor.
 		read_params.register_address = DINFOX_REGISTER_HW_VERSION_MINOR;
@@ -119,7 +118,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
-			break;
+			goto errors;
 		}
 		break;
 	case DINFOX_STRING_DATA_INDEX_SW_VERSION:
@@ -137,7 +136,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
-			break;
+			goto errors;
 		}
 		// Software version minor.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_MINOR;
@@ -154,7 +153,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
-			break;
+			goto errors;
 		}
 		// Software version commit index.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX;
@@ -171,7 +170,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
-			break;
+			goto errors;
 		}
 		// Software version commit ID.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_COMMIT_ID;
@@ -184,6 +183,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		}
 		else {
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
+			goto errors;
 		}
 		// Software version dirty flag.
 		read_params.register_address = DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG;
@@ -202,6 +202,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
+			goto errors;
 		}
 		break;
 	case DINFOX_STRING_DATA_INDEX_RESET_REASON:
@@ -220,6 +221,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
+			goto errors;
 		}
 		break;
 	case DINFOX_STRING_DATA_INDEX_TMCU_DEGREES:
@@ -237,6 +239,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
+			goto errors;
 		}
 		break;
 	case DINFOX_STRING_DATA_INDEX_VMCU_MV:
@@ -254,6 +257,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 			NODE_flush_string_value();
 			NODE_append_string_value(NODE_ERROR_STRING);
 			NODE_update_value(read_params.register_address, DINFOX_ERROR_VALUE[read_params.register_address]);
+			goto errors;
 		}
 		break;
 	default:
@@ -261,9 +265,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 		goto errors;
 	}
 	// Add unit if no error.
-	if (error_flag == 0) {
-		NODE_append_string_value((char_t*) DINFOX_STRING_DATA_UNIT[data_update -> string_data_index]);
-	}
+	NODE_append_string_value((char_t*) DINFOX_STRING_DATA_UNIT[data_update -> string_data_index]);
 errors:
 	return status;
 }

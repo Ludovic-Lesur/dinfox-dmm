@@ -1,0 +1,69 @@
+/*
+ * sm.h
+ *
+ *  Created on: 4 mar. 2023
+ *      Author: Ludo
+ */
+
+#ifndef __SM_H__
+#define __SM_H__
+
+#include "dinfox.h"
+#include "node.h"
+#include "string.h"
+#include "types.h"
+
+/*** SM structures ***/
+
+typedef enum {
+	SM_REGISTER_AIN0_MV = DINFOX_REGISTER_LAST,
+	SM_REGISTER_AIN1_MV,
+	SM_REGISTER_AIN2_MV,
+	SM_REGISTER_AIN3_MV,
+	SM_REGISTER_DIO0,
+	SM_REGISTER_DIO1,
+	SM_REGISTER_DIO2,
+	SM_REGISTER_DIO3,
+	SM_REGISTER_TAMB_DEGREES,
+	SM_REGISTER_HAMB_PERCENT,
+	SM_REGISTER_LAST,
+} SM_register_address_t;
+
+typedef enum {
+	SM_STRING_DATA_INDEX_AIN0_MV = DINFOX_STRING_DATA_INDEX_LAST,
+	SM_STRING_DATA_INDEX_AIN1_MV,
+	SM_STRING_DATA_INDEX_AIN2_MV,
+	SM_STRING_DATA_INDEX_AIN3_MV,
+	SM_STRING_DATA_INDEX_DIO0,
+	SM_STRING_DATA_INDEX_DIO1,
+	SM_STRING_DATA_INDEX_DIO2,
+	SM_STRING_DATA_INDEX_DIO3,
+	SM_STRING_DATA_INDEX_TAMB_DEGREES,
+	SM_STRING_DATA_INDEX_HAMB_PERCENT,
+	SM_STRING_DATA_INDEX_LAST,
+} SM_string_data_index_t;
+
+/*** SM macros ***/
+
+#define SM_NUMBER_OF_SPECIFIC_REGISTERS		(SM_REGISTER_LAST - DINFOX_REGISTER_LAST)
+#define SM_NUMBER_OF_SPECIFIC_STRING_DATA	(SM_STRING_DATA_INDEX_LAST - DINFOX_STRING_DATA_INDEX_LAST)
+
+static const STRING_format_t SM_REGISTERS_FORMAT[SM_NUMBER_OF_SPECIFIC_REGISTERS] = {
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_BOOLEAN,
+	STRING_FORMAT_BOOLEAN,
+	STRING_FORMAT_BOOLEAN,
+	STRING_FORMAT_BOOLEAN,
+	STRING_FORMAT_DECIMAL,
+	STRING_FORMAT_DECIMAL,
+};
+
+/*** SM functions ***/
+
+NODE_status_t SM_update_data(NODE_data_update_t* data_update);
+NODE_status_t SM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+
+#endif /* __SM_H__ */

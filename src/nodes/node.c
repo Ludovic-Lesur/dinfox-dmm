@@ -15,6 +15,7 @@
 #include "lvrm.h"
 #include "r4s8cr.h"
 #include "rtc.h"
+#include "sm.h"
 #include "uhfm.h"
 
 /*** NODE local macros ***/
@@ -148,8 +149,8 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	{"GPSM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
 		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"SM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
-		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
+	{"SM", NODE_PROTOCOL_AT_BUS, SM_REGISTER_LAST, SM_STRING_DATA_INDEX_LAST, (STRING_format_t*) SM_REGISTERS_FORMAT,
+		{&AT_BUS_read_register, &AT_BUS_write_register, &SM_update_data, &SM_get_sigfox_ul_payload}
 	},
 	{"DIM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
 		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}

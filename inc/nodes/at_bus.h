@@ -17,6 +17,7 @@
 
 /*** AT functions ***/
 
+void AT_BUS_init(void);
 NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params, NODE_reply_parameters_t* reply_params, NODE_read_data_t* read_data, NODE_access_status_t* command_status);
 NODE_status_t AT_BUS_read_register(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status);
 NODE_status_t AT_BUS_write_register(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);

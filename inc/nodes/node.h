@@ -61,14 +61,10 @@ typedef enum {
 	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } NODE_status_t;
 
-#ifdef AM
 typedef uint8_t	NODE_address_t;
-#endif
 
 typedef struct {
-#ifdef AM
 	NODE_address_t address;
-#endif
 	uint8_t board_id;
 } NODE_t;
 
@@ -87,9 +83,7 @@ typedef enum {
 } NODE_reply_type_t;
 
 typedef struct {
-#ifdef AM
 	NODE_address_t node_address;
-#endif
 	char_t* command;
 } NODE_command_parameters_t;
 
@@ -103,9 +97,7 @@ typedef struct {
 } NODE_reply_parameters_t;
 
 typedef struct {
-#ifdef AM
 	NODE_address_t node_address;
-#endif
 	uint8_t register_address;
 	uint32_t timeout_ms;
 	STRING_format_t format; // Expected value format.
@@ -120,9 +112,7 @@ typedef struct {
 } NODE_read_data_t;
 
 typedef struct {
-#ifdef AM
 	NODE_address_t node_address;
-#endif
 	uint8_t register_address;
 	uint32_t timeout_ms;
 	STRING_format_t format; // Register value format.
@@ -140,9 +130,7 @@ typedef union {
 } NODE_access_status_t;
 
 typedef struct {
-#ifdef AM
 	NODE_address_t node_address;
-#endif
 	uint8_t string_data_index;
 	char_t* name_ptr;
 	char_t* value_ptr;

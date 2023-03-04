@@ -8,7 +8,6 @@
 #include "dinfox.h"
 
 #include "at_bus.h"
-#include "mode.h"
 #include "node.h"
 #include "string.h"
 #include "types.h"
@@ -61,9 +60,7 @@ NODE_status_t DINFOX_update_data(NODE_data_update_t* data_update) {
 	uint8_t error_flag = 0;
 	uint8_t buffer_size = 0;
 	// Common reply parameters.
-#ifdef AM
 	read_params.node_address = (data_update -> node_address);
-#endif
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	// Configure read data.

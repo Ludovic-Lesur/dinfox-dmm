@@ -8,9 +8,6 @@
 #ifndef __MODE_H__
 #define __MODE_H__
 
-#define AM		// Addressed mode.
-//#define DM	// Direct mode.
-
 /*** Debug mode ***/
 
 //#define DEBUG		// Use programming pins for debug purpose if defined.

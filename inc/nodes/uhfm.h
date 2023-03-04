@@ -50,10 +50,6 @@ static const STRING_format_t UHFM_REGISTERS_FORMAT[UHFM_NUMBER_OF_SPECIFIC_REGIS
 
 NODE_status_t UHFM_update_data(NODE_data_update_t* data_update);
 NODE_status_t UHFM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
-#ifdef AM
 NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_address, UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status);
-#else
-NODE_status_t UHFM_send_sigfox_message(UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status);
-#endif
 
 #endif /* __UHFM_H__ */

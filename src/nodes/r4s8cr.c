@@ -9,10 +9,7 @@
 
 #include "dinfox.h"
 #include "lpuart.h"
-#include "mode.h"
 #include "node.h"
-
-#ifdef AM
 
 /*** R4S8CR local macros ***/
 
@@ -329,9 +326,7 @@ NODE_status_t R4S8CR_update_data(NODE_data_update_t* data_update) {
 		goto errors;
 	}
 	// Common read input parameters.
-#ifdef AM
 	read_params.node_address = (data_update -> node_address);
-#endif
 	read_params.register_address = (data_update -> string_data_index);
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = R4S8CR_TIMEOUT_MS;
@@ -419,5 +414,3 @@ void R4S8CR_fill_rx_buffer(uint8_t rx_byte) {
 	// Manage index.
 	r4s8cr_ctx.reply_size = (r4s8cr_ctx.reply_size + 1) % R4S8CR_BUFFER_SIZE_BYTES;
 }
-
-#endif /* AM */

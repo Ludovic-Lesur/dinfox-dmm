@@ -9,7 +9,6 @@
 
 #include "at_bus.h"
 #include "dinfox.h"
-#include "mode.h"
 #include "string.h"
 
 /*** UHFM local macros ***/
@@ -73,9 +72,7 @@ NODE_status_t UHFM_update_data(NODE_data_update_t* data_update) {
 	// Convert to register address.
 	register_address = ((data_update -> string_data_index) + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
 	// Read parameters.
-#ifdef AM
 	read_params.node_address = (data_update -> node_address);
-#endif
 	read_params.register_address = register_address;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
@@ -151,7 +148,6 @@ errors:
 	return status;
 }
 
-#ifdef AM
 /* SEND SIGFOX MESSAGE WITH UHFM MODULE.
  * @param node_address:		Address of the UHFM node to use.
  * @param sigfox_message:	Pointer to the Sigfox message structure.
@@ -159,14 +155,6 @@ errors:
  * @return status:			Function execution status.
  */
 NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_address, UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status) {
-#else
-/* SEND SIGFOX MESSAGE WITH UHFM MODULE.
- * @param sigfox_message:	Pointer to the Sigfox message structure.
- * @param send_status:		Pointer to the sending status.
- * @return status:			Function execution status.
- */
-NODE_status_t UHFM_send_sigfox_message(UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status) {
-#endif
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -178,9 +166,7 @@ NODE_status_t UHFM_send_sigfox_message(UHFM_sigfox_message_t* sigfox_message, NO
 	uint8_t idx = 0;
 	uint32_t timeout_ms = 0;
 	// Set command parameters.
-#ifdef AM
 	command_params.node_address = node_address;
-#endif
 	command_params.command = (char_t*) command;
 	// Configure read data.
 	read_data.raw = NULL;

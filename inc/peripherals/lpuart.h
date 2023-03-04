@@ -9,7 +9,6 @@
 #define __LPUART_H__
 
 #include "lptim.h"
-#include "mode.h"
 #include "types.h"
 
 /*** LPUART structures ***/

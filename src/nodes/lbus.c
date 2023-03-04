@@ -13,8 +13,6 @@
 #include "node.h"
 #include "types.h"
 
-#ifdef AM
-
 /*** LBUS local macros ***/
 
 // Physical interface.
@@ -40,6 +38,27 @@ typedef struct {
 
 static LBUS_context_t lbus_ctx;
 
+/*** LBUS local functions ***/
+
+/* CONFIGURE PHYSICAL INTERFACE FOR LBUS.
+ * @param:	None.
+ * @return:	None.
+ */
+NODE_status_t _LBUS_configure_phy(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	LPUART_config_t lpuart_config;
+	// Configure physical interface.
+	lpuart_config.baud_rate = LBUS_BAUD_RATE;
+	lpuart_config.rx_mode = LPUART_RX_MODE_ADDRESSED;
+	lpuart_config.rx_callback = &LBUS_fill_rx_buffer;
+	lpuart1_status = LPUART1_configure(&lpuart_config);
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+errors:
+	return status;
+}
+
 /*** LBUS functions ***/
 
 /* INIT LBUS LAYER.
@@ -64,7 +83,6 @@ NODE_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint3
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	LPUART_config_t lpuart_config;
 	uint8_t lbus_header[LBUS_FRAME_FIELD_INDEX_DATA];
 	// Check address.
 	if (destination_address > LBUS_ADDRESS_LAST) {
@@ -77,11 +95,8 @@ NODE_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint3
 	lbus_header[LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS] = (destination_address | LBUS_DESTINATION_ADDRESS_MARKER);
 	lbus_header[LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS] = lbus_ctx.self_address;
 	// Configure physical interface.
-	lpuart_config.baud_rate = LBUS_BAUD_RATE;
-	lpuart_config.rx_mode = LPUART_RX_MODE_ADDRESSED;
-	lpuart_config.rx_callback = &LBUS_fill_rx_buffer;
-	lpuart1_status = LPUART1_configure(&lpuart_config);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	status = _LBUS_configure_phy();
+	if (status != NODE_SUCCESS) goto errors;
 	// Send header.
 	lpuart1_status = LPUART1_send(lbus_header, LBUS_FRAME_FIELD_INDEX_DATA);
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
@@ -126,5 +141,3 @@ void LBUS_fill_rx_buffer(uint8_t rx_byte) {
 	// Increment byte count.
 	lbus_ctx.rx_byte_count++;
 }
-
-#endif /* AM */

@@ -285,11 +285,7 @@ static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 		}
 		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
 		STRING_status_check(HMI_ERROR_BASE_STRING);
-#ifdef AM
 		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.node.address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
-#else
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TEXT_NA, &hmi_ctx.text_width);
-#endif
 		STRING_status_check(HMI_ERROR_BASE_STRING);
 		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
 		STRING_status_check(HMI_ERROR_BASE_STRING);
@@ -429,9 +425,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 				goto errors;
 			}
 			// Build node.
-#ifdef AM
 			hmi_ctx.node.address = NODES_LIST.list[idx].address;
-#endif
 			hmi_ctx.node.board_id = NODES_LIST.list[idx].board_id;
 			// Get board name.
 			node_status = NODE_get_name(&hmi_ctx.node, &text_ptr_1);
@@ -453,11 +447,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			// Print node address.
 			_HMI_text_flush();
-#ifdef AM
 			status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
-#else
-			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TEXT_NA, &hmi_ctx.text_width);
-#endif
 			STRING_status_check(HMI_ERROR_BASE_STRING);
 			string_copy.source = (char_t*) hmi_ctx.text;
 			string_copy.justification = STRING_JUSTIFICATION_RIGHT;
@@ -670,9 +660,7 @@ static HMI_status_t _HMI_irq_callback_encoder_switch(void) {
 	switch (hmi_ctx.screen) {
 	case HMI_SCREEN_NODES_LIST:
 		// Update current node.
-#ifdef AM
 		hmi_ctx.node.address = NODES_LIST.list[hmi_ctx.data_index].address;
-#endif
 		hmi_ctx.node.board_id = NODES_LIST.list[hmi_ctx.data_index].board_id;
 		// Update screen.
 		status = _HMI_update(HMI_SCREEN_NODE_DATA, 1, 1);
@@ -904,9 +892,7 @@ errors:
  */
 void HMI_init(void) {
 	// Init context.
-#ifdef AM
 	hmi_ctx.node.address = 0xFF;
-#endif
 	hmi_ctx.node.board_id = DINFOX_BOARD_ID_ERROR;
 	_HMI_reset_navigation();
 	// Init callbacks.

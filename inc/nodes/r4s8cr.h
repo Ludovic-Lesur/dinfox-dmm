@@ -8,10 +8,7 @@
 #ifndef __R4S8CR_H__
 #define __R4S8CR_H__
 
-#include "mode.h"
 #include "node.h"
-
-#ifdef AM
 
 /*** R4S8CR macros ***/
 
@@ -63,7 +60,5 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 NODE_status_t R4S8CR_update_data(NODE_data_update_t* data_update);
 NODE_status_t R4S8CR_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
 void R4S8CR_fill_rx_buffer(uint8_t rx_byte);
-
-#endif /* AM */
 
 #endif /* __R4S8CR_H__ */

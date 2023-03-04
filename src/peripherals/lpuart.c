@@ -176,10 +176,8 @@ void LPUART1_power_off(void) {
  * @return:	None.
  */
 void LPUART1_enable_rx(void) {
-#ifdef AM
 	// Mute mode request.
 	LPUART1 -> RQR |= (0b1 << 2); // MMRQ='1'.
-#endif
 	// Clear flag and enable interrupt.
 	LPUART1 -> RQR |= (0b1 << 3);
 	NVIC_enable_interrupt(NVIC_INTERRUPT_LPUART1);
@@ -204,9 +202,8 @@ void LPUART1_disable_rx(void) {
 	NVIC_disable_interrupt(NVIC_INTERRUPT_LPUART1);
 }
 
-/* SET LPUART RECEPTION MODE.
+/* CONFIGURE LPUART PARAMETERS.
  * @param config:		Pointer to the LPUART configuration structure.
- * @param rx_callback:	RX callback to call on data reception.
  * @return status:		Function execution status.
  */
 LPUART_status_t LPUART1_configure(LPUART_config_t* config) {

@@ -13,7 +13,6 @@
 #include "dinfox.h"
 #include "lpuart.h"
 #include "lvrm.h"
-#include "mode.h"
 #include "r4s8cr.h"
 #include "rtc.h"
 #include "uhfm.h"
@@ -36,9 +35,7 @@
 
 typedef enum {
 	NODE_PROTOCOL_AT_BUS = 0,
-#ifdef AM
 	NODE_PROTOCOL_R4S8CR,
-#endif
 	NODE_PROTOCOL_LAST
 } NODE_protocol_t;
 
@@ -117,11 +114,7 @@ typedef struct {
 
 typedef struct {
 	NODE_data_t data;
-#ifdef AM
 	NODE_address_t uhfm_address;
-#else
-	uint8_t uhfm_connected;
-#endif
 	// Uplink.
 	NODE_sigfox_ul_payload_t sigfox_ul_payload;
 	NODE_sigfox_ul_payload_type_t sigfox_ul_payload_type_index;
@@ -170,10 +163,8 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	{"MPMCM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
 		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-#ifdef AM
 	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTERS_FORMAT,
 		{&R4S8CR_read_register, &R4S8CR_write_register, &R4S8CR_update_data, &R4S8CR_get_sigfox_ul_payload}},
-#endif
 };
 static NODE_context_t node_ctx;
 
@@ -239,9 +230,7 @@ void _NODE_flush_list(void) {
 	uint8_t idx = 0;
 	// Reset node list.
 	for (idx=0 ; idx<NODES_LIST_SIZE_MAX ; idx++) {
-#ifdef AM
 		NODES_LIST.list[idx].address = 0xFF;
-#endif
 		NODES_LIST.list[idx].board_id = DINFOX_BOARD_ID_ERROR;
 	}
 	NODES_LIST.count = 0;
@@ -276,9 +265,7 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t register_address, int32
 		goto errors;
 	}
 	// Common write parameters.
-#ifdef AM
 	write_input.node_address = (node -> address);
-#endif
 	write_input.value = value;
 	write_input.register_address = register_address;
 	// Check node protocol.
@@ -288,13 +275,11 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t register_address, int32
 		write_input.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
 		break;
-#ifdef AM
 	case NODE_PROTOCOL_R4S8CR:
 		// Specific write parameters.
 		write_input.timeout_ms = R4S8CR_TIMEOUT_MS;
 		write_input.format = NODES[node -> board_id].registers_format[register_address];
 		break;
-#endif
 	default:
 		status = NODE_ERROR_PROTOCOL;
 		break;
@@ -326,11 +311,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 	node_ctx.sigfox_ul_payload_size = 0;
 	// Add board ID and node address.
 	node_ctx.sigfox_ul_payload.board_id = (node -> board_id);
-#ifdef AM
 	node_ctx.sigfox_ul_payload.node_address = (node -> address);
-#else
-	node_ctx.sigfox_payload.node_address = DINFOX_NODE_ADDRESS_BROADCAST;
-#endif
 	node_ctx.sigfox_ul_payload_size = 2;
 	// Add specific payload.
 	switch (ul_payload_type) {
@@ -370,11 +351,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 		goto errors;
 	}
 	// Check UHFM board availability.
-#ifdef AM
 	if (node_ctx.uhfm_address == DINFOX_NODE_ADDRESS_BROADCAST) {
-#else
-	if (node_ctx.uhfm_connected == 0) {
-#endif
 		status = NODE_ERROR_NONE_RADIO_MODULE;
 		goto errors;
 	}
@@ -384,11 +361,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 	sigfox_message.bidirectional_flag = bidirectional_flag;
 	sigfox_message.dl_payload = (uint8_t*) node_ctx.sigfox_dl_payload.frame;
 	// Send message.
-#ifdef AM
 	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &send_status);
-#else
-	status = UHFM_send_sigfox_message(&sigfox_message, &send_status);
-#endif
 	if (status != NODE_SUCCESS) goto errors;
 	// Check send status.
 	if (send_status.all != 0) {
@@ -451,7 +424,6 @@ NODE_status_t _NODE_execute_downlink(void) {
 	NODE_action_t action;
 	uint8_t address_match = 0;
 	uint8_t idx = 0;
-#ifdef AM
 	// Search board in nodes list.
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// Compare address
@@ -470,7 +442,6 @@ NODE_status_t _NODE_execute_downlink(void) {
 		status = NODE_ERROR_DOWNLINK_BOARD_ID;
 		goto errors;
 	}
-#endif
 	// Create action structure.
 	action.node = &NODES_LIST.list[idx];
 	action.register_address = node_ctx.sigfox_dl_payload.register_address;
@@ -553,6 +524,8 @@ void NODE_init(void) {
 	node_ctx.sigfox_dl_next_time_seconds = 0;
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
+	// Init interface layers.
+	AT_BUS_init();
 }
 
 /* GET NODE BOARD NAME.
@@ -602,9 +575,7 @@ NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
 	// Flush line.
 	_NODE_flush_string_data_value(string_data_index);
 	// Update pointers.
-#ifdef AM
 	data_update.node_address = (node -> address);
-#endif
 	data_update.string_data_index = string_data_index;
 	data_update.name_ptr = (char_t*) &(node_ctx.data.string_data_name[string_data_index]);
 	data_update.value_ptr = (char_t*) &(node_ctx.data.string_data_value[string_data_index]);
@@ -620,11 +591,9 @@ NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
 			status = NODES[node -> board_id].functions.update_data(&data_update);
 		}
 		break;
-#ifdef AM
 	case NODE_PROTOCOL_R4S8CR:
 		status = NODES[node -> board_id].functions.update_data(&data_update);
 		break;
-#endif
 	default:
 		status = NODE_ERROR_PROTOCOL;
 		break;
@@ -718,16 +687,10 @@ NODE_status_t NODE_scan(void) {
 	uint8_t idx = 0;
 	// Reset list.
 	_NODE_flush_list();
-#ifdef AM
 	node_ctx.uhfm_address = DINFOX_NODE_ADDRESS_BROADCAST;
-#else
-	node_ctx.uhfm_connected = 0;
-#endif
 	// Add master board to the list.
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
-#ifdef AM
 	NODES_LIST.list[0].address = DINFOX_NODE_ADDRESS_DMM;
-#endif
 	NODES_LIST.count++;
 	// Scan LBUS nodes.
 	status = AT_BUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
@@ -738,21 +701,15 @@ NODE_status_t NODE_scan(void) {
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// Check board ID.
 		if (NODES_LIST.list[idx].board_id == DINFOX_BOARD_ID_UHFM) {
-#ifdef AM
 			node_ctx.uhfm_address = NODES_LIST.list[idx].address;
-#else
-			node_ctx.uhfm_connected = 1;
-#endif
 			break;
 		}
 	}
-#ifdef AM
 	// Scan R4S8CR nodes.
 	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
 	NODES_LIST.count += nodes_count;
-#endif
 errors:
 	return status;
 }

@@ -15,7 +15,6 @@
 #include "lpuart.h"
 #include "mapping.h"
 #include "parser.h"
-#include "mode.h"
 #include "node.h"
 #include "string.h"
 
@@ -220,20 +219,12 @@ errors:
 	return status;
 }
 
-#ifdef AM
 /* PING AT NODE.
  * @param node_address:	AT address to ping.
  * @param ping_status:	Pointer to the ping operation status.
  * @return status:		Function execution status.
  */
 NODE_status_t _AT_BUS_ping(NODE_address_t node_address, NODE_access_status_t* ping_status) {
-#else
-/* PING AT NODE.
- * @param ping_status:	Pointer to the ping operation status.
- * @return status:		Function execution status.
- */
-NODE_status_t _AT_BUS_ping(NODE_access_status_t* ping_status) {
-#endif
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -243,9 +234,7 @@ NODE_status_t _AT_BUS_ping(NODE_access_status_t* ping_status) {
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
 	// Build command structure.
-#ifdef AM
 	command_params.node_address = node_address;
-#endif
 	command_params.command = (char_t*) command;
 	// Build reply structure.
 	reply_params.type = NODE_REPLY_TYPE_OK;
@@ -264,6 +253,18 @@ errors:
 
 /*** AT functions ***/
 
+/* INIT AT BUS INTERFACE.
+ * @param:	None.
+ * @return:	None.
+ */
+void AT_BUS_init(void) {
+	// Init context.
+	_AT_BUS_flush_command();
+	_AT_BUS_flush_replies();
+	// Init LBUS layer.
+	LBUS_init();
+}
+
 /* SEND AT BUS COMMAND.
  * @param command_params:	Pointer to the command parameters.
  * @param reply_params:		Pointer to the reply parameters.
@@ -275,10 +276,6 @@ NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params, NOD
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
-#ifdef DM
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	LPUART_config_t lpuart_config;
-#endif
 	// Flush buffer.
 	_AT_BUS_flush_command();
 	// Add command.
@@ -290,21 +287,9 @@ NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params, NOD
 	_AT_BUS_flush_replies();
 	// Disable receiver.
 	LPUART1_disable_rx();
-#ifdef AM
 	// Send command.
 	status = LBUS_send((command_params -> node_address), (uint8_t*) at_bus_ctx.command, at_bus_ctx.command_size);
 	if (status != NODE_SUCCESS) goto errors;
-#else
-	// Configure physical interface.
-	lpuart_config.baud_rate = LBUS_BAUD_RATE;
-	lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
-	lpuart_config.rx_callback = &AT_BUS_fill_rx_buffer;
-	lpuart1_status = LPUART1_configure(&lpuart_config);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-	// Send command.
-	lpuart1_status = LPUART1_send((uint8_t*) at_bus_ctx.command, at_bus_ctx.command_size);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-#endif
 	LPUART1_enable_rx();
 	// Wait reply.
 	status = _AT_BUS_wait_reply(reply_params, read_data, command_status);
@@ -328,9 +313,7 @@ NODE_status_t AT_BUS_read_register(NODE_read_parameters_t* read_params, NODE_rea
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
 	// Build command structure.
-#ifdef AM
 	command_params.node_address = (read_params -> node_address);
-#endif
 	command_params.command = (char_t*) command;
 	// Build reply structure.
 	reply_params.type = (read_params -> type);
@@ -364,9 +347,7 @@ NODE_status_t AT_BUS_write_register(NODE_write_parameters_t* write_params, NODE_
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
 	// Build command structure.
-#ifdef AM
 	command_params.node_address = (write_params -> node_address);
-#endif
 	command_params.command = (char_t*) command;
 	// Build reply structure.
 	reply_params.type = NODE_REPLY_TYPE_OK;
@@ -401,9 +382,7 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	NODE_read_parameters_t read_params;
 	NODE_read_data_t read_data;
 	NODE_access_status_t read_status;
-#ifdef AM
 	NODE_address_t node_address = 0;
-#endif
 	uint8_t node_list_idx = 0;
 	// Check parameters.
 	if ((nodes_list == NULL) || (nodes_count == NULL)) {
@@ -422,7 +401,6 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	read_data.value = 0;
 	read_data.byte_array = NULL;
 	read_data.extracted_length = 0;
-#ifdef AM
 	// Loop on all addresses.
 	for (node_address=0 ; node_address<=DINFOX_NODE_ADDRESS_LBUS_LAST ; node_address++) {
 		// Ping address.
@@ -450,26 +428,6 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 		}
 		IWDG_reload();
 	}
-#else
-	// Ping address.
-	status = _AT_BUS_ping(&read_status);
-	if (status != NODE_SUCCESS) goto errors;
-	// Check reply status.
-	if (read_status.all == 0) {
-		// Node found (even if an error was returned after ping command).
-		(*nodes_count)++;
-		// Store address and reset board ID.
-		nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_ERROR;
-		// Get board ID.
-		status = AT_BUS_read_register(&read_params, &read_data, &read_status);
-		if (status != NODE_SUCCESS) goto errors;
-		// Check reply status.
-		if (read_status.all == 0) {
-			// Update board ID.
-			nodes_list[node_list_idx].board_id = (uint8_t) read_data.value;
-		}
-	}
-#endif
 	return NODE_SUCCESS;
 errors:
 	return status;
@@ -489,10 +447,8 @@ void AT_BUS_fill_rx_buffer(uint8_t rx_byte) {
 		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].line_end_flag = 1;
 		// Switch buffer.
 		at_bus_ctx.reply_write_idx = (at_bus_ctx.reply_write_idx + 1) % AT_BUS_REPLY_BUFFER_DEPTH;
-#ifdef AM
 		// Reset LBUS layer.
 		LBUS_reset();
-#endif
 	}
 	else {
 		// Store incoming byte.

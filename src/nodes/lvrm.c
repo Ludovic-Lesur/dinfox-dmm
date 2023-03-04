@@ -9,7 +9,6 @@
 
 #include "at_bus.h"
 #include "dinfox.h"
-#include "mode.h"
 #include "string.h"
 
 /*** LVRM local macros ***/
@@ -88,9 +87,7 @@ NODE_status_t LVRM_update_data(NODE_data_update_t* data_update) {
 	// Convert to register address.
 	register_address = ((data_update -> string_data_index) + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
 	// Read parameters.
-#ifdef AM
 	read_params.node_address = (data_update -> node_address);
-#endif
 	read_params.register_address = register_address;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;

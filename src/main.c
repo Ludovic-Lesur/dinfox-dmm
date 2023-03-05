@@ -162,6 +162,7 @@ int main(void) {
 	_DMM_init_context();
 	_DMM_init_hw();
 	// Local variables.
+	ADC_status_t adc1_status = ADC_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
@@ -170,6 +171,9 @@ int main(void) {
 		// Perform state machine.
 		switch (dmm_ctx.state) {
 		case DMM_STATE_INIT:
+			// Perform first analog measurements.
+			adc1_status = ADC1_perform_measurements();
+			ADC1_error_check();
 			// Turn bus interface on.
 			lpuart1_status = LPUART1_power_on();
 			LPUART1_error_check();

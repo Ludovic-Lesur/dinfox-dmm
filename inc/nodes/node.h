@@ -8,6 +8,7 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
+#include "adc.h"
 #include "lptim.h"
 #include "lpuart.h"
 #include "string.h"
@@ -15,23 +16,23 @@
 
 /*** NODES macros ***/
 
-#define NODES_LIST_SIZE_MAX				32
-#define NODE_STRING_BUFFER_SIZE			32
+#define NODES_LIST_SIZE_MAX					32
+#define NODE_STRING_BUFFER_SIZE				32
 
-#define NODE_ERROR_STRING				"ERROR"
-#define NODE_ERROR_VALUE_NODE_ADDRESS	0xFF
-#define NODE_ERROR_VALUE_BOARD_ID		0xFF
-#define NODE_ERROR_VALUE_VERSION		0xFF
-#define NODE_ERROR_VALUE_COMMIT_INDEX	0xFF
-#define NODE_ERROR_VALUE_COMMIT_ID		0x0FFFFFFF
-#define NODE_ERROR_VALUE_DIRTY_FLAG		0x0F
-#define NODE_ERROR_VALUE_RESET_REASON	0xFF
-#define NODE_ERROR_VALUE_ERROR_STACK	0xFFFF
-#define NODE_ERROR_VALUE_ANALOG_16BITS	0xFFFF
-#define NODE_ERROR_VALUE_ANALOG_23BITS	0x7FFFFF
-#define NODE_ERROR_VALUE_TEMPERATURE	0x7F
-#define NODE_ERROR_VALUE_HUMIDITY		0xFF
-#define NODE_ERROR_VALUE_BOOLEAN		0
+static const char_t NODE_ERROR_STRING[] =	"ERROR";
+#define NODE_ERROR_VALUE_NODE_ADDRESS		0xFF
+#define NODE_ERROR_VALUE_BOARD_ID			0xFF
+#define NODE_ERROR_VALUE_VERSION			0xFF
+#define NODE_ERROR_VALUE_COMMIT_INDEX		0xFF
+#define NODE_ERROR_VALUE_COMMIT_ID			0x0FFFFFFF
+#define NODE_ERROR_VALUE_DIRTY_FLAG			0x0F
+#define NODE_ERROR_VALUE_RESET_REASON		0xFF
+#define NODE_ERROR_VALUE_ERROR_STACK		0xFFFF
+#define NODE_ERROR_VALUE_ANALOG_16BITS		0xFFFF
+#define NODE_ERROR_VALUE_ANALOG_23BITS		0x7FFFFF
+#define NODE_ERROR_VALUE_TEMPERATURE		0x7F
+#define NODE_ERROR_VALUE_HUMIDITY			0xFF
+#define NODE_ERROR_VALUE_BOOLEAN			0
 
 /*** NODE structures ***/
 
@@ -55,7 +56,8 @@ typedef enum {
 	NODE_ERROR_DOWNLINK_BOARD_ID,
 	NODE_ERROR_DOWNLINK_OPERATION_CODE,
 	NODE_ERROR_ACTION_INDEX,
-	NODE_ERROR_BASE_LPUART = 0x0100,
+	NODE_ERROR_BASE_ADC = 0x0100,
+	NODE_ERROR_BASE_LPUART = (NODE_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
@@ -162,6 +164,9 @@ NODE_status_t NODE_read_string_data(NODE_t* node, uint8_t string_data_index, cha
 NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_access_status_t* write_status);
 
 NODE_status_t NODE_task(void);
+
+uint32_t NODE_get_sigfox_ul_period(void);
+uint32_t NODE_get_sigfox_dl_period(void);
 
 #define NODE_append_string_name(str) { \
 	string_status = STRING_append_string((data_update -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \

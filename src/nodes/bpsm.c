@@ -131,7 +131,7 @@ NODE_status_t BPSM_update_data(NODE_data_update_t* data_update) {
 	}
 	else {
 		NODE_flush_string_value();
-		NODE_append_string_value(NODE_ERROR_STRING);
+		NODE_append_string_value((char_t*) NODE_ERROR_STRING);
 		NODE_update_value(register_address, BPSM_ERROR_VALUE[register_address]);
 	}
 errors:

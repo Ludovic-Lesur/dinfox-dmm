@@ -39,7 +39,8 @@ typedef enum {
 } ADC_channel_t;
 
 typedef enum {
-	ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION = 0,
+	ADC_CONVERSION_TYPE_VMCU = 0,
+	ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION,
 	ADC_CONVERSION_TYPE_VOLTAGE_AMPLIFICATION,
 	ADC_CONVERSION_TYPE_LAST
 } ADC_conversion_t;
@@ -59,9 +60,10 @@ typedef struct {
 /*** ADC local global variables ***/
 
 static const ADC_input_t ADC_INPUTS[ADC_DATA_INDEX_LAST] = {
+	{ADC_CHANNEL_VREFINT, ADC_CONVERSION_TYPE_VMCU, 0},
 	{ADC_CHANNEL_VUSB, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2},
-	{ADC_CHANNEL_VHMI, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2},
 	{ADC_CHANNEL_VRS, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 10},
+	{ADC_CHANNEL_VHMI, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2}
 };
 static ADC_context_t adc_ctx;
 
@@ -137,27 +139,6 @@ errors:
 	return status;
 }
 
-/* PERFORM INTERNAL REFERENCE VOLTAGE CONVERSION.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static ADC_status_t _ADC1_compute_vrefint(void) {
-	// Local variables.
-	ADC_status_t status = ADC_SUCCESS;
-	// Read raw reference voltage.
-	status = _ADC1_filtered_conversion(ADC_CHANNEL_VREFINT, &adc_ctx.vrefint_12bits);
-	return status;
-}
-
-/* COMPUTE MCU SUPPLY VOLTAGE.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static void _ADC1_compute_vmcu(void) {
-	// Retrieve supply voltage from bandgap result.
-	adc_ctx.data[ADC_DATA_INDEX_VMCU_MV] = (VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (adc_ctx.vrefint_12bits);
-}
-
 /* COMPUTE MCU TEMPERATURE THANKS TO INTERNAL VOLTAGE REFERENCE.
  * @param:			None.
  * @return status:	Function execution status.
@@ -194,8 +175,16 @@ static ADC_status_t _ADC1_compute_all_channels(void) {
 		// Get raw result.
 		status = _ADC1_filtered_conversion(ADC_INPUTS[idx].channel, &voltage_12bits);
 		if (status != ADC_SUCCESS) goto errors;
+		// Update VREFINT.
+		if (ADC_INPUTS[idx].channel == ADC_CHANNEL_VREFINT) {
+			adc_ctx.vrefint_12bits = voltage_12bits;
+		}
 		// Convert to mV using VREFINT.
 		switch (ADC_INPUTS[idx].gain_type) {
+		case ADC_CONVERSION_TYPE_VMCU:
+			// Retrieve supply voltage from bandgap result.
+			adc_ctx.data[idx] = (VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (adc_ctx.vrefint_12bits);
+			break;
 		case ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION:
 			adc_ctx.data[idx] = (ADC_VREFINT_VOLTAGE_MV * voltage_12bits * ADC_INPUTS[idx].gain) / (adc_ctx.vrefint_12bits);
 			break;
@@ -274,6 +263,7 @@ ADC_status_t ADC1_perform_measurements(void) {
 	ADC_status_t status = ADC_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
 	uint32_t loop_count = 0;
+	uint8_t hmi_on = 0;
 	// Enable ADC peripheral.
 	ADC1 -> CR |= (0b1 << 0); // ADEN='1'.
 	while (((ADC1 -> ISR) & (0b1 << 0)) == 0) {
@@ -284,8 +274,12 @@ ADC_status_t ADC1_perform_measurements(void) {
 			goto errors;
 		}
 	}
-	// Enable voltage dividers.
+	// Enable voltage dividers and HMI power supply.
 	GPIO_write(&GPIO_MNTR_EN, 1);
+	hmi_on = GPIO_read(&GPIO_HMI_POWER_ENABLE);
+	if (hmi_on == 0) {
+		GPIO_write(&GPIO_HMI_POWER_ENABLE, 1);
+	}
 	// Wait voltage dividers stabilization.
 	lptim1_status = LPTIM1_delay_milliseconds(100, LPTIM_DELAY_MODE_STOP);
 	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
@@ -293,19 +287,19 @@ ADC_status_t ADC1_perform_measurements(void) {
 	ADC1 -> CCR |= (0b11 << 22); // TSEN='1' and VREFEF='1'.
 	lptim1_status = LPTIM1_delay_milliseconds(10, LPTIM_DELAY_MODE_ACTIVE);
 	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
-	// Perform measurements.
-	status = _ADC1_compute_vrefint();
-	if (status != ADC_SUCCESS) goto errors;
-	_ADC1_compute_vmcu();
-	status = _ADC1_compute_tmcu();
-	if (status != ADC_SUCCESS) goto errors;
+	// Perform conversions.
 	status = _ADC1_compute_all_channels();
+	if (status != ADC_SUCCESS) goto errors;
+	status = _ADC1_compute_tmcu();
 	if (status != ADC_SUCCESS) goto errors;
 errors:
 	// Switch internal voltage reference off.
 	ADC1 -> CCR &= ~(0b11 << 22); // TSEN='0' and VREFEF='0'.
-	// Disable voltage dividers.
+	// Disable voltage dividers and HMI power supply.
 	GPIO_write(&GPIO_MNTR_EN, 0);
+	if (hmi_on == 0) {
+		GPIO_write(&GPIO_HMI_POWER_ENABLE, 0);
+	}
 	// Disable ADC peripheral.
 	ADC1 -> CR |= (0b1 << 1); // ADDIS='1'.
 	return status;

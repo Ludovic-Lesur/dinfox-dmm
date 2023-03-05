@@ -10,6 +10,7 @@
 #include "at_bus.h"
 #include "bpsm.h"
 #include "ddrm.h"
+#include "dmm.h"
 #include "dinfox.h"
 #include "lpuart.h"
 #include "lvrm.h"
@@ -20,17 +21,17 @@
 
 /*** NODE local macros ***/
 
-#define NODE_STRING_DATA_INDEX_MAX			32
-#define NODE_REGISTER_ADDRESS_MAX			64
+#define NODE_STRING_DATA_INDEX_MAX				32
+#define NODE_REGISTER_ADDRESS_MAX				64
 
-#define NODE_SIGFOX_PAYLOAD_STARTUP_SIZE	8
-#define NODE_SIGFOX_PAYLOAD_SIZE_MAX		12
+#define NODE_SIGFOX_PAYLOAD_STARTUP_SIZE		8
+#define NODE_SIGFOX_PAYLOAD_SIZE_MAX			12
 
-#define NODE_SIGFOX_UL_PERIOD_SECONDS		600
-#define NODE_SIGFOX_DL_PERIOD_SECONDS		21600
-#define NODE_SIGFOX_LOOP_MAX				100
+#define NODE_SIGFOX_UL_PERIOD_DEFAULT_SECONDS	600
+#define NODE_SIGFOX_DL_PERIOD_DEFAULT_SECONDS	21600
+#define NODE_SIGFOX_LOOP_MAX					100
 
-#define NODE_ACTIONS_DEPTH					10
+#define NODE_ACTIONS_DEPTH						10
 
 /*** NODE local structures ***/
 
@@ -120,10 +121,12 @@ typedef struct {
 	NODE_sigfox_ul_payload_t sigfox_ul_payload;
 	NODE_sigfox_ul_payload_type_t sigfox_ul_payload_type_index;
 	uint8_t sigfox_ul_payload_size;
+	uint32_t sigfox_ul_period_seconds;
 	uint32_t sigfox_ul_next_time_seconds;
 	uint8_t sigfox_ul_node_list_index;
 	// Downlink.
 	NODE_sigfox_dl_payload_t sigfox_dl_payload;
+	uint32_t sigfox_dl_period_seconds;
 	uint32_t sigfox_dl_next_time_seconds;
 	// Write actions list.
 	NODE_action_t actions[NODE_ACTIONS_DEPTH];
@@ -153,13 +156,13 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 		{&AT_BUS_read_register, &AT_BUS_write_register, &SM_update_data, &SM_get_sigfox_ul_payload}
 	},
 	{"DIM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
-		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
+		{NULL, NULL, NULL, NULL}
 	},
 	{"RRM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
 		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"DMM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
-		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
+	{"DMM", NODE_PROTOCOL_AT_BUS, DMM_REGISTER_LAST, DMM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DMM_REGISTERS_FORMAT,
+		{&DMM_read_register, &DMM_write_register, &DMM_update_data, &DMM_get_sigfox_ul_payload}
 	},
 	{"MPMCM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
 		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
@@ -520,8 +523,10 @@ void NODE_init(void) {
 	_NODE_flush_list();
 	// Init context.
 	node_ctx.sigfox_ul_node_list_index = 0;
+	node_ctx.sigfox_ul_period_seconds = NODE_SIGFOX_UL_PERIOD_DEFAULT_SECONDS;
 	node_ctx.sigfox_ul_next_time_seconds = 0;
 	node_ctx.sigfox_ul_payload_type_index = 0;
+	node_ctx.sigfox_dl_period_seconds = NODE_SIGFOX_DL_PERIOD_DEFAULT_SECONDS;
 	node_ctx.sigfox_dl_next_time_seconds = 0;
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
@@ -732,11 +737,11 @@ NODE_status_t NODE_task(void) {
 	// Check uplink period.
 	if (RTC_get_time_seconds() >= node_ctx.sigfox_ul_next_time_seconds) {
 		// Update next time.
-		node_ctx.sigfox_ul_next_time_seconds += NODE_SIGFOX_UL_PERIOD_SECONDS;
+		node_ctx.sigfox_ul_next_time_seconds += node_ctx.sigfox_ul_period_seconds;
 		// Check downlink period.
 		if (RTC_get_time_seconds() >= node_ctx.sigfox_dl_next_time_seconds) {
 			// Update next time and set bidirectional flag.
-			node_ctx.sigfox_dl_next_time_seconds += NODE_SIGFOX_DL_PERIOD_SECONDS;
+			node_ctx.sigfox_dl_next_time_seconds += node_ctx.sigfox_dl_period_seconds;
 			bidirectional_flag = 1;
 		}
 		// Search next Sigfox message to send.
@@ -792,4 +797,20 @@ errors:
 	// Turn bus interface off.
 	LPUART1_power_off();
 	return status;
+}
+
+/* READ CURRENT SIGFOX UPLINK PERIOD.
+ * @param:								None.
+ * @return sigfox_ul_period_seconds:	Sigfox uplink period in seconds.
+ */
+uint32_t NODE_get_sigfox_ul_period(void) {
+	return node_ctx.sigfox_ul_period_seconds;
+}
+
+/* READ CURRENT SIGFOX DOWNLINK PERIOD.
+ * @param:								None.
+ * @return sigfox_dl_period_seconds:	Sigfox downlink period in seconds.
+ */
+uint32_t NODE_get_sigfox_dl_period(void) {
+	return node_ctx.sigfox_dl_period_seconds;
 }

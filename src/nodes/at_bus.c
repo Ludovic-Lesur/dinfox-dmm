@@ -298,7 +298,7 @@ errors:
 	return status;
 }
 
-/* READ AT NODE REGISTER.
+/* READ AT BUS NODE REGISTER.
  * @param read_params:	Pointer to the read operation parameters.
  * @param read_data:	Pointer to the read result.
  * @param read_status:	Pointer to the read operation status.
@@ -332,7 +332,7 @@ errors:
 	return status;
 }
 
-/* WRITE AT NODE REGISTER.
+/* WRITE AT BUS NODE REGISTER.
  * @param write_params:	Pointer to the write operation parameters.
  * @param write_status:	Pointer to the write operation status.
  * @return status:		Function execution status.
@@ -370,7 +370,7 @@ errors:
 	return status;
 }
 
-/* SCAN AT NODES ON BUS.
+/* SCAN AT BUS NODES.
  * @param nodes_list:		Node list to fill.
  * @param nodes_list_size:	Maximum size of the list.
  * @param nodes_count:		Pointer to byte that will contain the number of AT nodes detected.
@@ -433,7 +433,7 @@ errors:
 	return status;
 }
 
-/* FILL AT BUFFER WITH A NEW BYTE (CALLED BY LPUART INTERRUPT).
+/* FILL AT BUFFER WITH A NEW BYTE (CALLED BY LBUS INTERRUPT).
  * @param rx_byte:	Incoming byte.
  * @return:			None.
  */

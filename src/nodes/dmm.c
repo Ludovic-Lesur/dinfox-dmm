@@ -186,6 +186,11 @@ NODE_status_t DMM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox
 		}
 		(*ul_payload_size) = DMM_SIGFOX_PAYLOAD_MONITORING_SIZE;
 		break;
+	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
+		// No data frame.
+		(*ul_payload_size) = 0;
+		status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
+		goto errors;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
 		goto errors;

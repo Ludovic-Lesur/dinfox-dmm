@@ -42,7 +42,8 @@ typedef enum {
 } NODE_protocol_t;
 
 typedef enum {
-	NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE = 0,
+	NODE_DOWNLINK_OPERATION_CODE_NOP = 0,
+	NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE,
 	NODE_DOWNLINK_OPERATION_CODE_TOGGLE_OFF_ON,
 	NODE_DOWNLINK_OPERATION_CODE_TOGGLE_ON_OFF,
 	NODE_DOWNLINK_OPERATION_CODE_LAST
@@ -228,6 +229,7 @@ void _NODE_flush_all_data_value(void) {
 
 /* FLUSH NODES LIST.
  * @param:	None.
+ * @return:	None.
  */
 void _NODE_flush_list(void) {
 	// Local variables.
@@ -343,11 +345,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 		// Execute function of the corresponding board ID.
 		status = NODES[node -> board_id].functions.get_sigfox_ul_payload(node_ctx.data.registers_value, ul_payload_type, node_ctx.sigfox_ul_payload.node_data, &sigfox_payload_specific_size);
 		if (status != NODE_SUCCESS) goto errors;
-		// Check returned pointer.
-		if (sigfox_payload_specific_size == 0) {
-			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
-			goto errors;
-		}
+		// Update frame size.
 		node_ctx.sigfox_ul_payload_size += sigfox_payload_specific_size;
 		break;
 	default:
@@ -363,13 +361,35 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 	sigfox_message.ul_payload = (uint8_t*) node_ctx.sigfox_ul_payload.frame;
 	sigfox_message.ul_payload_size = node_ctx.sigfox_ul_payload_size;
 	sigfox_message.bidirectional_flag = bidirectional_flag;
-	sigfox_message.dl_payload = (uint8_t*) node_ctx.sigfox_dl_payload.frame;
 	// Send message.
 	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &send_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Check send status.
 	if (send_status.all != 0) {
 		status = NODE_ERROR_SIGFOX_SEND;
+	}
+errors:
+	return status;
+}
+
+/* READ NODE COMMAND FROM RADIO.
+ * @param:			None.
+ * @return status:	Function execution status.
+ */
+NODE_status_t _NODE_radio_read(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t read_status;
+	// Read downlink payload.
+	status = UHFM_get_dl_payload(node_ctx.uhfm_address, node_ctx.sigfox_dl_payload.frame, &read_status);
+	if (status != NODE_SUCCESS) {
+		node_ctx.sigfox_dl_payload.operation_code = NODE_DOWNLINK_OPERATION_CODE_NOP;
+		goto errors;
+	}
+	// Check send status.
+	if (read_status.all != 0) {
+		node_ctx.sigfox_dl_payload.operation_code = NODE_DOWNLINK_OPERATION_CODE_NOP;
+		status = NODE_ERROR_SIGFOX_READ;
 	}
 errors:
 	return status;
@@ -451,6 +471,9 @@ NODE_status_t _NODE_execute_downlink(void) {
 	action.register_address = node_ctx.sigfox_dl_payload.register_address;
 	// Check operation code.
 	switch (node_ctx.sigfox_dl_payload.operation_code) {
+	case NODE_DOWNLINK_OPERATION_CODE_NOP:
+		// No operation.
+		break;
 	case NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE:
 		// Instantaneous write operation.
 		action.register_value = node_ctx.sigfox_dl_payload.data;
@@ -788,6 +811,10 @@ NODE_status_t NODE_task(void) {
 	}
 	// Execute downlink operation if needed.
 	if (bidirectional_flag != 0) {
+		// Read downlink payload.
+		status = _NODE_radio_read();
+		if (status != NODE_SUCCESS) goto errors;
+		// Decode downlink payload.
 		status = _NODE_execute_downlink();
 		if (status != NODE_SUCCESS) goto errors;
 	}

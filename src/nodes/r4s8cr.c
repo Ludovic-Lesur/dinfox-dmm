@@ -377,9 +377,10 @@ NODE_status_t R4S8CR_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sig
 	// Check type.
 	switch (ul_payload_type) {
 	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
-		// None monitoring frame.
+		// No monitoring frame.
 		(*ul_payload_size) = 0;
-		break;
+		status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
+		goto errors;
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
 		// Build data payload.
 		sigfox_payload_data.relay_1 = integer_data_value[R4S8CR_REGISTER_RELAY_1];

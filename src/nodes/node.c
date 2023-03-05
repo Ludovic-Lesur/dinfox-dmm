@@ -242,6 +242,7 @@ void _NODE_flush_list(void) {
 	for (idx=0 ; idx<NODES_LIST_SIZE_MAX ; idx++) {
 		NODES_LIST.list[idx].address = 0xFF;
 		NODES_LIST.list[idx].board_id = DINFOX_BOARD_ID_ERROR;
+		NODES_LIST.list[idx].startup_data_sent = 0;
 	}
 	NODES_LIST.count = 0;
 }
@@ -331,6 +332,11 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
 			goto errors;
 		}
+		// Check if startup data has not already be sent.
+		if ((node -> startup_data_sent) != 0) {
+			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
+			goto errors;
+		}
 		// Build startup payload here since the format is common to all boards.
 		sigfox_payload_startup.reset_reason = node_ctx.data.registers_value[DINFOX_REGISTER_RESET_REASON];
 		sigfox_payload_startup.major_version = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_MAJOR];
@@ -371,6 +377,11 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 	// Check send status.
 	if (send_status.all != 0) {
 		status = NODE_ERROR_SIGFOX_SEND;
+		goto errors;
+	}
+	// Set startup data flag of the corresponding node.
+	if (ul_payload_type == NODE_SIGFOX_PAYLOAD_TYPE_STARTUP) {
+		(node -> startup_data_sent) = 1;
 	}
 errors:
 	return status;

@@ -72,6 +72,7 @@ typedef uint8_t	NODE_address_t;
 typedef struct {
 	NODE_address_t address;
 	uint8_t board_id;
+	uint8_t startup_data_sent;
 } NODE_t;
 
 typedef struct {

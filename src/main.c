@@ -34,6 +34,10 @@
 #include "mode.h"
 #include "version.h"
 
+/*** MAIN local macros ***/
+
+#define DMM_MEASUREMENTS_PERIOD_SECONDS		60
+
 /*** MAIN local structures ***/
 
 typedef union {
@@ -46,6 +50,7 @@ typedef union {
 
 typedef enum {
 	DMM_STATE_INIT,
+	DMM_STATE_MEASURE,
 	DMM_STATE_HMI,
 	DMM_STATE_NODE_TASK,
 	DMM_STATE_OFF,
@@ -60,6 +65,8 @@ typedef struct {
 	// Clocks.
 	uint32_t lsi_frequency_hz;
 	uint8_t lse_running;
+	// Internal measurements.
+	uint32_t measurements_next_time_seconds;
 } DMM_context_t;
 
 /*** MAIN local global variables ***/
@@ -78,6 +85,7 @@ void _DMM_init_context(void) {
 	dmm_ctx.lsi_frequency_hz = 0;
 	dmm_ctx.lse_running = 0;
 	dmm_ctx.status.all = 0;
+	dmm_ctx.measurements_next_time_seconds = 0;
 }
 
 /* COMMON INIT FUNCTION FOR PERIPHERALS AND COMPONENTS.
@@ -171,9 +179,6 @@ int main(void) {
 		// Perform state machine.
 		switch (dmm_ctx.state) {
 		case DMM_STATE_INIT:
-			// Perform first analog measurements.
-			adc1_status = ADC1_perform_measurements();
-			ADC1_error_check();
 			// Turn bus interface on.
 			lpuart1_status = LPUART1_power_on();
 			LPUART1_error_check();
@@ -183,7 +188,7 @@ int main(void) {
 			// Turn bus interface off.
 			LPUART1_power_off();
 			// Compute next state.
-			dmm_ctx.state = DMM_STATE_OFF;
+			dmm_ctx.state = DMM_STATE_MEASURE;
 			break;
 		case DMM_STATE_HMI:
 			// Process HMI.
@@ -196,6 +201,18 @@ int main(void) {
 			// Process nodes_task.
 			node_status = NODE_task();
 			NODE_error_check();
+			// Compute next state.
+			dmm_ctx.state = DMM_STATE_MEASURE;
+			break;
+		case DMM_STATE_MEASURE:
+			// Check period.
+			if (RTC_get_time_seconds() >= dmm_ctx.measurements_next_time_seconds) {
+				// Update period.
+				dmm_ctx.measurements_next_time_seconds = RTC_get_time_seconds() + DMM_MEASUREMENTS_PERIOD_SECONDS;
+				// Perform analog measurements.
+				adc1_status = ADC1_perform_measurements();
+				ADC1_error_check();
+			}
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;

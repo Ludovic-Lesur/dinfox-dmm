@@ -27,8 +27,12 @@
 #define NODE_SIGFOX_PAYLOAD_STARTUP_SIZE		8
 #define NODE_SIGFOX_PAYLOAD_SIZE_MAX			12
 
-#define NODE_SIGFOX_UL_PERIOD_DEFAULT_SECONDS	600
-#define NODE_SIGFOX_DL_PERIOD_DEFAULT_SECONDS	21600
+#define NODE_SIGFOX_UL_PERIOD_SECONDS_MIN		60
+#define NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	600
+
+#define NODE_SIGFOX_DL_PERIOD_SECONDS_MIN		300
+#define NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
+
 #define NODE_SIGFOX_LOOP_MAX					100
 
 #define NODE_ACTIONS_DEPTH						10
@@ -546,10 +550,10 @@ void NODE_init(void) {
 	_NODE_flush_list();
 	// Init context.
 	node_ctx.sigfox_ul_node_list_index = 0;
-	node_ctx.sigfox_ul_period_seconds = NODE_SIGFOX_UL_PERIOD_DEFAULT_SECONDS;
+	node_ctx.sigfox_ul_period_seconds = NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT;
 	node_ctx.sigfox_ul_next_time_seconds = 0;
 	node_ctx.sigfox_ul_payload_type_index = 0;
-	node_ctx.sigfox_dl_period_seconds = NODE_SIGFOX_DL_PERIOD_DEFAULT_SECONDS;
+	node_ctx.sigfox_dl_period_seconds = NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT;
 	node_ctx.sigfox_dl_next_time_seconds = 0;
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
@@ -743,6 +747,56 @@ errors:
 	return status;
 }
 
+/* READ CURRENT SIGFOX UPLINK PERIOD.
+ * @param:								None.
+ * @return sigfox_ul_period_seconds:	Sigfox uplink period in seconds.
+ */
+uint32_t NODE_get_sigfox_ul_period(void) {
+	return node_ctx.sigfox_ul_period_seconds;
+}
+
+/* READ CURRENT SIGFOX DOWNLINK PERIOD.
+ * @param:								None.
+ * @return sigfox_dl_period_seconds:	Sigfox downlink period in seconds.
+ */
+uint32_t NODE_get_sigfox_dl_period(void) {
+	return node_ctx.sigfox_dl_period_seconds;
+}
+
+/* SET SIGFOX UPLINK PERIOD.
+ * @param ul_period_seconds:	New uplink period in seconds.
+ * @return status:				Function executions status.
+ */
+NODE_status_t NODE_set_sigfox_ul_period(uint32_t ul_period_seconds) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Check parameter.
+	if (ul_period_seconds < NODE_SIGFOX_UL_PERIOD_SECONDS_MIN) {
+		status = NODE_ERROR_SIGFOX_UPLINK_PERIOD;
+		goto errors;
+	}
+	node_ctx.sigfox_ul_period_seconds = ul_period_seconds;
+errors:
+	return status;
+}
+
+/* SET SIGFOX DOWNLINK PERIOD.
+ * @param dl_period_seconds:	New downlink period in seconds.
+ * @return status:				Function executions status.
+ */
+NODE_status_t NODE_set_sigfox_dl_period(uint32_t dl_period_seconds) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Check parameter.
+	if (dl_period_seconds < NODE_SIGFOX_DL_PERIOD_SECONDS_MIN) {
+		status = NODE_ERROR_SIGFOX_DOWNLINK_PERIOD;
+		goto errors;
+	}
+	node_ctx.sigfox_dl_period_seconds = dl_period_seconds;
+errors:
+	return status;
+}
+
 /* MAIN TASK OF NODE LAYER.
  * @param:			None.
  * @return status:	Function execution status.
@@ -754,17 +808,19 @@ NODE_status_t NODE_task(void) {
 	uint32_t loop_count = 0;
 	uint8_t bidirectional_flag = 0;
 	uint8_t node_update_required = 1;
+	uint8_t ul_next_time_update_required = 0;
+	uint8_t dl_next_time_update_required = 0;
 	// Turn bus interface on.
 	lpuart1_status = LPUART1_power_on();
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Check uplink period.
 	if (RTC_get_time_seconds() >= node_ctx.sigfox_ul_next_time_seconds) {
-		// Update next time.
-		node_ctx.sigfox_ul_next_time_seconds += node_ctx.sigfox_ul_period_seconds;
+		// Next time update needed.
+		ul_next_time_update_required = 1;
 		// Check downlink period.
 		if (RTC_get_time_seconds() >= node_ctx.sigfox_dl_next_time_seconds) {
-			// Update next time and set bidirectional flag.
-			node_ctx.sigfox_dl_next_time_seconds += node_ctx.sigfox_dl_period_seconds;
+			// Next time update needed and set bidirectional flag.
+			dl_next_time_update_required = 1;
 			bidirectional_flag = 1;
 		}
 		// Search next Sigfox message to send.
@@ -778,6 +834,13 @@ NODE_status_t NODE_task(void) {
 				status = NODE_SUCCESS;
 			}
 			if (status == NODE_SUCCESS) {
+				// Set radio times to now to compensate node update duration.
+				if (ul_next_time_update_required != 0) {
+					node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
+				}
+				if (dl_next_time_update_required != 0) {
+					node_ctx.sigfox_dl_next_time_seconds = RTC_get_time_seconds();
+				}
 				// Send data through radio.
 				status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, bidirectional_flag);
 				// Handle all errors except not supported and empty payload.
@@ -821,23 +884,15 @@ NODE_status_t NODE_task(void) {
 	// Execute node actions.
 	status = _NODE_execute_actions();
 errors:
+	// Update next radio times.
+	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
+	if (ul_next_time_update_required != 0) {
+		node_ctx.sigfox_ul_next_time_seconds += node_ctx.sigfox_ul_period_seconds;
+	}
+	if (dl_next_time_update_required != 0) {
+		node_ctx.sigfox_dl_next_time_seconds += node_ctx.sigfox_dl_period_seconds;
+	}
 	// Turn bus interface off.
 	LPUART1_power_off();
 	return status;
-}
-
-/* READ CURRENT SIGFOX UPLINK PERIOD.
- * @param:								None.
- * @return sigfox_ul_period_seconds:	Sigfox uplink period in seconds.
- */
-uint32_t NODE_get_sigfox_ul_period(void) {
-	return node_ctx.sigfox_ul_period_seconds;
-}
-
-/* READ CURRENT SIGFOX DOWNLINK PERIOD.
- * @param:								None.
- * @return sigfox_dl_period_seconds:	Sigfox downlink period in seconds.
- */
-uint32_t NODE_get_sigfox_dl_period(void) {
-	return node_ctx.sigfox_dl_period_seconds;
 }

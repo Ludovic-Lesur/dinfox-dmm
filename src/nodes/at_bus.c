@@ -312,6 +312,11 @@ NODE_status_t AT_BUS_read_register(NODE_read_parameters_t* read_params, NODE_rea
 	NODE_reply_parameters_t reply_params;
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
+	// Check parameters.
+	if ((read_params == NULL) || (read_data == NULL) || (read_status == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
 	// Build command structure.
 	command_params.node_address = (read_params -> node_address);
 	command_params.command = (char_t*) command;
@@ -346,6 +351,11 @@ NODE_status_t AT_BUS_write_register(NODE_write_parameters_t* write_params, NODE_
 	NODE_read_data_t unused_read_data;
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
+	// Check parameters.
+	if ((write_params == NULL) || (write_status == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
 	// Build command structure.
 	command_params.node_address = (write_params -> node_address);
 	command_params.command = (char_t*) command;
@@ -355,7 +365,7 @@ NODE_status_t AT_BUS_write_register(NODE_write_parameters_t* write_params, NODE_
 	reply_params.timeout_ms = (write_params -> timeout_ms);
 	reply_params.byte_array_size = 0;
 	reply_params.exact_length = 1;
-	// Build read command.
+	// Build write command.
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_WRITE_REGISTER, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, (write_params -> register_address), STRING_FORMAT_HEXADECIMAL, 0, &command_size);

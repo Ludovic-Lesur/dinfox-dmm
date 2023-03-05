@@ -44,6 +44,7 @@ typedef enum {
 	NODE_ERROR_NODE_ADDRESS,
 	NODE_ERROR_REGISTER_ADDRESS,
 	NODE_ERROR_REGISTER_FORMAT,
+	NODE_ERROR_REGISTER_READ_ONLY,
 	NODE_ERROR_STRING_DATA_INDEX,
 	NODE_ERROR_READ_TYPE,
 	NODE_ERROR_ACCESS,
@@ -53,6 +54,8 @@ typedef enum {
 	NODE_ERROR_SIGFOX_LOOP,
 	NODE_ERROR_SIGFOX_SEND,
 	NODE_ERROR_SIGFOX_READ,
+	NODE_ERROR_SIGFOX_UPLINK_PERIOD,
+	NODE_ERROR_SIGFOX_DOWNLINK_PERIOD,
 	NODE_ERROR_DOWNLINK_NODE_ADDRESS,
 	NODE_ERROR_DOWNLINK_BOARD_ID,
 	NODE_ERROR_DOWNLINK_OPERATION_CODE,
@@ -164,10 +167,12 @@ NODE_status_t NODE_get_last_string_data_index(NODE_t* node, uint8_t* last_string
 NODE_status_t NODE_read_string_data(NODE_t* node, uint8_t string_data_index, char_t** string_data_name_ptr, char_t** string_data_value_ptr);
 NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_access_status_t* write_status);
 
-NODE_status_t NODE_task(void);
-
 uint32_t NODE_get_sigfox_ul_period(void);
 uint32_t NODE_get_sigfox_dl_period(void);
+NODE_status_t NODE_set_sigfox_ul_period(uint32_t ul_period_seconds);
+NODE_status_t NODE_set_sigfox_dl_period(uint32_t dl_period_seconds);
+
+NODE_status_t NODE_task(void);
 
 #define NODE_append_string_name(str) { \
 	string_status = STRING_append_string((data_update -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \

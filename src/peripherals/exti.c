@@ -33,12 +33,12 @@ static volatile uint8_t encoder_switch_flag = 0;
  */
 void __attribute__((optimize("-O0"))) EXTI0_1_IRQHandler(void) {
 	// Rotary encoder switch IRQ (PA0).
-	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_SW.pin_index))) != 0) {
+	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_SW.pin))) != 0) {
 		// Set flag in HMI driver.
 		HMI_set_irq_flag(HMI_IRQ_ENCODER_SWITCH);
 		encoder_switch_flag = 1;
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_SW.pin_index));
+		EXTI -> PR |= (0b1 << (GPIO_ENC_SW.pin));
 	}
 }
 
@@ -48,24 +48,24 @@ void __attribute__((optimize("-O0"))) EXTI0_1_IRQHandler(void) {
  */
 void __attribute__((optimize("-O0"))) EXTI2_3_IRQHandler(void) {
 	// Rotary encoder channel A (PA2).
-	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_CHA.pin_index))) != 0) {
+	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_CHA.pin))) != 0) {
 		// Check channel B state.
 		if (GPIO_read(&GPIO_ENC_CHB) == 0) {
 			// Set flag in HMI driver.
 			HMI_set_irq_flag(HMI_IRQ_ENCODER_FORWARD);
 		}
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_CHA.pin_index));
+		EXTI -> PR |= (0b1 << (GPIO_ENC_CHA.pin));
 	}
 	// Rotary encoder channel B (PA3).
-	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_CHB.pin_index))) != 0) {
+	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_CHB.pin))) != 0) {
 		// Check channel A state.
 		if (GPIO_read(&GPIO_ENC_CHA) == 0) {
 			// Set flag in HMI driver.
 			HMI_set_irq_flag(HMI_IRQ_ENCODER_BACKWARD);
 		}
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_CHB.pin_index));
+		EXTI -> PR |= (0b1 << (GPIO_ENC_CHB.pin));
 	}
 }
 
@@ -75,39 +75,39 @@ void __attribute__((optimize("-O0"))) EXTI2_3_IRQHandler(void) {
  */
 void __attribute__((optimize("-O0"))) EXTI4_15_IRQHandler(void) {
 	// BP1 (PB8).
-	if (((EXTI -> PR) & (0b1 << (GPIO_BP1.pin_index))) != 0) {
+	if (((EXTI -> PR) & (0b1 << (GPIO_BP1.pin))) != 0) {
 		// Set flag in HMI driver.
 		HMI_set_irq_flag(HMI_IRQ_BP1);
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP1.pin_index));
+		EXTI -> PR |= (0b1 << (GPIO_BP1.pin));
 	}
 	// BP2 (PB15).
-	if (((EXTI -> PR) & (0b1 << (GPIO_BP2.pin_index))) != 0) {
+	if (((EXTI -> PR) & (0b1 << (GPIO_BP2.pin))) != 0) {
 		// Set flag in HMI driver.
 		HMI_set_irq_flag(HMI_IRQ_BP2);
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP2.pin_index));
+		EXTI -> PR |= (0b1 << (GPIO_BP2.pin));
 	}
 	// BP3 (PB9).
-	if (((EXTI -> PR) & (0b1 << (GPIO_BP3.pin_index))) != 0) {
+	if (((EXTI -> PR) & (0b1 << (GPIO_BP3.pin))) != 0) {
 		// Set flag in HMI driver.
 		HMI_set_irq_flag(HMI_IRQ_BP3);
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP3.pin_index));
+		EXTI -> PR |= (0b1 << (GPIO_BP3.pin));
 	}
 	// CMD_ON (PB13).
-	if (((EXTI -> PR) & (0b1 << (GPIO_CMD_ON.pin_index))) != 0) {
+	if (((EXTI -> PR) & (0b1 << (GPIO_CMD_ON.pin))) != 0) {
 		// Set flag in HMI driver.
 		HMI_set_irq_flag(HMI_IRQ_CMD_ON);
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_CMD_ON.pin_index));
+		EXTI -> PR |= (0b1 << (GPIO_CMD_ON.pin));
 	}
 	// CMD_OFF (PB14).
-	if (((EXTI -> PR) & (0b1 << (GPIO_CMD_OFF.pin_index))) != 0) {
+	if (((EXTI -> PR) & (0b1 << (GPIO_CMD_OFF.pin))) != 0) {
 		// Set flag in HMI driver.
 		HMI_set_irq_flag(HMI_IRQ_CMD_OFF);
 		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_CMD_OFF.pin_index));
+		EXTI -> PR |= (0b1 << (GPIO_CMD_OFF.pin));
 	}
 }
 
@@ -164,12 +164,12 @@ void EXTI_init(void) {
  */
 void EXTI_configure_gpio(const GPIO_pin_t* gpio, EXTI_trigger_t trigger) {
 	// Select GPIO port.
-	SYSCFG -> EXTICR[((gpio -> pin_index) / 4)] &= ~(0b1111 << (4 * ((gpio -> pin_index) % 4)));
-	SYSCFG -> EXTICR[((gpio -> pin_index) / 4)] |= ((gpio -> port_index) << (4 * ((gpio -> pin_index) % 4)));
+	SYSCFG -> EXTICR[((gpio -> pin) / 4)] &= ~(0b1111 << (4 * ((gpio -> pin) % 4)));
+	SYSCFG -> EXTICR[((gpio -> pin) / 4)] |= ((gpio -> port_index) << (4 * ((gpio -> pin) % 4)));
 	// Set mask.
-	EXTI -> IMR |= (0b1 << ((gpio -> pin_index))); // IMx='1'.
+	EXTI -> IMR |= (0b1 << ((gpio -> pin))); // IMx='1'.
 	// Select triggers.
-	_EXTI_set_trigger(trigger, (gpio -> pin_index));
+	_EXTI_set_trigger(trigger, (gpio -> pin));
 }
 
 /* CONFIGURE A LINE AS INTERNAL INTERRUPT SOURCE.

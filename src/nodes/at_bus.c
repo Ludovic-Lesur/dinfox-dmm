@@ -412,7 +412,7 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	read_data.byte_array = NULL;
 	read_data.extracted_length = 0;
 	// Loop on all addresses.
-	for (node_address=0 ; node_address<=DINFOX_NODE_ADDRESS_LBUS_LAST ; node_address++) {
+	for (node_address=0 ; node_address<DINFOX_NODE_ADDRESS_LBUS_LAST ; node_address++) {
 		// Ping address.
 		status = _AT_BUS_ping(node_address, &read_status);
 		if (status != NODE_SUCCESS) goto errors;

@@ -54,7 +54,7 @@ static const int32_t DINFOX_ERROR_VALUE[DINFOX_REGISTER_LAST] = {
  */
 #define _DINFOX_at_bus_read(void) { \
 	read_params.register_address = register_address; \
-	read_params.format = DINFOX_REGISTERS_FORMAT[register_address]; \
+	read_params.format = DINFOX_REGISTER_FORMAT[register_address]; \
 	status = AT_BUS_read_register(&read_params, &read_data, &read_status); \
 	if (status != NODE_SUCCESS) goto errors; \
 	if (read_status.all == 0) { \
@@ -74,7 +74,7 @@ static const int32_t DINFOX_ERROR_VALUE[DINFOX_REGISTER_LAST] = {
  */
 #define _DINFOX_register_int_to_str(void) { \
 	for (idx=0 ; idx<NODE_STRING_BUFFER_SIZE ; idx++) register_value_str[idx] = STRING_CHAR_NULL; \
-	string_status = STRING_value_to_string(register_value_int, DINFOX_REGISTERS_FORMAT[DINFOX_REGISTER_SW_VERSION_MAJOR], 0, register_value_str); \
+	string_status = STRING_value_to_string(register_value_int, DINFOX_REGISTER_FORMAT[DINFOX_REGISTER_SW_VERSION_MAJOR], 0, register_value_str); \
 	STRING_status_check(NODE_ERROR_BASE_STRING); \
 	register_value_ptr = (char_t*) register_value_str; \
 }

@@ -70,7 +70,8 @@ typedef struct {
 	NODE_protocol_t protocol;
 	uint8_t last_register_address;
 	uint8_t last_string_data_index;
-	STRING_format_t* registers_format;
+	STRING_format_t* register_format;
+	uint32_t* register_write_timeout_ms;
 	NODE_functions_t functions;
 } NODE_descriptor_t;
 
@@ -142,37 +143,37 @@ typedef struct {
 
 // Note: table is indexed with board ID.
 static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
-	{"LVRM", NODE_PROTOCOL_AT_BUS, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTERS_FORMAT,
+	{"LVRM", NODE_PROTOCOL_AT_BUS, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTER_FORMAT, (uint32_t*) LVRM_REGISTER_WRITE_TIMEOUT_MS,
 		{&AT_BUS_read_register, &AT_BUS_write_register, &LVRM_update_data, &LVRM_get_sigfox_ul_payload}
 	},
-	{"BPSM", NODE_PROTOCOL_AT_BUS, BPSM_REGISTER_LAST, BPSM_STRING_DATA_INDEX_LAST, (STRING_format_t*) BPSM_REGISTERS_FORMAT,
+	{"BPSM", NODE_PROTOCOL_AT_BUS, BPSM_REGISTER_LAST, BPSM_STRING_DATA_INDEX_LAST, (STRING_format_t*) BPSM_REGISTER_FORMAT, (uint32_t*) BPSM_REGISTER_WRITE_TIMEOUT_MS,
 		{&AT_BUS_read_register, &AT_BUS_write_register, &BPSM_update_data, &BPSM_get_sigfox_ul_payload}
 	},
-	{"DDRM", NODE_PROTOCOL_AT_BUS, DDRM_REGISTER_LAST, DDRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DDRM_REGISTERS_FORMAT,
+	{"DDRM", NODE_PROTOCOL_AT_BUS, DDRM_REGISTER_LAST, DDRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DDRM_REGISTER_FORMAT, (uint32_t*) DDRM_REGISTER_WRITE_TIMEOUT_MS,
 		{&AT_BUS_read_register, &AT_BUS_write_register, &DDRM_update_data, &DDRM_get_sigfox_ul_payload}
 	},
-	{"UHFM", NODE_PROTOCOL_AT_BUS, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTERS_FORMAT,
+	{"UHFM", NODE_PROTOCOL_AT_BUS, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTER_FORMAT, (uint32_t*) UHFM_REGISTER_WRITE_TIMEOUT_MS,
 		{&AT_BUS_read_register, &AT_BUS_write_register, &UHFM_update_data, &UHFM_get_sigfox_ul_payload}
 	},
-	{"GPSM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+	{"GPSM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL, NULL,
 		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"SM", NODE_PROTOCOL_AT_BUS, SM_REGISTER_LAST, SM_STRING_DATA_INDEX_LAST, (STRING_format_t*) SM_REGISTERS_FORMAT,
+	{"SM", NODE_PROTOCOL_AT_BUS, SM_REGISTER_LAST, SM_STRING_DATA_INDEX_LAST, (STRING_format_t*) SM_REGISTER_FORMAT, (uint32_t*) SM_REGISTER_WRITE_TIMEOUT_MS,
 		{&AT_BUS_read_register, &AT_BUS_write_register, &SM_update_data, &SM_get_sigfox_ul_payload}
 	},
-	{"DIM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+	{"DIM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL, NULL,
 		{NULL, NULL, NULL, NULL}
 	},
-	{"RRM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+	{"RRM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL, NULL,
 		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"DMM", NODE_PROTOCOL_AT_BUS, DMM_REGISTER_LAST, DMM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DMM_REGISTERS_FORMAT,
+	{"DMM", NODE_PROTOCOL_AT_BUS, DMM_REGISTER_LAST, DMM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DMM_REGISTER_FORMAT, (uint32_t*) DMM_REGISTER_WRITE_TIMEOUT_MS,
 		{&DMM_read_register, &DMM_write_register, &DMM_update_data, &DMM_get_sigfox_ul_payload}
 	},
-	{"MPMCM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+	{"MPMCM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL, NULL,
 		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
 	},
-	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTERS_FORMAT,
+	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTER_FORMAT, (uint32_t*) R4S8CR_REGISTER_WRITE_TIMEOUT_MS,
 		{&R4S8CR_read_register, &R4S8CR_write_register, &R4S8CR_update_data, &R4S8CR_get_sigfox_ul_payload}},
 };
 static NODE_context_t node_ctx;
@@ -283,13 +284,13 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t register_address, int32
 	switch (NODES[node -> board_id].protocol) {
 	case NODE_PROTOCOL_AT_BUS:
 		// Specific write parameters.
-		write_input.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTERS_FORMAT[register_address] : NODES[node -> board_id].registers_format[register_address - DINFOX_REGISTER_LAST];
+		write_input.timeout_ms = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTER_WRITE_TIMEOUT_MS[register_address] : NODES[node -> board_id].register_write_timeout_ms[register_address - DINFOX_REGISTER_LAST];
+		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTER_FORMAT[register_address] : NODES[node -> board_id].register_format[register_address - DINFOX_REGISTER_LAST];
 		break;
 	case NODE_PROTOCOL_R4S8CR:
 		// Specific write parameters.
-		write_input.timeout_ms = R4S8CR_TIMEOUT_MS;
-		write_input.format = NODES[node -> board_id].registers_format[register_address];
+		write_input.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[register_address];
+		write_input.format = NODES[node -> board_id].register_format[register_address];
 		break;
 	default:
 		status = NODE_ERROR_PROTOCOL;

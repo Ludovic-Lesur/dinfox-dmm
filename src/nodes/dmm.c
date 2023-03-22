@@ -108,7 +108,7 @@ NODE_status_t DMM_read_register(NODE_read_parameters_t* read_params, NODE_read_d
 		goto errors;
 	}
 	// Convert value to string.
-	string_status = STRING_value_to_string((read_data -> value), DMM_REGISTERS_FORMAT[(read_params -> register_address) - DINFOX_REGISTER_LAST], 0, dmm_register_value_str);
+	string_status = STRING_value_to_string((read_data -> value), DMM_REGISTER_FORMAT[(read_params -> register_address) - DINFOX_REGISTER_LAST], 0, dmm_register_value_str);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	// Update raw data.
 	(read_data -> raw) = (char_t*) dmm_register_value_str;

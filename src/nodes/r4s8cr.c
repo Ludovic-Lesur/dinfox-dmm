@@ -271,7 +271,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	(*nodes_count) = 0;
 	// Build read input common parameters.
 	read_params.format = STRING_FORMAT_BOOLEAN;
-	read_params.timeout_ms = R4S8CR_TIMEOUT_MS;
+	read_params.timeout_ms = R4S8CR_DEFAULT_TIMEOUT_MS;
 	read_params.register_address = R4S8CR_REGISTER_RELAY_1;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	// Configure read data.
@@ -329,7 +329,7 @@ NODE_status_t R4S8CR_update_data(NODE_data_update_t* data_update) {
 	read_params.node_address = (data_update -> node_address);
 	read_params.register_address = (data_update -> string_data_index);
 	read_params.type = NODE_REPLY_TYPE_VALUE;
-	read_params.timeout_ms = R4S8CR_TIMEOUT_MS;
+	read_params.timeout_ms = R4S8CR_DEFAULT_TIMEOUT_MS;
 	read_params.format = STRING_FORMAT_BOOLEAN;
 	// Configure read data.
 	read_data.raw = NULL;

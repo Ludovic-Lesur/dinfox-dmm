@@ -12,6 +12,7 @@
 #include "ddrm.h"
 #include "dmm.h"
 #include "dinfox.h"
+#include "gpsm.h"
 #include "lpuart.h"
 #include "lvrm.h"
 #include "mode.h"
@@ -160,8 +161,8 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	{"UHFM", NODE_PROTOCOL_AT_BUS, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTER_FORMAT, (uint32_t*) UHFM_REGISTER_WRITE_TIMEOUT_MS,
 		{&AT_BUS_read_register, &AT_BUS_write_register, &UHFM_update_data, &UHFM_get_sigfox_ul_payload}
 	},
-	{"GPSM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL, NULL,
-		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
+	{"GPSM", NODE_PROTOCOL_AT_BUS, GPSM_REGISTER_LAST, GPSM_STRING_DATA_INDEX_LAST, (STRING_format_t*) GPSM_REGISTER_FORMAT, (uint32_t*) GPSM_REGISTER_WRITE_TIMEOUT_MS,
+		{&AT_BUS_read_register, &AT_BUS_write_register, &GPSM_update_data, &GPSM_get_sigfox_ul_payload}
 	},
 	{"SM", NODE_PROTOCOL_AT_BUS, SM_REGISTER_LAST, SM_STRING_DATA_INDEX_LAST, (STRING_format_t*) SM_REGISTER_FORMAT, (uint32_t*) SM_REGISTER_WRITE_TIMEOUT_MS,
 		{&AT_BUS_read_register, &AT_BUS_write_register, &SM_update_data, &SM_get_sigfox_ul_payload}

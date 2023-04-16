@@ -14,6 +14,7 @@
 #include "dinfox.h"
 #include "lpuart.h"
 #include "lvrm.h"
+#include "mode.h"
 #include "r4s8cr.h"
 #include "rtc.h"
 #include "sm.h"
@@ -137,6 +138,10 @@ typedef struct {
 	// Write actions list.
 	NODE_action_t actions[NODE_ACTIONS_DEPTH];
 	uint8_t actions_index;
+#ifdef BMS
+	NODE_t* bms_node_ptr;
+	uint32_t bms_monitoring_next_time_seconds;
+#endif
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -250,7 +255,7 @@ void _NODE_flush_list(void) {
 
 /* WRITE NODE DATA.
  * @param node:				Node to write.
- * @param register_address:	Register address/
+ * @param register_address:	Register address.
  * @param value:			Value to write in corresponding register.
  * @param write_status:		Pointer to the writing operation status.
  * @return status:			Function execution status.
@@ -297,6 +302,63 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t register_address, int32
 		break;
 	}
 	status = NODES[node -> board_id].functions.write_register(&write_input, write_status);
+errors:
+	return status;
+}
+
+/* READ NODE DATA.
+ * @param node:				Node to read.
+ * @param register_address:	Register address.
+ * @param value:			Pointer that will contain the read value.
+ * @param write_status:		Pointer to the writing operation status.
+ * @return status:			Function execution status.
+ */
+NODE_status_t _NODE_read_register(NODE_t* node, uint8_t register_address, int32_t* value, NODE_access_status_t* read_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_read_parameters_t read_input;
+	NODE_read_data_t read_data;
+	// Check node and board ID.
+	_NODE_check_node_and_board_id();
+	_NODE_check_function_pointer(write_register);
+	// Check write status.
+	if (read_status == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Check register address.
+	if (NODES[node -> board_id].last_register_address == 0) {
+		status = NODE_ERROR_NOT_SUPPORTED;
+		goto errors;
+	}
+	if (register_address >= (NODES[node -> board_id].last_register_address)) {
+		status = NODE_ERROR_REGISTER_ADDRESS;
+		goto errors;
+	}
+	// Common write parameters.
+	read_input.node_address = (node -> address);
+	read_input.register_address = register_address;
+	read_input.type = NODE_REPLY_TYPE_VALUE;
+	// Check node protocol.
+	switch (NODES[node -> board_id].protocol) {
+	case NODE_PROTOCOL_AT_BUS:
+		// Specific write parameters.
+		read_input.timeout_ms = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTER_WRITE_TIMEOUT_MS[register_address] : NODES[node -> board_id].register_write_timeout_ms[register_address - DINFOX_REGISTER_LAST];
+		read_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTER_FORMAT[register_address] : NODES[node -> board_id].register_format[register_address - DINFOX_REGISTER_LAST];
+		break;
+	case NODE_PROTOCOL_R4S8CR:
+		// Specific write parameters.
+		read_input.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[register_address];
+		read_input.format = NODES[node -> board_id].register_format[register_address];
+		break;
+	default:
+		status = NODE_ERROR_PROTOCOL;
+		break;
+	}
+	status = NODES[node -> board_id].functions.read_register(&read_input, &read_data, read_status);
+	if (status != NODE_SUCCESS) goto errors;
+	// Extract value.
+	(*value) = read_data.value;
 errors:
 	return status;
 }
@@ -569,6 +631,10 @@ void NODE_init(void) {
 	node_ctx.sigfox_dl_next_time_seconds = 0;
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
+#ifdef BMS
+	node_ctx.bms_node_ptr = NULL;
+	node_ctx.bms_monitoring_next_time_seconds = 0;
+#endif
 	// Init interface layers.
 	AT_BUS_init();
 }
@@ -750,6 +816,17 @@ NODE_status_t NODE_scan(void) {
 			break;
 		}
 	}
+#ifdef BMS
+	// Search LVRM board dedicated to BMS function.
+	node_ctx.bms_node_ptr = NULL;
+	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
+		// Check board ID.
+		if (NODES_LIST.list[idx].address == BMS_NODE_ADDRESS) {
+			node_ctx.bms_node_ptr = &(NODES_LIST.list[idx]);
+			break;
+		}
+	}
+#endif
 	// Scan R4S8CR nodes.
 	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
@@ -822,6 +899,10 @@ NODE_status_t NODE_task(void) {
 	uint8_t node_update_required = 1;
 	uint8_t ul_next_time_update_required = 0;
 	uint8_t dl_next_time_update_required = 0;
+#ifdef BMS
+	NODE_access_status_t access_status;
+	int32_t vbatt_mv = 0;
+#endif
 	// Turn bus interface on.
 	lpuart1_status = LPUART1_power_on();
 	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
@@ -895,7 +976,38 @@ NODE_status_t NODE_task(void) {
 	}
 	// Execute node actions.
 	status = _NODE_execute_actions();
+	if (status != NODE_SUCCESS) goto errors;
+#ifdef BMS
 errors:
+	// Check monitoring period.
+	if (RTC_get_time_seconds() >= node_ctx.bms_monitoring_next_time_seconds) {
+		// Update next time.
+		node_ctx.bms_monitoring_next_time_seconds = (RTC_get_time_seconds() + BMS_MONITORING_PERIOD_SECONDS);
+		// Check detect flag.
+		if (node_ctx.bms_node_ptr != NULL) {
+			// Read battery voltage.
+			status = _NODE_read_register(node_ctx.bms_node_ptr, LVRM_REGISTER_VCOM_MV, &vbatt_mv, &access_status);
+			if (status != NODE_SUCCESS) goto end;
+			// Check read status.
+			if (access_status.all == 0) {
+				// Check battery voltage.
+				if (vbatt_mv < BMS_VBATT_LOW_THRESHOLD_MV) {
+					// Open relay.
+					status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REGISTER_RELAY_ENABLE, 0, &access_status);
+					if (status != NODE_SUCCESS) goto end;
+				}
+				if (vbatt_mv > BMS_VBATT_HIGH_THRESHOLD_MV) {
+					// Close relay.
+					status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REGISTER_RELAY_ENABLE, 1, &access_status);
+					if (status != NODE_SUCCESS) goto end;
+				}
+			}
+		}
+	}
+end:
+#else
+errors:
+#endif
 	// Update next radio times.
 	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
 	if (ul_next_time_update_required != 0) {

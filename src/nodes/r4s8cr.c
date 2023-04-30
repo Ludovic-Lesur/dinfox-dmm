@@ -13,24 +13,24 @@
 
 /*** R4S8CR local macros ***/
 
-#define R4S8CR_BAUD_RATE					9600
+#define R4S8CR_BAUD_RATE						9600
 
-#define R4S8CR_BUFFER_SIZE_BYTES			64
-#define R4S8CR_REPLY_BUFFER_DEPTH			16
+#define R4S8CR_BUFFER_SIZE_BYTES				64
+#define R4S8CR_REPLY_BUFFER_DEPTH				16
 
-#define R4S8CR_ADDRESS_SIZE_BYTES			1
-#define R4S8CR_RELAY_ADDRESS_SIZE_BYTES		1
-#define R4S8CR_COMMAND_SIZE_BYTES			1
+#define R4S8CR_ADDRESS_SIZE_BYTES				1
+#define R4S8CR_RELAY_ADDRESS_SIZE_BYTES			1
+#define R4S8CR_COMMAND_SIZE_BYTES				1
 
-#define R4S8CR_COMMAND_READ					0xA0
-#define R4S8CR_COMMAND_OFF					0x00
-#define R4S8CR_COMMAND_ON					0x01
+#define R4S8CR_COMMAND_READ						0xA0
+#define R4S8CR_COMMAND_OFF						0x00
+#define R4S8CR_COMMAND_ON						0x01
 
-#define R4S8CR_REPLY_PARSING_DELAY_MS		10
+#define R4S8CR_REPLY_PARSING_DELAY_MS			10
 
-#define R4S8CR_REPLY_SIZE_BYTES				(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_REGISTER_LAST)
+#define R4S8CR_REPLY_SIZE_BYTES					(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_REGISTER_LAST)
 
-#define R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE		1
+#define R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE	1
 
 static const char_t* R4S8CR_STRING_DATA_NAME[R4S8CR_STRING_DATA_INDEX_LAST] = {
 	"RELAY 1 =",
@@ -56,16 +56,16 @@ static const int32_t R4S8CR_ERROR_VALUE[R4S8CR_REGISTER_LAST] = {
 /*** R4S8CR local structures ***/
 
 typedef union {
-	uint8_t frame[R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE];
+	uint8_t frame[R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE];
 	struct {
-		unsigned relay_1 : 1;
-		unsigned relay_2 : 1;
-		unsigned relay_3 : 1;
-		unsigned relay_4 : 1;
-		unsigned relay_5 : 1;
-		unsigned relay_6 : 1;
-		unsigned relay_7 : 1;
-		unsigned relay_8 : 1;
+		unsigned relay_1_state : 1;
+		unsigned relay_2_state : 1;
+		unsigned relay_3_state : 1;
+		unsigned relay_4_state : 1;
+		unsigned relay_5_state : 1;
+		unsigned relay_6_state : 1;
+		unsigned relay_7_state : 1;
+		unsigned relay_8_state : 1;
 	} __attribute__((packed));
 } R4S8CR_sigfox_payload_data_t;
 
@@ -272,7 +272,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	// Build read input common parameters.
 	read_params.format = STRING_FORMAT_BOOLEAN;
 	read_params.timeout_ms = R4S8CR_DEFAULT_TIMEOUT_MS;
-	read_params.register_address = R4S8CR_REGISTER_RELAY_1;
+	read_params.register_address = R4S8CR_REGISTER_RELAY_1_STATE;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	// Configure read data.
 	read_data.raw = NULL;
@@ -383,19 +383,19 @@ NODE_status_t R4S8CR_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sig
 		goto errors;
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
 		// Build data payload.
-		sigfox_payload_data.relay_1 = integer_data_value[R4S8CR_REGISTER_RELAY_1];
-		sigfox_payload_data.relay_2 = integer_data_value[R4S8CR_REGISTER_RELAY_2];
-		sigfox_payload_data.relay_3 = integer_data_value[R4S8CR_REGISTER_RELAY_3];
-		sigfox_payload_data.relay_4 = integer_data_value[R4S8CR_REGISTER_RELAY_4];
-		sigfox_payload_data.relay_5 = integer_data_value[R4S8CR_REGISTER_RELAY_5];
-		sigfox_payload_data.relay_6 = integer_data_value[R4S8CR_REGISTER_RELAY_6];
-		sigfox_payload_data.relay_7 = integer_data_value[R4S8CR_REGISTER_RELAY_7];
-		sigfox_payload_data.relay_8 = integer_data_value[R4S8CR_REGISTER_RELAY_8];
+		sigfox_payload_data.relay_1_state = integer_data_value[R4S8CR_REGISTER_RELAY_1_STATE];
+		sigfox_payload_data.relay_2_state = integer_data_value[R4S8CR_REGISTER_RELAY_2_STATE];
+		sigfox_payload_data.relay_3_state = integer_data_value[R4S8CR_REGISTER_RELAY_3_STATE];
+		sigfox_payload_data.relay_4_state = integer_data_value[R4S8CR_REGISTER_RELAY_4_STATE];
+		sigfox_payload_data.relay_5_state = integer_data_value[R4S8CR_REGISTER_RELAY_5_STATE];
+		sigfox_payload_data.relay_6_state = integer_data_value[R4S8CR_REGISTER_RELAY_6_STATE];
+		sigfox_payload_data.relay_7_state = integer_data_value[R4S8CR_REGISTER_RELAY_7_STATE];
+		sigfox_payload_data.relay_8_state = integer_data_value[R4S8CR_REGISTER_RELAY_8_STATE];
 		// Copy payload.
-		for (idx=0 ; idx<R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE ; idx++) {
+		for (idx=0 ; idx<R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
 			ul_payload[idx] = sigfox_payload_data.frame[idx];
 		}
-		(*ul_payload_size) = R4S8CR_SIGFOX_PAYLOAD_DATA_SIZE;
+		(*ul_payload_size) = R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE;
 		break;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;

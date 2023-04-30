@@ -219,7 +219,7 @@ NODE_status_t DMM_update_data(NODE_data_update_t* data_update) {
 	else {
 		NODE_flush_string_value();
 		NODE_append_string_value((char_t*) NODE_ERROR_STRING);
-		NODE_update_value(register_address, DMM_ERROR_VALUE[register_address]);
+		NODE_update_value(register_address, DMM_ERROR_VALUE[register_address - DINFOX_REGISTER_LAST]);
 	}
 errors:
 	return status;

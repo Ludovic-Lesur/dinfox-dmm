@@ -14,7 +14,7 @@
 /*** DDRM local macros ***/
 
 #define DDRM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
-#define DDRM_SIGFOX_PAYLOAD_DATA_SIZE			7
+#define DDRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE			7
 
 static const char_t* DDRM_STRING_DATA_NAME[DDRM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
 	"VIN =",
@@ -46,12 +46,12 @@ typedef union {
 } DDRM_sigfox_payload_monitoring_t;
 
 typedef union {
-	uint8_t frame[DDRM_SIGFOX_PAYLOAD_DATA_SIZE];
+	uint8_t frame[DDRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE];
 	struct {
 		unsigned vin_mv : 16;
 		unsigned vout_mv : 16;
 		unsigned iout_ua : 23;
-		unsigned dc_dc_enable : 1;
+		unsigned dc_dc_state : 1;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } DDRM_sigfox_payload_data_t;
 
@@ -106,7 +106,7 @@ NODE_status_t DDRM_update_data(NODE_data_update_t* data_update) {
 	// Add data value.
 	if (read_status.all == 0) {
 		// Specific print for relay.
-		if ((data_update -> string_data_index) == DDRM_STRING_DATA_INDEX_DC_DC_ENABLE) {
+		if ((data_update -> string_data_index) == DDRM_STRING_DATA_INDEX_DC_DC_STATE) {
 			NODE_append_string_value((read_data.value == 0) ? "OFF" : "ON");
 		}
 		else {
@@ -120,7 +120,7 @@ NODE_status_t DDRM_update_data(NODE_data_update_t* data_update) {
 	else {
 		NODE_flush_string_value();
 		NODE_append_string_value((char_t*) NODE_ERROR_STRING);
-		NODE_update_value(register_address, DDRM_ERROR_VALUE[register_address]);
+		NODE_update_value(register_address, DDRM_ERROR_VALUE[register_address - DINFOX_REGISTER_LAST]);
 	}
 errors:
 	return status;
@@ -161,12 +161,12 @@ NODE_status_t DDRM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfo
 		sigfox_payload_data.vin_mv = integer_data_value[DDRM_REGISTER_VIN_MV];
 		sigfox_payload_data.vout_mv = integer_data_value[DDRM_REGISTER_VOUT_MV];
 		sigfox_payload_data.iout_ua = integer_data_value[DDRM_REGISTER_IOUT_UA];
-		sigfox_payload_data.dc_dc_enable = integer_data_value[DDRM_REGISTER_DC_DC_ENABLE];
+		sigfox_payload_data.dc_dc_state = integer_data_value[DDRM_REGISTER_DC_DC_STATE];
 		// Copy payload.
-		for (idx=0 ; idx<DDRM_SIGFOX_PAYLOAD_DATA_SIZE ; idx++) {
+		for (idx=0 ; idx<DDRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
 			ul_payload[idx] = sigfox_payload_data.frame[idx];
 		}
-		(*ul_payload_size) = DDRM_SIGFOX_PAYLOAD_DATA_SIZE;
+		(*ul_payload_size) = DDRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE;
 		break;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;

@@ -14,7 +14,7 @@
 /*** BPSM local macros ***/
 
 #define BPSM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
-#define BPSM_SIGFOX_PAYLOAD_DATA_SIZE			7
+#define BPSM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE		7
 
 static const char_t* BPSM_STRING_DATA_NAME[BPSM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
 	"VSRC =",
@@ -52,7 +52,7 @@ typedef union {
 } BPSM_sigfox_payload_monitoring_t;
 
 typedef union {
-	uint8_t frame[BPSM_SIGFOX_PAYLOAD_DATA_SIZE];
+	uint8_t frame[BPSM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE];
 	struct {
 		unsigned vsrc_mv : 16;
 		unsigned vstr_mv : 16;
@@ -132,7 +132,7 @@ NODE_status_t BPSM_update_data(NODE_data_update_t* data_update) {
 	else {
 		NODE_flush_string_value();
 		NODE_append_string_value((char_t*) NODE_ERROR_STRING);
-		NODE_update_value(register_address, BPSM_ERROR_VALUE[register_address]);
+		NODE_update_value(register_address, BPSM_ERROR_VALUE[register_address - DINFOX_REGISTER_LAST]);
 	}
 errors:
 	return status;
@@ -177,10 +177,10 @@ NODE_status_t BPSM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfo
 		sigfox_payload_data.charge_status = integer_data_value[BPSM_REGISTER_CHARGE_STATUS];
 		sigfox_payload_data.backup_enable = integer_data_value[BPSM_REGISTER_BACKUP_ENABLE];
 		// Copy payload.
-		for (idx=0 ; idx<BPSM_SIGFOX_PAYLOAD_DATA_SIZE ; idx++) {
+		for (idx=0 ; idx<BPSM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
 			ul_payload[idx] = sigfox_payload_data.frame[idx];
 		}
-		(*ul_payload_size) = BPSM_SIGFOX_PAYLOAD_DATA_SIZE;
+		(*ul_payload_size) = BPSM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE;
 		break;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;

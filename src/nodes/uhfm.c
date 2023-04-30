@@ -14,6 +14,7 @@
 /*** UHFM local macros ***/
 
 #define UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE		5
+
 #define UHFM_COMMAND_BUFFER_SIZE_BYTES			64
 
 #define UHFM_COMMAND_SEND						"AT$SF="
@@ -103,7 +104,7 @@ NODE_status_t UHFM_update_data(NODE_data_update_t* data_update) {
 	else {
 		NODE_flush_string_value();
 		NODE_append_string_value((char_t*) NODE_ERROR_STRING);
-		NODE_update_value(register_address, UHFM_ERROR_VALUE[register_address]);
+		NODE_update_value(register_address, UHFM_ERROR_VALUE[register_address - DINFOX_REGISTER_LAST]);
 	}
 errors:
 	return status;

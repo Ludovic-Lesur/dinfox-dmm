@@ -28,6 +28,7 @@
 
 #define NODE_SIGFOX_PAYLOAD_STARTUP_SIZE		8
 #define NODE_SIGFOX_PAYLOAD_SIZE_MAX			12
+#define NODE_SIGFOX_PAYLOAD_HEADER_SIZE			2
 
 #define NODE_SIGFOX_UL_PERIOD_SECONDS_MIN		60
 #define NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	600
@@ -82,7 +83,7 @@ typedef union {
 	struct {
 		unsigned node_address : 8;
 		unsigned board_id : 8;
-		uint8_t node_data[NODE_SIGFOX_PAYLOAD_SIZE_MAX - 2];
+		uint8_t node_data[NODE_SIGFOX_PAYLOAD_SIZE_MAX - NODE_SIGFOX_PAYLOAD_HEADER_SIZE];
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } NODE_sigfox_ul_payload_t;
 

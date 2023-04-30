@@ -14,7 +14,7 @@
 /*** SM local macros ***/
 
 #define SM_SIGFOX_PAYLOAD_MONITORING_SIZE	3
-#define SM_SIGFOX_PAYLOAD_DATA_SIZE			10
+#define SM_SIGFOX_PAYLOAD_SENSOR_SIZE		10
 
 static const char_t* SM_STRING_DATA_NAME[SM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
 	"AIN0 =",
@@ -64,7 +64,7 @@ typedef union {
 } SM_sigfox_payload_monitoring_t;
 
 typedef union {
-	uint8_t frame[SM_SIGFOX_PAYLOAD_DATA_SIZE];
+	uint8_t frame[SM_SIGFOX_PAYLOAD_SENSOR_SIZE];
 	struct {
 		unsigned ain0_mv : 15;
 		unsigned dio0 : 1;
@@ -139,7 +139,7 @@ NODE_status_t SM_update_data(NODE_data_update_t* data_update) {
 	else {
 		NODE_flush_string_value();
 		NODE_append_string_value((char_t*) NODE_ERROR_STRING);
-		NODE_update_value(register_address, SM_ERROR_VALUE[register_address]);
+		NODE_update_value(register_address, SM_ERROR_VALUE[register_address - DINFOX_REGISTER_LAST]);
 	}
 errors:
 	return status;
@@ -187,10 +187,10 @@ NODE_status_t SM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_
 		sigfox_payload_data.tamb_degrees = integer_data_value[SM_REGISTER_TAMB_DEGREES];
 		sigfox_payload_data.hamb_percent = integer_data_value[SM_REGISTER_HAMB_PERCENT];
 		// Copy payload.
-		for (idx=0 ; idx<SM_SIGFOX_PAYLOAD_DATA_SIZE ; idx++) {
+		for (idx=0 ; idx<SM_SIGFOX_PAYLOAD_SENSOR_SIZE ; idx++) {
 			ul_payload[idx] = sigfox_payload_data.frame[idx];
 		}
-		(*ul_payload_size) = SM_SIGFOX_PAYLOAD_DATA_SIZE;
+		(*ul_payload_size) = SM_SIGFOX_PAYLOAD_SENSOR_SIZE;
 		break;
 	default:
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;

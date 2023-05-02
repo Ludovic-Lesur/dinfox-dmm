@@ -36,7 +36,7 @@
 #define NODE_SIGFOX_DL_PERIOD_SECONDS_MIN		300
 #define NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
 
-#define NODE_SIGFOX_LOOP_MAX					100
+#define NODE_SIGFOX_LOOP_MAX					10
 
 #define NODE_ACTIONS_DEPTH						10
 
@@ -922,29 +922,22 @@ NODE_status_t NODE_task(void) {
 		do {
 			// Update node data if needed.
 			if (node_update_required != 0) {
-				status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]));
+				// Clear flag.
 				node_update_required = 0;
+				// Update data.
+				status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]));
+				if (status != NODE_SUCCESS) goto next_node;
 			}
-			else {
-				status = NODE_SUCCESS;
+			// Set radio times to now to compensate node update duration.
+			if (ul_next_time_update_required != 0) {
+				node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
 			}
-			if (status == NODE_SUCCESS) {
-				// Set radio times to now to compensate node update duration.
-				if (ul_next_time_update_required != 0) {
-					node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
-				}
-				if (dl_next_time_update_required != 0) {
-					node_ctx.sigfox_dl_next_time_seconds = RTC_get_time_seconds();
-				}
-				// Send data through radio.
-				status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, bidirectional_flag);
-				// Handle all errors except not supported and empty payload.
-				if ((status != NODE_SUCCESS) && (status != NODE_ERROR_NOT_SUPPORTED) && (status != NODE_ERROR_SIGFOX_PAYLOAD_EMPTY)) goto errors;
+			if (dl_next_time_update_required != 0) {
+				node_ctx.sigfox_dl_next_time_seconds = RTC_get_time_seconds();
 			}
-			else {
-				// Handle all errors except not supported.
-				if (status != NODE_ERROR_NOT_SUPPORTED) goto errors;
-			}
+			// Send data through radio.
+			status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, bidirectional_flag);
+next_node:
 			// Increment payload type index.
 			node_ctx.sigfox_ul_payload_type_index++;
 			if (node_ctx.sigfox_ul_payload_type_index >= NODE_SIGFOX_PAYLOAD_TYPE_LAST) {
@@ -963,7 +956,6 @@ NODE_status_t NODE_task(void) {
 				status = NODE_ERROR_SIGFOX_LOOP;
 				goto errors;
 			}
-
 		}
 		while (status != NODE_SUCCESS);
 	}

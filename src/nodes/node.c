@@ -987,12 +987,12 @@ errors:
 				// Check battery voltage.
 				if (vbatt_mv < BMS_VBATT_LOW_THRESHOLD_MV) {
 					// Open relay.
-					status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REGISTER_RELAY_ENABLE, 0, &access_status);
+					status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REGISTER_RELAY_STATE, 0, &access_status);
 					if (status != NODE_SUCCESS) goto end;
 				}
 				if (vbatt_mv > BMS_VBATT_HIGH_THRESHOLD_MV) {
 					// Close relay.
-					status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REGISTER_RELAY_ENABLE, 1, &access_status);
+					status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REGISTER_RELAY_STATE, 1, &access_status);
 					if (status != NODE_SUCCESS) goto end;
 				}
 			}

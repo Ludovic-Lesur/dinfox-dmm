@@ -19,10 +19,13 @@
 
 /*** LPUART local macros ***/
 
-#define LPUART_BAUD_RATE_DEFAULT 	1200
-#define LPUART_BRR_VALUE_MIN_LSE	0x0300
+#define LPUART_BAUD_RATE_DEFAULT 			1200
+#define LPUART_BAUD_RATE_CLOCK_THRESHOLD	4000
 
-#define LPUART_TIMEOUT_COUNT		100000
+#define LPUART_BRR_VALUE_MIN				0x00300
+#define LPUART_BRR_VALUE_MAX				0xFFFFF
+
+#define LPUART_TIMEOUT_COUNT				100000
 //#define LPUART_USE_NRE
 
 /*** LPUART local global variables ***/
@@ -86,12 +89,26 @@ errors:
 static LPUART_status_t _LPUART1_set_baud_rate(uint32_t baud_rate) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
+	uint32_t lpuart_clock_hz = 0;
 	uint32_t brr = 0;
+	// Ensure peripheral is disabled.
+	LPUART1 -> CR1 &= ~(0b1 << 0); // UE='0'.
+	// Select LPUART clock source.
+	if (baud_rate < LPUART_BAUD_RATE_CLOCK_THRESHOLD) {
+		// Use LSE.
+		RCC -> CCIPR |= (0b1 << 10); // LPUART1SEL='11'.
+		lpuart_clock_hz = RCC_LSE_FREQUENCY_HZ;
+	}
+	else {
+		// Use HSI.
+		RCC -> CCIPR &= ~(0b1 << 10); // LPUART1SEL='10'.
+		lpuart_clock_hz = (RCC_HSI_FREQUENCY_KHZ * 1000);
+	}
 	// Compute register value.
-	brr = (RCC_LSE_FREQUENCY_HZ * 256);
+	brr = (lpuart_clock_hz * 256);
 	brr /= baud_rate;
 	// Check value.
-	if (brr < LPUART_BRR_VALUE_MIN_LSE) {
+	if ((brr < LPUART_BRR_VALUE_MIN) || (brr > LPUART_BRR_VALUE_MAX)) {
 		status = LPUART_ERROR_BAUD_RATE;
 		goto errors;
 	}
@@ -107,8 +124,9 @@ errors:
  * @return:	None.
  */
 void LPUART1_init(void) {
-	// Select LSE as clock source.
-	RCC -> CCIPR |= (0b11 << 10); // LPUART1SEL='11'.
+	// Select HSI as clock default source.
+	RCC -> CR |= (0b1 << 1); // Enable HSI in stop mode (HSI16KERON='1').
+	RCC -> CCIPR |= (0b10 << 10); // LPUART1SEL='10'.
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 18); // LPUARTEN='1'.
 	// Configure power enable pin.

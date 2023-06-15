@@ -13,13 +13,15 @@
 
 /*** STRING macros ***/
 
-#define STRING_CHAR_NULL	'\0'
-#define STRING_NULL			"\0"
-#define STRING_CHAR_CR		'\r'
-#define STRING_CHAR_LF		'\n'
-#define STRING_CHAR_MINUS	'-'
-#define STRING_CHAR_DOT		'.'
-#define STRING_CHAR_SPACE	' '
+#define STRING_CHAR_NULL			'\0'
+#define STRING_NULL					"\0"
+#define STRING_CHAR_CR				'\r'
+#define STRING_CHAR_LF				'\n'
+#define STRING_CHAR_MINUS			'-'
+#define STRING_CHAR_DOT				'.'
+#define STRING_CHAR_SPACE			' '
+
+#define STRING_DIGIT_FUNCTION_SIZE	5
 
 /*** STRING structures ***/
 
@@ -78,6 +80,8 @@ STRING_status_t STRING_copy(STRING_copy_t* copy);
 
 STRING_status_t STRING_append_string(char_t* buffer, uint8_t buffer_size_max, char_t* str, uint8_t* buffer_size);
 STRING_status_t STRING_append_value(char_t* buffer, uint8_t buffer_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* buffer_size);
+
+STRING_status_t STRING_value_to_5_digits_string(int32_t value, char_t* str);
 
 #define STRING_status_check(error_base) { if (string_status != STRING_SUCCESS) { status = error_base + string_status; goto errors; }}
 #define STRING_error_check() { ERROR_status_check(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }

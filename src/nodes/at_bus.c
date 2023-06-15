@@ -7,6 +7,7 @@
 
 #include "at_bus.h"
 
+#include "common_reg.h"
 #include "dinfox.h"
 #include "gpio.h"
 #include "iwdg.h"
@@ -14,6 +15,7 @@
 #include "lptim.h"
 #include "lpuart.h"
 #include "mapping.h"
+#include "node_common.h"
 #include "parser.h"
 #include "node.h"
 #include "string.h"
@@ -22,13 +24,13 @@
 
 #define AT_BUS_FRAME_END				STRING_CHAR_CR
 
-#define AT_BUS_BUFFER_SIZE_BYTES		64
+#define AT_BUS_BUFFER_SIZE_BYTES		128
+#define AT_BUS_STRING_VALUE_BUFFER_SIZE	16
 #define AT_BUS_REPLY_BUFFER_DEPTH		16
 
-#define AT_BUS_REPLY_PARSING_DELAY_MS	50
+#define AT_BUS_REPLY_PARSING_DELAY_MS	20
 #define AT_BUS_SEQUENCE_TIMEOUT_MS		120000
 
-#define AT_BUS_COMMAND_PING				"AT"
 #define AT_BUS_COMMAND_WRITE_REGISTER	"AT$W="
 #define AT_BUS_COMMAND_READ_REGISTER	"AT$R="
 #define AT_BUS_COMMAND_SEPARATOR		","
@@ -107,11 +109,11 @@ static void _AT_BUS_flush_replies(void) {
 
 /* WAIT FOR RECEIVING A VALUE.
  * @param reply_params:	Pointer to the reply parameters.
- * @param read_data:	Pointer to the reply data.
+ * @param reg_value:	Pointer to the register value in case of value reply type.
  * @param reply_status:	Pointer to the reply waiting operation status.
  * @return status:		Function execution status.
  */
-NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, NODE_read_data_t* read_data, NODE_access_status_t* reply_status) {
+static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, uint32_t* reg_value, NODE_access_status_t* reply_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	PARSER_status_t parser_status = PARSER_SUCCESS;
@@ -120,24 +122,18 @@ NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, NODE_rea
 	uint32_t sequence_time_ms = 0;
 	uint8_t reply_count = 0;
 	// Check parameters.
-	if ((reply_params == NULL) || (read_data == NULL) || (reply_status == NULL)) {
+	if ((reg_value == NULL) || (reply_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	if ((reply_params -> type) >= NODE_REPLY_TYPE_LAST) {
-		status = NODE_ERROR_READ_TYPE;
+		status = NODE_ERROR_REPLY_TYPE;
 		goto errors;
 	}
-	if (((reply_params -> type) == NODE_REPLY_TYPE_BYTE_ARRAY) && ((read_data -> byte_array) == NULL)) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	// Reset output data.
-	(read_data -> raw) = NULL;
-	(read_data -> value) = 0;
+	// Reset status.
 	(reply_status -> all) = 0;
 	// Directly exit function with success status for none reply type.
-	if ((reply_params -> type) == NODE_REPLY_TYPE_NONE) goto errors;
+	if ((reply_params-> type) == NODE_REPLY_TYPE_NONE) goto errors;
 	// Main reception loop.
 	while (1) {
 		// Delay.
@@ -158,31 +154,22 @@ NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, NODE_rea
 				at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser.buffer_size = at_bus_ctx.reply[at_bus_ctx.reply_read_idx].size;
 				// Parse reply.
 				switch (reply_params -> type) {
-				case NODE_REPLY_TYPE_RAW:
-					// Do not parse.
-					parser_status = PARSER_SUCCESS;
-					break;
 				case NODE_REPLY_TYPE_OK:
 					// Compare to reference string.
 					parser_status = PARSER_compare(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, PARSER_MODE_COMMAND, AT_BUS_REPLY_OK);
 					break;
 				case NODE_REPLY_TYPE_VALUE:
-					// Parse value.
-					parser_status = PARSER_get_parameter(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, (reply_params -> format), STRING_CHAR_NULL, &(read_data -> value));
-					break;
-				case NODE_REPLY_TYPE_BYTE_ARRAY:
-					// Parse byte array.
-					parser_status = PARSER_get_byte_array(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, STRING_CHAR_NULL, (reply_params -> byte_array_size), (reply_params -> exact_length), (read_data -> byte_array), &(read_data -> extracted_length));
+					// Parse register.
+					parser_status = DINFOX_parse_register(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, STRING_CHAR_NULL, reg_value);
 					break;
 				default:
-					status = NODE_ERROR_READ_TYPE;
+					status = NODE_ERROR_REPLY_TYPE;
 					break;
 				}
 				// Check status.
 				if (parser_status == PARSER_SUCCESS) {
-					// Update raw pointer, status and exit..
+					// Update raw pointer, status and exit.
 					(reply_status -> all) = 0;
-					(read_data -> raw) = (char_t*) (at_bus_ctx.reply[at_bus_ctx.reply_read_idx].buffer);
 					break;
 				}
 				// Check error.
@@ -219,38 +206,6 @@ errors:
 	return status;
 }
 
-/* PING AT NODE.
- * @param node_address:	AT address to ping.
- * @param ping_status:	Pointer to the ping operation status.
- * @return status:		Function execution status.
- */
-NODE_status_t _AT_BUS_ping(NODE_address_t node_address, NODE_access_status_t* ping_status) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	STRING_status_t string_status = STRING_SUCCESS;
-	NODE_command_parameters_t command_params;
-	NODE_reply_parameters_t reply_params;
-	NODE_read_data_t unused_read_data;
-	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
-	uint8_t command_size = 0;
-	// Build command structure.
-	command_params.node_address = node_address;
-	command_params.command = (char_t*) command;
-	// Build reply structure.
-	reply_params.type = NODE_REPLY_TYPE_OK;
-	reply_params.format = STRING_FORMAT_BOOLEAN;
-	reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-	reply_params.byte_array_size = 0;
-	reply_params.exact_length = 1;
-	// Build read command.
-	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_PING, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
-	// Send ping command.
-	status = AT_BUS_send_command(&command_params, &reply_params, &unused_read_data, ping_status);
-errors:
-	return status;
-}
-
 /*** AT functions ***/
 
 /* INIT AT BUS INTERFACE.
@@ -267,12 +222,9 @@ void AT_BUS_init(void) {
 
 /* SEND AT BUS COMMAND.
  * @param command_params:	Pointer to the command parameters.
- * @param reply_params:		Pointer to the reply parameters.
- * @param read_data:		Pointer to the read result.
- * @param read_status:		Pointer to the command operation status.
  * @return status:			Function execution status.
  */
-NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params, NODE_reply_parameters_t* reply_params, NODE_read_data_t* read_data, NODE_access_status_t* command_status) {
+NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -288,95 +240,97 @@ NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params, NOD
 	// Disable receiver.
 	LPUART1_disable_rx();
 	// Send command.
-	status = LBUS_send((command_params -> node_address), (uint8_t*) at_bus_ctx.command, at_bus_ctx.command_size);
+	status = LBUS_send((command_params -> node_addr), (uint8_t*) at_bus_ctx.command, at_bus_ctx.command_size);
 	if (status != NODE_SUCCESS) goto errors;
 	LPUART1_enable_rx();
-	// Wait reply.
-	status = _AT_BUS_wait_reply(reply_params, read_data, command_status);
-	if (status != NODE_SUCCESS) goto errors;
-errors:
-	return status;
-}
-
-/* READ AT BUS NODE REGISTER.
- * @param read_params:	Pointer to the read operation parameters.
- * @param read_data:	Pointer to the read result.
- * @param read_status:	Pointer to the read operation status.
- * @return status:		Function execution status.
- */
-NODE_status_t AT_BUS_read_register(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	STRING_status_t string_status = STRING_SUCCESS;
-	NODE_command_parameters_t command_params;
-	NODE_reply_parameters_t reply_params;
-	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
-	uint8_t command_size = 0;
-	// Check parameters.
-	if ((read_params == NULL) || (read_data == NULL) || (read_status == NULL)) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	// Build command structure.
-	command_params.node_address = (read_params -> node_address);
-	command_params.command = (char_t*) command;
-	// Build reply structure.
-	reply_params.type = (read_params -> type);
-	reply_params.format = (read_params -> format);
-	reply_params.timeout_ms = (read_params -> timeout_ms);
-	reply_params.byte_array_size = 0;
-	reply_params.exact_length = 1;
-	// Build read command.
-	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_READ_REGISTER, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
-	string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, (read_params -> register_address), STRING_FORMAT_HEXADECIMAL, 0, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
-	// Send command.
-	status = AT_BUS_send_command(&command_params, &reply_params, read_data, read_status);
 errors:
 	return status;
 }
 
 /* WRITE AT BUS NODE REGISTER.
  * @param write_params:	Pointer to the write operation parameters.
+ * @param reg_value:	Register value to write.
+ * @param reg_mask:		Register writing mask.
  * @param write_status:	Pointer to the write operation status.
  * @return status:		Function execution status.
  */
-NODE_status_t AT_BUS_write_register(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status) {
+NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
 	NODE_command_parameters_t command_params;
-	NODE_reply_parameters_t reply_params;
-	NODE_read_data_t unused_read_data;
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
+	char_t str_value[AT_BUS_STRING_VALUE_BUFFER_SIZE];
+	uint32_t unused_reg_value = 0;
 	// Check parameters.
 	if ((write_params == NULL) || (write_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Build command structure.
-	command_params.node_address = (write_params -> node_address);
+	command_params.node_addr = (write_params -> node_addr);
 	command_params.command = (char_t*) command;
-	// Build reply structure.
-	reply_params.type = NODE_REPLY_TYPE_OK;
-	reply_params.format = (write_params -> format);
-	reply_params.timeout_ms = (write_params -> timeout_ms);
-	reply_params.byte_array_size = 0;
-	reply_params.exact_length = 1;
 	// Build write command.
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_WRITE_REGISTER, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
-	string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, (write_params -> register_address), STRING_FORMAT_HEXADECIMAL, 0, &command_size);
+	string_status = DINFOX_register_to_string((uint32_t) (write_params -> reg_addr), str_value);
+	STRING_status_check(NODE_ERROR_BASE_STRING);
+	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_SEPARATOR, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
-	string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, (write_params -> value), (write_params -> format), 0, &command_size);
+	string_status = DINFOX_register_to_string(reg_value, str_value);
+	STRING_status_check(NODE_ERROR_BASE_STRING);
+	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
+	STRING_status_check(NODE_ERROR_BASE_STRING);
+	// Add mask if needed.
+	if (reg_mask != DINFOX_REG_MASK_ALL) {
+		string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_SEPARATOR, &command_size);
+		STRING_status_check(NODE_ERROR_BASE_STRING);
+		string_status = DINFOX_register_to_string(reg_mask, str_value);
+		STRING_status_check(NODE_ERROR_BASE_STRING);
+		string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
+		STRING_status_check(NODE_ERROR_BASE_STRING);
+	}
+	// Send command.
+	status = AT_BUS_send_command(&command_params);
+	// Wait reply.
+	status = _AT_BUS_wait_reply(&(write_params -> reply_params), &unused_reg_value, write_status);
+	if (status != NODE_SUCCESS) goto errors;
+errors:
+	LPUART1_disable_rx();
+	return status;
+}
+
+/* READ AT BUS NODE REGISTER.
+ * @param read_params:	Pointer to the read operation parameters.
+ * @param reg_value:	Pointer to the register value.
+ * @param read_status:	Pointer to the read operation status.
+ * @return status:		Function execution status.
+ */
+NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	STRING_status_t string_status = STRING_SUCCESS;
+	NODE_command_parameters_t command_params;
+	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
+	uint8_t command_size = 0;
+	// Build command structure.
+	command_params.node_addr = (read_params -> node_addr);
+	command_params.command = (char_t*) command;
+	// Build read command.
+	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_READ_REGISTER, &command_size);
+	STRING_status_check(NODE_ERROR_BASE_STRING);
+	string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, (read_params -> reg_addr), STRING_FORMAT_HEXADECIMAL, 0, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	// Send command.
-	status = AT_BUS_send_command(&command_params, &reply_params, &unused_read_data, write_status);
+	status = AT_BUS_send_command(&command_params);
+	// Wait reply.
+	status = _AT_BUS_wait_reply(&(read_params -> reply_params), reg_value, read_status);
+	if (status != NODE_SUCCESS) goto errors;
 errors:
+	LPUART1_disable_rx();
 	return status;
 }
 
@@ -389,11 +343,10 @@ errors:
 NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_read_parameters_t read_params;
-	NODE_read_data_t read_data;
+	NODE_access_parameters_t read_params;
 	NODE_access_status_t read_status;
-	NODE_address_t node_address = 0;
-	uint8_t node_list_idx = 0;
+	NODE_address_t node_addr = 0;
+	uint32_t reg_value = 0;
 	// Check parameters.
 	if ((nodes_list == NULL) || (nodes_count == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -402,40 +355,29 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	// Reset count.
 	(*nodes_count) = 0;
 	// Build read input common parameters.
-	read_params.format = STRING_FORMAT_HEXADECIMAL;
-	read_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-	read_params.register_address = DINFOX_REGISTER_BOARD_ID;
-	read_params.type = NODE_REPLY_TYPE_VALUE;
-	// Configure read data.
-	read_data.raw = NULL;
-	read_data.value = 0;
-	read_data.byte_array = NULL;
-	read_data.extracted_length = 0;
+	read_params.reg_addr = COMMON_REG_ADDR_NODE_ID;
+	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
+	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
 	// Loop on all addresses.
-	for (node_address=0 ; node_address<DINFOX_NODE_ADDRESS_LBUS_LAST ; node_address++) {
-		// Ping address.
-		status = _AT_BUS_ping(node_address, &read_status);
+	for (node_addr=0 ; node_addr<=DINFOX_NODE_ADDRESS_LBUS_LAST ; node_addr++) {
+		// Uppdate address.
+		read_params.node_addr = node_addr;
+		// Read NODE_ID register.
+		status = AT_BUS_read_register(&read_params, &reg_value, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply status.
 		if (read_status.all == 0) {
-			// Node found (even if an error was returned after ping command).
-			(*nodes_count)++;
-			// Store address and reset board ID.
-			nodes_list[node_list_idx].address = node_address;
-			nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_ERROR;
-			// Get board ID.
-			read_params.node_address = node_address;
-			status = AT_BUS_read_register(&read_params, &read_data, &read_status);
-			if (status != NODE_SUCCESS) goto errors;
-			// Check reply status.
-			if (read_status.all == 0) {
+			// Check node address consistency.
+			if (DINFOX_read_field(reg_value, COMMON_REG_NODE_ID_MASK_NODE_ADDR) == node_addr) {
 				// Update board ID.
-				nodes_list[node_list_idx].board_id = (uint8_t) read_data.value;
+				nodes_list[(*nodes_count)].address = DINFOX_read_field(reg_value, COMMON_REG_NODE_ID_MASK_NODE_ADDR);
+				nodes_list[(*nodes_count)].board_id = DINFOX_read_field(reg_value, COMMON_REG_NODE_ID_MASK_BOARD_ID);
+				// Update nodes count.
+				(*nodes_count)++;
 			}
-			node_list_idx++;
-			// Check index.
-			if (node_list_idx >= nodes_list_size) break;
 		}
+		// Check index.
+		if ((*nodes_count) >= nodes_list_size) break;
 		IWDG_reload();
 	}
 	return NODE_SUCCESS;

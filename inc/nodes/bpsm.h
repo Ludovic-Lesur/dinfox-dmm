@@ -9,7 +9,8 @@
 #define __BPSM_H__
 
 #include "at_bus.h"
-#include "dinfox.h"
+#include "common.h"
+#include "bpsm_reg.h"
 #include "node.h"
 #include "string.h"
 #include "types.h"
@@ -17,51 +18,27 @@
 /*** BPSM structures ***/
 
 typedef enum {
-	BPSM_REGISTER_VSRC_MV = DINFOX_REGISTER_LAST,
-	BPSM_REGISTER_VSTR_MV,
-	BPSM_REGISTER_VBKP_MV,
-	BPSM_REGISTER_CHARGE_ENABLE,
-	BPSM_REGISTER_CHARGE_STATUS,
-	BPSM_REGISTER_BACKUP_ENABLE,
-	BPSM_REGISTER_LAST,
-} BPSM_register_address_t;
+	BPSM_LINE_DATA_INDEX_VSRC = COMMON_LINE_DATA_INDEX_LAST,
+	BPSM_LINE_DATA_INDEX_VSTR,
+	BPSM_LINE_DATA_INDEX_VBKP,
+	BPSM_LINE_DATA_INDEX_CHEN,
+	BPSM_LINE_DATA_INDEX_CHST,
+	BPSM_LINE_DATA_INDEX_BKEN,
+	BPSM_LINE_DATA_INDEX_LAST,
+} BPSM_line_data_index_t;
 
-typedef enum {
-	BPSM_STRING_DATA_INDEX_VSRC_MV = DINFOX_STRING_DATA_INDEX_LAST,
-	BPSM_STRING_DATA_INDEX_VSTR_MV,
-	BPSM_STRING_DATA_INDEX_VBKP_MV,
-	BPSM_STRING_DATA_INDEX_CHARGE_ENABLE,
-	BPSM_STRING_DATA_INDEX_CHARGE_STATUS,
-	BPSM_STRING_DATA_INDEX_BACKUP_ENABLE,
-	BPSM_STRING_DATA_INDEX_LAST,
-} BPSM_string_data_index_t;
+/*** BPSM global variables ***/
 
-/*** BPSM macros ***/
-
-#define BPSM_NUMBER_OF_SPECIFIC_REGISTERS	(BPSM_REGISTER_LAST - DINFOX_REGISTER_LAST)
-#define BPSM_NUMBER_OF_SPECIFIC_STRING_DATA	(BPSM_STRING_DATA_INDEX_LAST - DINFOX_STRING_DATA_INDEX_LAST)
-
-static const STRING_format_t BPSM_REGISTER_FORMAT[BPSM_NUMBER_OF_SPECIFIC_REGISTERS] = {
-	STRING_FORMAT_DECIMAL,
-	STRING_FORMAT_DECIMAL,
-	STRING_FORMAT_DECIMAL,
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN
-};
-
-static const uint32_t BPSM_REGISTER_WRITE_TIMEOUT_MS[BPSM_NUMBER_OF_SPECIFIC_REGISTERS] = {
-	AT_BUS_DEFAULT_TIMEOUT_MS,
-	AT_BUS_DEFAULT_TIMEOUT_MS,
-	AT_BUS_DEFAULT_TIMEOUT_MS,
-	AT_BUS_DEFAULT_TIMEOUT_MS,
+static const uint32_t BPSM_REG_WRITE_TIMEOUT_MS[BPSM_NUMBER_OF_SPECIFIC_REG] = {
+	1000,
 	AT_BUS_DEFAULT_TIMEOUT_MS,
 	AT_BUS_DEFAULT_TIMEOUT_MS
 };
 
 /*** BPSM functions ***/
 
-NODE_status_t BPSM_update_data(NODE_data_update_t* data_update);
-NODE_status_t BPSM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+NODE_status_t BPSM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status);
+NODE_status_t BPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status);
+NODE_status_t BPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update);
 
 #endif /* __BPSM_H__ */

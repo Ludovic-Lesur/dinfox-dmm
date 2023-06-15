@@ -125,7 +125,6 @@ errors:
  */
 void LPUART1_init(void) {
 	// Select HSI as clock default source.
-	RCC -> CR |= (0b1 << 1); // Enable HSI in stop mode (HSI16KERON='1').
 	RCC -> CCIPR |= (0b10 << 10); // LPUART1SEL='10'.
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 18); // LPUARTEN='1'.
@@ -169,6 +168,9 @@ LPUART_status_t LPUART1_power_on(void) {
 	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
+	// Enable peripheral.
+	RCC -> CR |= (0b1 << 1); // Enable HSI in stop mode (HSI16KERON='1').
+	LPUART1 -> CR1 |= (0b1 << 0); // UE='1'.
 	// Power on delay.
 	lptim1_status = LPTIM1_delay_milliseconds(100, LPTIM_DELAY_MODE_STOP);
 	LPTIM1_status_check(LPUART_ERROR_BASE_LPTIM);
@@ -181,10 +183,15 @@ errors:
  * @return:	None.
  */
 void LPUART1_power_off(void) {
+	// Disable receiver.
+	LPUART1_disable_rx();
+	// Disable peripheral.
+	LPUART1 -> CR1 &= ~(0b1 << 0); // UE='0'.
+	RCC -> CR &= ~(0b1 << 1); // Disable HSI in stop mode (HSI16KERON='0').
 	// Set pins as output low.
 	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
+	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	// Turn transceiver on.
 	GPIO_write(&GPIO_TRX_POWER_ENABLE, 0);
 }

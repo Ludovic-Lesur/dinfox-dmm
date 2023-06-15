@@ -34,10 +34,6 @@
 #include "mode.h"
 #include "version.h"
 
-/*** MAIN local macros ***/
-
-#define DMM_MEASUREMENTS_PERIOD_SECONDS		60
-
 /*** MAIN local structures ***/
 
 typedef union {
@@ -46,11 +42,10 @@ typedef union {
 		unsigned lsi_status : 1;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 	uint8_t all;
-} DIM_status_t;
+} DMM_status_t;
 
 typedef enum {
 	DMM_STATE_INIT,
-	DMM_STATE_MEASURE,
 	DMM_STATE_HMI,
 	DMM_STATE_NODE_TASK,
 	DMM_STATE_OFF,
@@ -61,12 +56,10 @@ typedef enum {
 typedef struct {
 	// Global.
 	DMM_state_t state;
-	DIM_status_t status;
+	DMM_status_t status;
 	// Clocks.
 	uint32_t lsi_frequency_hz;
 	uint8_t lse_running;
-	// Internal measurements.
-	uint32_t measurements_next_time_seconds;
 } DMM_context_t;
 
 /*** MAIN local global variables ***/
@@ -85,7 +78,6 @@ void _DMM_init_context(void) {
 	dmm_ctx.lsi_frequency_hz = 0;
 	dmm_ctx.lse_running = 0;
 	dmm_ctx.status.all = 0;
-	dmm_ctx.measurements_next_time_seconds = 0;
 }
 
 /* COMMON INIT FUNCTION FOR PERIPHERALS AND COMPONENTS.
@@ -170,8 +162,6 @@ int main(void) {
 	_DMM_init_context();
 	_DMM_init_hw();
 	// Local variables.
-	ADC_status_t adc1_status = ADC_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
 	// Main loop.
@@ -179,16 +169,11 @@ int main(void) {
 		// Perform state machine.
 		switch (dmm_ctx.state) {
 		case DMM_STATE_INIT:
-			// Turn bus interface on.
-			lpuart1_status = LPUART1_power_on();
-			LPUART1_error_check();
 			// Perform first nodes scan.
 			node_status = NODE_scan();
 			NODE_error_check();
-			// Turn bus interface off.
-			LPUART1_power_off();
 			// Compute next state.
-			dmm_ctx.state = DMM_STATE_MEASURE;
+			dmm_ctx.state = DMM_STATE_NODE_TASK;
 			break;
 		case DMM_STATE_HMI:
 			// Process HMI.
@@ -202,22 +187,11 @@ int main(void) {
 			node_status = NODE_task();
 			NODE_error_check();
 			// Compute next state.
-			dmm_ctx.state = DMM_STATE_MEASURE;
-			break;
-		case DMM_STATE_MEASURE:
-			// Check period.
-			if (RTC_get_time_seconds() >= dmm_ctx.measurements_next_time_seconds) {
-				// Update period.
-				dmm_ctx.measurements_next_time_seconds = RTC_get_time_seconds() + DMM_MEASUREMENTS_PERIOD_SECONDS;
-				// Perform analog measurements.
-				adc1_status = ADC1_perform_measurements();
-				ADC1_error_check();
-			}
-			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;
 		case DMM_STATE_OFF:
 			// Enable HMI activation interrupt.
+			EXTI_clear_all_flags();
 			NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_0_1);
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_SLEEP;

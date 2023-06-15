@@ -346,6 +346,7 @@ static HMI_status_t _HMI_update_data(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
+	NODE_access_status_t read_status;
 	STRING_status_t string_status = STRING_SUCCESS;
 	STRING_copy_t string_copy;
 	char_t* text_ptr_1 = NULL;
@@ -359,17 +360,17 @@ static HMI_status_t _HMI_update_data(void) {
 		status = HMI_ERROR_SCREEN;
 		goto errors;
 	}
-	node_status = NODE_update_data(&hmi_ctx.node, hmi_ctx.data_index);
+	node_status = NODE_read_line_data(&hmi_ctx.node, hmi_ctx.data_index, &read_status);
 	// Check status.
-	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
-		NODE_status_check(HMI_ERROR_BASE_NODE);
-	}
-	else {
+	if ((node_status == NODE_ERROR_NOT_SUPPORTED) || (read_status.all != 0)) {
 		// Do not update data.
 		goto errors;
 	}
+	else {
+		NODE_status_check(HMI_ERROR_BASE_NODE);
+	}
 	// Read data.
-	node_status = NODE_read_string_data(&hmi_ctx.node, hmi_ctx.data_index, &text_ptr_1, &text_ptr_2);
+	node_status = NODE_get_line_data(&hmi_ctx.node, hmi_ctx.data_index, &text_ptr_1, &text_ptr_2);
 	// Check status and pointers.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);
@@ -407,7 +408,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 	char_t* text_ptr_1 = NULL;
 	char_t* text_ptr_2 = NULL;
 	uint8_t idx = 0;
-	uint8_t last_string_data_index = 0;
+	uint8_t last_line_data_index = 0;
 	// Flush buffers.
 	_HMI_data_flush();
 	_HMI_text_flush();
@@ -485,7 +486,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 		// Flush buffers.
 		_HMI_data_flush();
 		// Update all node data.
-		node_status = NODE_update_all_data(&hmi_ctx.node);
+		node_status = NODE_read_line_data_all(&hmi_ctx.node);
 		switch (node_status) {
 		case NODE_SUCCESS:
 			// Go to next step.
@@ -508,10 +509,10 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			break;
 		}
 		// Get number of lines.
-		node_status = NODE_get_last_string_data_index(&hmi_ctx.node, &last_string_data_index);
+		node_status = NODE_get_last_line_data_index(&hmi_ctx.node, &last_line_data_index);
 		NODE_status_check(HMI_ERROR_BASE_NODE);
 		// Check result.
-		if (last_string_data_index == 0) {
+		if (last_line_data_index == 0) {
 			// No measurement returned.
 			string_copy.justification = STRING_JUSTIFICATION_CENTER;
 			string_copy.flush_flag = 1;
@@ -525,14 +526,14 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			goto errors;
 		}
 		// Data lines loop.
-		for (idx=0 ; idx<last_string_data_index ; idx++) {
+		for (idx=0 ; idx<last_line_data_index ; idx++) {
 			// Check index.
 			if (idx >= HMI_DATA_PAGES_DEPTH) {
 				status = HMI_ERROR_DATA_DEPTH_OVERFLOW;
 				goto errors;
 			}
 			// Read data.
-			node_status = NODE_read_string_data(&hmi_ctx.node, idx, &text_ptr_1, &text_ptr_2);
+			node_status = NODE_get_line_data(&hmi_ctx.node, idx, &text_ptr_1, &text_ptr_2);
 			NODE_status_check(HMI_ERROR_BASE_NODE);
 			// Update pointer.
 			string_copy.destination = (char_t*) hmi_ctx.data[idx];
@@ -732,7 +733,7 @@ static HMI_status_t _HMI_irq_callback_cmd_on(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	NODE_access_status_t write_status;
 	// Execute node register write function.
-	node_status = NODE_write_string_data(&hmi_ctx.node, hmi_ctx.data_index, 1, &write_status);
+	node_status = NODE_write_line_data(&hmi_ctx.node, hmi_ctx.data_index, 1, &write_status);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);
@@ -759,7 +760,7 @@ static HMI_status_t _HMI_irq_callback_cmd_off(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	NODE_access_status_t write_status;
 	// Execute node register write function.
-	node_status = NODE_write_string_data(&hmi_ctx.node, hmi_ctx.data_index, 0, &write_status);
+	node_status = NODE_write_line_data(&hmi_ctx.node, hmi_ctx.data_index, 0, &write_status);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_status_check(HMI_ERROR_BASE_NODE);

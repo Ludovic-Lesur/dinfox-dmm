@@ -9,55 +9,34 @@
 #define __LVRM_H__
 
 #include "at_bus.h"
-#include "dinfox.h"
+#include "common.h"
+#include "lvrm_reg.h"
 #include "node.h"
 #include "string.h"
 #include "types.h"
 
-/*** LVRM macros ***/
-
-#define LVRM_RELAY_WRITE_TIMEOUT_MS		2000
-
 /*** LVRM structures ***/
 
 typedef enum {
-	LVRM_REGISTER_VCOM_MV = DINFOX_REGISTER_LAST,
-	LVRM_REGISTER_VOUT_MV,
-	LVRM_REGISTER_IOUT_UA,
-	LVRM_REGISTER_RELAY_STATE,
-	LVRM_REGISTER_LAST,
-} LVRM_register_address_t;
+	LVRM_LINE_DATA_INDEX_VCOM = COMMON_LINE_DATA_INDEX_LAST,
+	LVRM_LINE_DATA_INDEX_VOUT,
+	LVRM_LINE_DATA_INDEX_IOUT,
+	LVRM_LINE_DATA_INDEX_RLST,
+	LVRM_LINE_DATA_INDEX_LAST,
+} LVRM_line_data_index_t;
 
-typedef enum {
-	LVRM_STRING_DATA_INDEX_VCOM_MV = DINFOX_STRING_DATA_INDEX_LAST,
-	LVRM_STRING_DATA_INDEX_VOUT_MV,
-	LVRM_STRING_DATA_INDEX_IOUT_UA,
-	LVRM_STRING_DATA_INDEX_RELAY_STATE,
-	LVRM_STRING_DATA_INDEX_LAST,
-} LVRM_string_data_index_t;
+/*** LVRM global variables ***/
 
-/*** LVRM macros ***/
-
-#define LVRM_NUMBER_OF_SPECIFIC_REGISTERS	(LVRM_REGISTER_LAST - DINFOX_REGISTER_LAST)
-#define LVRM_NUMBER_OF_SPECIFIC_STRING_DATA	(LVRM_STRING_DATA_INDEX_LAST - DINFOX_STRING_DATA_INDEX_LAST)
-
-static const STRING_format_t LVRM_REGISTER_FORMAT[LVRM_NUMBER_OF_SPECIFIC_REGISTERS] = {
-	STRING_FORMAT_DECIMAL,
-	STRING_FORMAT_DECIMAL,
-	STRING_FORMAT_DECIMAL,
-	STRING_FORMAT_BOOLEAN
-};
-
-static const uint32_t LVRM_REGISTER_WRITE_TIMEOUT_MS[LVRM_NUMBER_OF_SPECIFIC_REGISTERS] = {
+static const uint32_t LVRM_REG_WRITE_TIMEOUT_MS[LVRM_NUMBER_OF_SPECIFIC_REG] = {
+	2000,
 	AT_BUS_DEFAULT_TIMEOUT_MS,
-	AT_BUS_DEFAULT_TIMEOUT_MS,
-	AT_BUS_DEFAULT_TIMEOUT_MS,
-	LVRM_RELAY_WRITE_TIMEOUT_MS
+	AT_BUS_DEFAULT_TIMEOUT_MS
 };
 
 /*** LVRM functions ***/
 
-NODE_status_t LVRM_update_data(NODE_data_update_t* data_update);
-NODE_status_t LVRM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+NODE_status_t LVRM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status);
+NODE_status_t LVRM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status);
+NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update);
 
 #endif /* __LVRM_H__ */

@@ -9,44 +9,41 @@
 
 #include "at_bus.h"
 #include "bpsm.h"
+#include "bpsm_reg.h"
 #include "ddrm.h"
-#include "dmm.h"
+#include "ddrm_reg.h"
 #include "dinfox.h"
+#include "dmm.h"
+#include "dmm_reg.h"
+#include "common.h"
 #include "gpsm.h"
+#include "gpsm_reg.h"
 #include "lpuart.h"
 #include "lvrm.h"
+#include "lvrm_reg.h"
 #include "mode.h"
 #include "r4s8cr.h"
+#include "r4s8cr_reg.h"
 #include "rtc.h"
 #include "sm.h"
+#include "sm_reg.h"
 #include "uhfm.h"
+#include "uhfm_reg.h"
+#include "xm.h"
 
 /*** NODE local macros ***/
 
-#define NODE_STRING_DATA_INDEX_MAX				32
+#define NODE_LINE_DATA_INDEX_MAX				32
 #define NODE_REGISTER_ADDRESS_MAX				64
 
-#define NODE_SIGFOX_PAYLOAD_STARTUP_SIZE		8
 #define NODE_SIGFOX_PAYLOAD_SIZE_MAX			12
 #define NODE_SIGFOX_PAYLOAD_HEADER_SIZE			2
-
-#define NODE_SIGFOX_UL_PERIOD_SECONDS_MIN		60
-#define NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	600
-
-#define NODE_SIGFOX_DL_PERIOD_SECONDS_MIN		300
-#define NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
 
 #define NODE_SIGFOX_LOOP_MAX					10
 
 #define NODE_ACTIONS_DEPTH						10
 
 /*** NODE local structures ***/
-
-typedef enum {
-	NODE_PROTOCOL_AT_BUS = 0,
-	NODE_PROTOCOL_R4S8CR,
-	NODE_PROTOCOL_LAST
-} NODE_protocol_t;
 
 typedef enum {
 	NODE_DOWNLINK_OPERATION_CODE_NOP = 0,
@@ -56,24 +53,25 @@ typedef enum {
 	NODE_DOWNLINK_OPERATION_CODE_LAST
 } NODE_downlink_operation_code_t;
 
-typedef NODE_status_t (*NODE_read_register_t)(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status);
-typedef NODE_status_t (*NODE_write_register_t)(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);
-typedef NODE_status_t (*NODE_update_data_t)(NODE_data_update_t* data_update);
-typedef NODE_status_t (*NODE_get_sigfox_payload_t)(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+typedef NODE_status_t (*NODE_write_register_t)(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
+typedef NODE_status_t (*NODE_read_register_t)(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status);
+typedef NODE_status_t (*NODE_write_line_data_t)(NODE_line_data_write_t* line_write, NODE_access_status_t* write_status);
+typedef NODE_status_t (*NODE_read_line_data_t)(NODE_line_data_read_t* line_read, NODE_access_status_t* read_status);
+typedef NODE_status_t (*NODE_get_sigfox_payload_t)(NODE_ul_payload_update_t* ul_payload_update);
 
 typedef struct {
-	NODE_read_register_t read_register;
 	NODE_write_register_t write_register;
-	NODE_update_data_t update_data;
+	NODE_read_register_t read_register;
+	NODE_write_line_data_t write_line_data;
+	NODE_read_line_data_t read_line_data;
 	NODE_get_sigfox_payload_t get_sigfox_ul_payload;
 } NODE_functions_t;
 
 typedef struct {
 	char_t* name;
 	NODE_protocol_t protocol;
-	uint8_t last_register_address;
-	uint8_t last_string_data_index;
-	STRING_format_t* register_format;
+	uint8_t last_reg_addr;
+	uint8_t last_line_data_index;
 	uint32_t* register_write_timeout_ms;
 	NODE_functions_t functions;
 } NODE_descriptor_t;
@@ -81,30 +79,18 @@ typedef struct {
 typedef union {
 	uint8_t frame[UHFM_SIGFOX_UL_PAYLOAD_SIZE_MAX];
 	struct {
-		unsigned node_address : 8;
+		unsigned node_addr : 8;
 		unsigned board_id : 8;
 		uint8_t node_data[NODE_SIGFOX_PAYLOAD_SIZE_MAX - NODE_SIGFOX_PAYLOAD_HEADER_SIZE];
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } NODE_sigfox_ul_payload_t;
 
 typedef union {
-	uint8_t frame[NODE_SIGFOX_PAYLOAD_STARTUP_SIZE];
-	struct {
-		unsigned reset_reason : 8;
-		unsigned major_version : 8;
-		unsigned minor_version : 8;
-		unsigned commit_index : 8;
-		unsigned commit_id : 28;
-		unsigned dirty_flag : 4;
-	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} NODE_sigfox_payload_startup_t;
-
-typedef union {
 	uint8_t frame[UHFM_SIGFOX_DL_PAYLOAD_SIZE];
 	struct {
-		unsigned node_address : 8;
+		unsigned node_addr : 8;
 		unsigned board_id : 8;
-		unsigned register_address : 8;
+		unsigned reg_addr : 8;
 		unsigned operation_code : 8;
 		unsigned data : 32;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
@@ -112,15 +98,15 @@ typedef union {
 
 typedef struct {
 	NODE_t* node;
-	uint8_t register_address;
-	int32_t register_value;
+	uint8_t reg_addr;
+	uint32_t reg_value;
+	uint32_t reg_mask;
 	uint32_t timestamp_seconds;
 } NODE_action_t;
 
 typedef struct {
-	char_t string_data_name[NODE_STRING_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
-	char_t string_data_value[NODE_STRING_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
-	int32_t registers_value[NODE_REGISTER_ADDRESS_MAX];
+	char_t line_data_name[NODE_LINE_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
+	char_t line_data_value[NODE_LINE_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
 } NODE_data_t;
 
 typedef struct {
@@ -130,12 +116,10 @@ typedef struct {
 	NODE_sigfox_ul_payload_t sigfox_ul_payload;
 	NODE_sigfox_ul_payload_type_t sigfox_ul_payload_type_index;
 	uint8_t sigfox_ul_payload_size;
-	uint32_t sigfox_ul_period_seconds;
 	uint32_t sigfox_ul_next_time_seconds;
 	uint8_t sigfox_ul_node_list_index;
 	// Downlink.
 	NODE_sigfox_dl_payload_t sigfox_dl_payload;
-	uint32_t sigfox_dl_period_seconds;
 	uint32_t sigfox_dl_next_time_seconds;
 	// Write actions list.
 	NODE_action_t actions[NODE_ACTIONS_DEPTH];
@@ -150,38 +134,39 @@ typedef struct {
 
 // Note: table is indexed with board ID.
 static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
-	{"LVRM", NODE_PROTOCOL_AT_BUS, LVRM_REGISTER_LAST, LVRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) LVRM_REGISTER_FORMAT, (uint32_t*) LVRM_REGISTER_WRITE_TIMEOUT_MS,
-		{&AT_BUS_read_register, &AT_BUS_write_register, &LVRM_update_data, &LVRM_get_sigfox_ul_payload}
+	{"LVRM", NODE_PROTOCOL_AT_BUS, LVRM_REG_ADDR_LAST, LVRM_LINE_DATA_INDEX_LAST, (uint32_t*) LVRM_REG_WRITE_TIMEOUT_MS,
+		{&AT_BUS_write_register, &AT_BUS_read_register, &LVRM_write_line_data, &LVRM_read_line_data, &LVRM_build_sigfox_ul_payload}
 	},
-	{"BPSM", NODE_PROTOCOL_AT_BUS, BPSM_REGISTER_LAST, BPSM_STRING_DATA_INDEX_LAST, (STRING_format_t*) BPSM_REGISTER_FORMAT, (uint32_t*) BPSM_REGISTER_WRITE_TIMEOUT_MS,
-		{&AT_BUS_read_register, &AT_BUS_write_register, &BPSM_update_data, &BPSM_get_sigfox_ul_payload}
+	{"BPSM", NODE_PROTOCOL_AT_BUS, BPSM_REG_ADDR_LAST, BPSM_LINE_DATA_INDEX_LAST, (uint32_t*) BPSM_REG_WRITE_TIMEOUT_MS,
+		{&AT_BUS_write_register, &AT_BUS_read_register, &BPSM_write_line_data, &BPSM_read_line_data, &BPSM_build_sigfox_ul_payload}
 	},
-	{"DDRM", NODE_PROTOCOL_AT_BUS, DDRM_REGISTER_LAST, DDRM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DDRM_REGISTER_FORMAT, (uint32_t*) DDRM_REGISTER_WRITE_TIMEOUT_MS,
-		{&AT_BUS_read_register, &AT_BUS_write_register, &DDRM_update_data, &DDRM_get_sigfox_ul_payload}
+	{"DDRM", NODE_PROTOCOL_AT_BUS, DDRM_REG_ADDR_LAST, DDRM_LINE_DATA_INDEX_LAST, (uint32_t*) DDRM_REG_WRITE_TIMEOUT_MS,
+		{&AT_BUS_write_register, &AT_BUS_read_register, &DDRM_write_line_data, &DDRM_read_line_data, &DDRM_build_sigfox_ul_payload}
 	},
-	{"UHFM", NODE_PROTOCOL_AT_BUS, UHFM_REGISTER_LAST, UHFM_STRING_DATA_INDEX_LAST, (STRING_format_t*) UHFM_REGISTER_FORMAT, (uint32_t*) UHFM_REGISTER_WRITE_TIMEOUT_MS,
-		{&AT_BUS_read_register, &AT_BUS_write_register, &UHFM_update_data, &UHFM_get_sigfox_ul_payload}
+	{"UHFM", NODE_PROTOCOL_AT_BUS, UHFM_REG_ADDR_LAST, UHFM_LINE_DATA_INDEX_LAST, (uint32_t*) UHFM_REG_WRITE_TIMEOUT_MS,
+		{&AT_BUS_write_register, &AT_BUS_read_register, &UHFM_write_line_data, &UHFM_read_line_data, &UHFM_build_sigfox_ul_payload}
 	},
-	{"GPSM", NODE_PROTOCOL_AT_BUS, GPSM_REGISTER_LAST, GPSM_STRING_DATA_INDEX_LAST, (STRING_format_t*) GPSM_REGISTER_FORMAT, (uint32_t*) GPSM_REGISTER_WRITE_TIMEOUT_MS,
-		{&AT_BUS_read_register, &AT_BUS_write_register, &GPSM_update_data, &GPSM_get_sigfox_ul_payload}
+	{"GPSM", NODE_PROTOCOL_AT_BUS, GPSM_REG_ADDR_LAST, GPSM_LINE_DATA_INDEX_LAST, (uint32_t*) GPSM_REG_WRITE_TIMEOUT_MS,
+		{&AT_BUS_write_register, &AT_BUS_read_register, &GPSM_write_line_data, &GPSM_read_line_data, &GPSM_build_sigfox_ul_payload}
 	},
-	{"SM", NODE_PROTOCOL_AT_BUS, SM_REGISTER_LAST, SM_STRING_DATA_INDEX_LAST, (STRING_format_t*) SM_REGISTER_FORMAT, (uint32_t*) SM_REGISTER_WRITE_TIMEOUT_MS,
-		{&AT_BUS_read_register, &AT_BUS_write_register, &SM_update_data, &SM_get_sigfox_ul_payload}
+	{"SM", NODE_PROTOCOL_AT_BUS, SM_REG_ADDR_LAST, SM_LINE_DATA_INDEX_LAST, (uint32_t*) SM_REG_WRITE_TIMEOUT_MS,
+		{&AT_BUS_write_register, &AT_BUS_read_register, &SM_write_line_data, &SM_read_line_data, &SM_build_sigfox_ul_payload}
 	},
-	{"DIM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL, NULL,
+	{"DIM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
 		{NULL, NULL, NULL, NULL}
 	},
-	{"RRM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL, NULL,
-		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
+	{"RRM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+		{NULL, NULL, NULL, NULL}
 	},
-	{"DMM", NODE_PROTOCOL_AT_BUS, DMM_REGISTER_LAST, DMM_STRING_DATA_INDEX_LAST, (STRING_format_t*) DMM_REGISTER_FORMAT, (uint32_t*) DMM_REGISTER_WRITE_TIMEOUT_MS,
-		{&DMM_read_register, &DMM_write_register, &DMM_update_data, &DMM_get_sigfox_ul_payload}
+	{"DMM", NODE_PROTOCOL_AT_BUS, DMM_REG_ADDR_LAST, DMM_LINE_DATA_INDEX_LAST, (uint32_t*) DMM_REG_WRITE_TIMEOUT_MS,
+		{&DMM_write_register, &DMM_read_register, &DMM_write_line_data, &DMM_read_line_data, &DMM_build_sigfox_ul_payload}
 	},
-	{"MPMCM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL, NULL,
-		{&AT_BUS_read_register, &AT_BUS_write_register, NULL, NULL}
+	{"MPMCM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
+		{NULL, NULL, NULL, NULL}
 	},
-	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REGISTER_LAST, R4S8CR_STRING_DATA_INDEX_LAST, (STRING_format_t*) R4S8CR_REGISTER_FORMAT, (uint32_t*) R4S8CR_REGISTER_WRITE_TIMEOUT_MS,
-		{&R4S8CR_read_register, &R4S8CR_write_register, &R4S8CR_update_data, &R4S8CR_get_sigfox_ul_payload}},
+	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REG_ADDR_LAST, R4S8CR_LINE_DATA_INDEX_LAST, (uint32_t*) R4S8CR_REG_WRITE_TIMEOUT_MS,
+		{&R4S8CR_write_register, &R4S8CR_read_register, &R4S8CR_write_line_data, &R4S8CR_read_line_data, &R4S8CR_build_sigfox_ul_payload}
+	},
 };
 static NODE_context_t node_ctx;
 
@@ -217,13 +202,13 @@ static NODE_context_t node_ctx;
  * @param:	None.
  * @return:	None.
  */
-static void _NODE_flush_string_data_value(uint8_t string_data_index) {
+static void _NODE_flush_line_data_value(uint8_t line_data_index) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Char loop.
 	for (idx=0 ; idx<NODE_STRING_BUFFER_SIZE ; idx++) {
-		node_ctx.data.string_data_name[string_data_index][idx] = STRING_CHAR_NULL;
-		node_ctx.data.string_data_value[string_data_index][idx] = STRING_CHAR_NULL;
+		node_ctx.data.line_data_name[line_data_index][idx] = STRING_CHAR_NULL;
+		node_ctx.data.line_data_value[line_data_index][idx] = STRING_CHAR_NULL;
 	}
 }
 
@@ -234,9 +219,8 @@ static void _NODE_flush_string_data_value(uint8_t string_data_index) {
 void _NODE_flush_all_data_value(void) {
 	// Local variables.
 	uint8_t idx = 0;
-	// Reset string and integer data.
-	for (idx=0 ; idx<NODE_STRING_DATA_INDEX_MAX ; idx++) _NODE_flush_string_data_value(idx);
-	for (idx=0 ; idx<NODE_REGISTER_ADDRESS_MAX ; idx++) node_ctx.data.registers_value[idx] = 0;
+	// Reset string data.
+	for (idx=0 ; idx<NODE_LINE_DATA_INDEX_MAX ; idx++) _NODE_flush_line_data_value(idx);
 }
 
 /* FLUSH NODES LIST.
@@ -257,15 +241,15 @@ void _NODE_flush_list(void) {
 
 /* WRITE NODE DATA.
  * @param node:				Node to write.
- * @param register_address:	Register address.
+ * @param reg_addr:	Register address.
  * @param value:			Value to write in corresponding register.
  * @param write_status:		Pointer to the writing operation status.
  * @return status:			Function execution status.
  */
-NODE_status_t _NODE_write_register(NODE_t* node, uint8_t register_address, int32_t value, NODE_access_status_t* write_status) {
+NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_write_parameters_t write_input;
+	NODE_access_parameters_t write_input;
 	// Check node and board ID.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(write_register);
@@ -275,51 +259,49 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t register_address, int32
 		goto errors;
 	}
 	// Check register address.
-	if (NODES[node -> board_id].last_register_address == 0) {
+	if (NODES[node -> board_id].last_reg_addr == 0) {
 		status = NODE_ERROR_NOT_SUPPORTED;
 		goto errors;
 	}
-	if (register_address >= (NODES[node -> board_id].last_register_address)) {
+	if (reg_addr >= (NODES[node -> board_id].last_reg_addr)) {
 		status = NODE_ERROR_REGISTER_ADDRESS;
 		goto errors;
 	}
 	// Common write parameters.
-	write_input.node_address = (node -> address);
-	write_input.value = value;
-	write_input.register_address = register_address;
+	write_input.node_addr = (node -> address);
+	write_input.reg_addr = reg_addr;
 	// Check node protocol.
 	switch (NODES[node -> board_id].protocol) {
 	case NODE_PROTOCOL_AT_BUS:
 		// Specific write parameters.
-		write_input.timeout_ms = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTER_WRITE_TIMEOUT_MS[register_address] : NODES[node -> board_id].register_write_timeout_ms[register_address - DINFOX_REGISTER_LAST];
-		write_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTER_FORMAT[register_address] : NODES[node -> board_id].register_format[register_address - DINFOX_REGISTER_LAST];
+		write_input.reply_params.timeout_ms = (reg_addr < COMMON_REG_ADDR_LAST) ? COMMON_REG_WRITE_TIMEOUT_MS[reg_addr] : NODES[node -> board_id].register_write_timeout_ms[reg_addr - COMMON_REG_ADDR_LAST];
+		write_input.reply_params.type = NODE_REPLY_TYPE_OK;
 		break;
 	case NODE_PROTOCOL_R4S8CR:
 		// Specific write parameters.
-		write_input.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[register_address];
-		write_input.format = NODES[node -> board_id].register_format[register_address];
+		write_input.reply_params.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[reg_addr];
+		write_input.reply_params.type = NODE_REPLY_TYPE_VALUE;
 		break;
 	default:
 		status = NODE_ERROR_PROTOCOL;
 		break;
 	}
-	status = NODES[node -> board_id].functions.write_register(&write_input, write_status);
+	status = NODES[node -> board_id].functions.write_register(&write_input, reg_value, reg_mask, write_status);
 errors:
 	return status;
 }
 
 /* READ NODE DATA.
  * @param node:				Node to read.
- * @param register_address:	Register address.
+ * @param reg_addr:	Register address.
  * @param value:			Pointer that will contain the read value.
  * @param write_status:		Pointer to the writing operation status.
  * @return status:			Function execution status.
  */
-NODE_status_t _NODE_read_register(NODE_t* node, uint8_t register_address, int32_t* value, NODE_access_status_t* read_status) {
+NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_read_parameters_t read_input;
-	NODE_read_data_t read_data;
+	NODE_access_parameters_t read_input;
 	// Check node and board ID.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(write_register);
@@ -329,38 +311,34 @@ NODE_status_t _NODE_read_register(NODE_t* node, uint8_t register_address, int32_
 		goto errors;
 	}
 	// Check register address.
-	if (NODES[node -> board_id].last_register_address == 0) {
+	if (NODES[node -> board_id].last_reg_addr == 0) {
 		status = NODE_ERROR_NOT_SUPPORTED;
 		goto errors;
 	}
-	if (register_address >= (NODES[node -> board_id].last_register_address)) {
+	if (reg_addr >= (NODES[node -> board_id].last_reg_addr)) {
 		status = NODE_ERROR_REGISTER_ADDRESS;
 		goto errors;
 	}
 	// Common write parameters.
-	read_input.node_address = (node -> address);
-	read_input.register_address = register_address;
-	read_input.type = NODE_REPLY_TYPE_VALUE;
+	read_input.node_addr = (node -> address);
+	read_input.reg_addr = reg_addr;
 	// Check node protocol.
 	switch (NODES[node -> board_id].protocol) {
 	case NODE_PROTOCOL_AT_BUS:
 		// Specific write parameters.
-		read_input.timeout_ms = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTER_WRITE_TIMEOUT_MS[register_address] : NODES[node -> board_id].register_write_timeout_ms[register_address - DINFOX_REGISTER_LAST];
-		read_input.format = (register_address < DINFOX_REGISTER_LAST) ? DINFOX_REGISTER_FORMAT[register_address] : NODES[node -> board_id].register_format[register_address - DINFOX_REGISTER_LAST];
+		read_input.reply_params.timeout_ms = (reg_addr < COMMON_REG_ADDR_LAST) ? COMMON_REG_WRITE_TIMEOUT_MS[reg_addr] : NODES[node -> board_id].register_write_timeout_ms[reg_addr - COMMON_REG_ADDR_LAST];
+		read_input.reply_params.type = NODE_REPLY_TYPE_VALUE;
 		break;
 	case NODE_PROTOCOL_R4S8CR:
 		// Specific write parameters.
-		read_input.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[register_address];
-		read_input.format = NODES[node -> board_id].register_format[register_address];
+		read_input.reply_params.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[reg_addr];
+		read_input.reply_params.type = NODE_REPLY_TYPE_VALUE;
 		break;
 	default:
 		status = NODE_ERROR_PROTOCOL;
 		break;
 	}
-	status = NODES[node -> board_id].functions.read_register(&read_input, &read_data, read_status);
-	if (status != NODE_SUCCESS) goto errors;
-	// Extract value.
-	(*value) = read_data.value;
+	status = NODES[node -> board_id].functions.read_register(&read_input, reg_value, read_status);
 errors:
 	return status;
 }
@@ -374,8 +352,8 @@ errors:
 NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t bidirectional_flag) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	uint8_t sigfox_payload_specific_size;
-	NODE_sigfox_payload_startup_t sigfox_payload_startup;
+	uint8_t node_data_size = 0;
+	NODE_ul_payload_update_t ul_payload_update;
 	UHFM_sigfox_message_t sigfox_message;
 	NODE_access_status_t send_status;
 	uint8_t idx = 0;
@@ -385,48 +363,28 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 	// Reset payload.
 	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_ul_payload.frame[idx] = 0x00;
 	node_ctx.sigfox_ul_payload_size = 0;
+	// Build update structure.
+	ul_payload_update.node_addr = (node -> address);
+	ul_payload_update.type = ul_payload_type;
+	ul_payload_update.ul_payload = node_ctx.sigfox_ul_payload.node_data;
+	ul_payload_update.size = &node_data_size;
 	// Add board ID and node address.
 	node_ctx.sigfox_ul_payload.board_id = (node -> board_id);
-	node_ctx.sigfox_ul_payload.node_address = (node -> address);
+	node_ctx.sigfox_ul_payload.node_addr = (node -> address);
 	node_ctx.sigfox_ul_payload_size = 2;
-	// Add specific payload.
-	switch (ul_payload_type) {
-	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
-		// Check node protocol.
-		if (NODES[node -> board_id].protocol != NODE_PROTOCOL_AT_BUS) {
+	// Specific case of startup.
+	if (ul_payload_type == NODE_SIGFOX_PAYLOAD_TYPE_STARTUP) {
+		// Check node protocol and if startup data has not already be sent.
+		if ((NODES[node -> board_id].protocol != NODE_PROTOCOL_AT_BUS) || ((node -> startup_data_sent) != 0)) {
 			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
 			goto errors;
 		}
-		// Check if startup data has not already be sent.
-		if ((node -> startup_data_sent) != 0) {
-			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
-			goto errors;
-		}
-		// Build startup payload here since the format is common to all boards.
-		sigfox_payload_startup.reset_reason = node_ctx.data.registers_value[DINFOX_REGISTER_RESET_REASON];
-		sigfox_payload_startup.major_version = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_MAJOR];
-		sigfox_payload_startup.minor_version = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_MINOR];
-		sigfox_payload_startup.commit_index = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX];
-		sigfox_payload_startup.commit_id = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_COMMIT_ID];
-		sigfox_payload_startup.dirty_flag = node_ctx.data.registers_value[DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG];
-		// Add specific data to global paylaod.
-		for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_STARTUP_SIZE ; idx++) {
-			node_ctx.sigfox_ul_payload.node_data[idx] = sigfox_payload_startup.frame[idx];
-		}
-		node_ctx.sigfox_ul_payload_size += NODE_SIGFOX_PAYLOAD_STARTUP_SIZE;
-		break;
-	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
-	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
-		// Execute function of the corresponding board ID.
-		status = NODES[node -> board_id].functions.get_sigfox_ul_payload(node_ctx.data.registers_value, ul_payload_type, node_ctx.sigfox_ul_payload.node_data, &sigfox_payload_specific_size);
-		if (status != NODE_SUCCESS) goto errors;
-		// Update frame size.
-		node_ctx.sigfox_ul_payload_size += sigfox_payload_specific_size;
-		break;
-	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
-		goto errors;
 	}
+	// Execute function of the corresponding board ID.
+	status = NODES[node -> board_id].functions.get_sigfox_ul_payload(&ul_payload_update);
+	if (status != NODE_SUCCESS) goto errors;
+	// Update frame size.
+	node_ctx.sigfox_ul_payload_size += node_data_size;
 	// Check UHFM board availability.
 	if (node_ctx.uhfm_address == DINFOX_NODE_ADDRESS_BROADCAST) {
 		status = NODE_ERROR_NONE_RADIO_MODULE;
@@ -460,6 +418,8 @@ NODE_status_t _NODE_radio_read(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t read_status;
+	// Reset status.
+	read_status.all = 0;
 	// Read downlink payload.
 	status = UHFM_get_dl_payload(node_ctx.uhfm_address, node_ctx.sigfox_dl_payload.frame, &read_status);
 	if (status != NODE_SUCCESS) {
@@ -488,8 +448,8 @@ errors:
 		goto errors;
 	}
 	node_ctx.actions[action_index].node = NULL;
-	node_ctx.actions[action_index].register_address = 0x00;
-	node_ctx.actions[action_index].register_value = 0;
+	node_ctx.actions[action_index].reg_addr = 0x00;
+	node_ctx.actions[action_index].reg_value = 0;
 	node_ctx.actions[action_index].timestamp_seconds = 0;
 errors:
 	return status;
@@ -509,8 +469,8 @@ NODE_status_t _NODE_record_action(NODE_action_t* action) {
 	}
 	// Store action.
 	node_ctx.actions[node_ctx.actions_index].node = (action -> node);
-	node_ctx.actions[node_ctx.actions_index].register_address = (action -> register_address);
-	node_ctx.actions[node_ctx.actions_index].register_value = (action -> register_value);
+	node_ctx.actions[node_ctx.actions_index].reg_addr = (action -> reg_addr);
+	node_ctx.actions[node_ctx.actions_index].reg_value = (action -> reg_value);
 	node_ctx.actions[node_ctx.actions_index].timestamp_seconds = (action -> timestamp_seconds);
 	// Increment index.
 	node_ctx.actions_index = (node_ctx.actions_index + 1) % NODE_ACTIONS_DEPTH;
@@ -531,7 +491,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 	// Search board in nodes list.
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// Compare address
-		if (NODES_LIST.list[idx].address == node_ctx.sigfox_dl_payload.node_address) {
+		if (NODES_LIST.list[idx].address == node_ctx.sigfox_dl_payload.node_addr) {
 			address_match = 1;
 			break;
 		}
@@ -548,7 +508,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 	}
 	// Create action structure.
 	action.node = &NODES_LIST.list[idx];
-	action.register_address = node_ctx.sigfox_dl_payload.register_address;
+	action.reg_addr = node_ctx.sigfox_dl_payload.reg_addr;
 	// Check operation code.
 	switch (node_ctx.sigfox_dl_payload.operation_code) {
 	case NODE_DOWNLINK_OPERATION_CODE_NOP:
@@ -556,27 +516,27 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE:
 		// Instantaneous write operation.
-		action.register_value = node_ctx.sigfox_dl_payload.data;
+		action.reg_value = node_ctx.sigfox_dl_payload.data;
 		action.timestamp_seconds = 0;
 		_NODE_record_action(&action);
 		break;
 	case NODE_DOWNLINK_OPERATION_CODE_TOGGLE_OFF_ON:
 		// Instantaneous OFF command.
-		action.register_value = 0;
+		action.reg_value = 0;
 		action.timestamp_seconds = 0;
 		_NODE_record_action(&action);
 		// Program ON command.
-		action.register_value = 1;
+		action.reg_value = 1;
 		action.timestamp_seconds = RTC_get_time_seconds() + node_ctx.sigfox_dl_payload.data;
 		_NODE_record_action(&action);
 		break;
 	case NODE_DOWNLINK_OPERATION_CODE_TOGGLE_ON_OFF:
 		// Instantaneous ON command.
-		action.register_value = 1;
+		action.reg_value = 1;
 		action.timestamp_seconds = 0;
 		_NODE_record_action(&action);
 		// Program OFF command.
-		action.register_value = 0;
+		action.reg_value = 0;
 		action.timestamp_seconds = RTC_get_time_seconds() + node_ctx.sigfox_dl_payload.data;
 		_NODE_record_action(&action);
 		break;
@@ -595,14 +555,18 @@ errors:
 NODE_status_t _NODE_execute_actions(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	NODE_access_status_t write_status;
 	uint8_t idx = 0;
 	// Loop on action table.
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) {
 		// Check NODE pointer and timestamp.
 		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
+			// Turn bus interface on.
+			lpuart1_status = LPUART1_power_on();
+			LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 			// Perform write operation.
-			status = _NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].register_address, node_ctx.actions[idx].register_value, &write_status);
+			status = _NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].reg_addr, node_ctx.actions[idx].reg_value, node_ctx.actions[idx].reg_mask, &write_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Remove action.
 			status = _NODE_remove_action(idx);
@@ -626,10 +590,8 @@ void NODE_init(void) {
 	_NODE_flush_list();
 	// Init context.
 	node_ctx.sigfox_ul_node_list_index = 0;
-	node_ctx.sigfox_ul_period_seconds = NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT;
 	node_ctx.sigfox_ul_next_time_seconds = 0;
 	node_ctx.sigfox_ul_payload_type_index = 0;
-	node_ctx.sigfox_dl_period_seconds = NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT;
 	node_ctx.sigfox_dl_next_time_seconds = 0;
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
@@ -639,154 +601,8 @@ void NODE_init(void) {
 #endif
 	// Init interface layers.
 	AT_BUS_init();
-}
-
-/* GET NODE BOARD NAME.
- * @param node:				Node to get name of.
- * @param board_name_ptr:	Pointer to string that will contain board name.
- * @return status:			Function execution status.
- */
-NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name_ptr) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	// Check board ID.
-	_NODE_check_node_and_board_id();
-	// Get name of the corresponding board ID.
-	(*board_name_ptr) = (char_t*) NODES[node -> board_id].name;
-errors:
-	return status;
-}
-
-/* GET NODE LAST STRING INDEX.
- * @param node:						Node to get name of.
- * @param last_string_data_index:	Pointer to byte that will contain last string index.
- * @return status:					Function execution status.
- */
-NODE_status_t NODE_get_last_string_data_index(NODE_t* node, uint8_t* last_string_data_index) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	// Check board ID.
-	_NODE_check_node_and_board_id();
-	// Get name of the corresponding board ID.
-	(*last_string_data_index) = NODES[node -> board_id].last_string_data_index;
-errors:
-	return status;
-}
-
-/* PERFORM A SINGLE NODE MEASUREMENT.
- * @param node:					Node to update.
- * @param string_data_index:	Node string data index.
- * @return status:				Function execution status.
- */
-NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	NODE_data_update_t data_update;
-	// Check board ID.
-	_NODE_check_node_and_board_id();
-	_NODE_check_function_pointer(update_data);
-	// Flush line.
-	_NODE_flush_string_data_value(string_data_index);
-	// Update pointers.
-	data_update.node_address = (node -> address);
-	data_update.string_data_index = string_data_index;
-	data_update.name_ptr = (char_t*) &(node_ctx.data.string_data_name[string_data_index]);
-	data_update.value_ptr = (char_t*) &(node_ctx.data.string_data_value[string_data_index]);
-	data_update.registers_value_ptr = (int32_t*) node_ctx.data.registers_value;
-	// Check node protocol.
-	switch (NODES[node -> board_id].protocol) {
-	case NODE_PROTOCOL_AT_BUS:
-		// Check index to update common or specific data.
-		if (string_data_index < DINFOX_STRING_DATA_INDEX_LAST) {
-			status = DINFOX_update_data(&data_update);
-		}
-		else {
-			status = NODES[node -> board_id].functions.update_data(&data_update);
-		}
-		break;
-	case NODE_PROTOCOL_R4S8CR:
-		status = NODES[node -> board_id].functions.update_data(&data_update);
-		break;
-	default:
-		status = NODE_ERROR_PROTOCOL;
-		break;
-	}
-errors:
-	return status;
-}
-
-/* PERFORM ALL NODE MEASUREMENTS.
- * @param node:		Node to update.
- * @return status:	Function execution status.
- */
-NODE_status_t NODE_update_all_data(NODE_t* node) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	uint8_t idx = 0;
-	// Check board ID.
-	_NODE_check_node_and_board_id();
-	// Check indexes.
-	if ((NODES[node -> board_id].last_string_data_index) == 0) {
-		status = NODE_ERROR_NOT_SUPPORTED;
-		goto errors;
-	}
-	// Reset buffers.
-	_NODE_flush_all_data_value();
-	// String data loop.
-	for (idx=0 ; idx<(NODES[node -> board_id].last_string_data_index) ; idx++) {
-		status = NODE_update_data(node, idx);
-		if (status != NODE_SUCCESS) goto errors;
-	}
-errors:
-	return status;
-}
-
-/* UNSTACK NODE DATA FORMATTED AS STRING.
- * @param node:						Node to read.
- * @param string_data_index:		Node string data index.
- * @param string_data_name_ptr:		Pointer to string that will contain next measurement name.
- * @param string_data_value_ptr:	Pointer to string that will contain next measurement value.
- * @return status:					Function execution status.
- */
-NODE_status_t NODE_read_string_data(NODE_t* node, uint8_t string_data_index, char_t** string_data_name_ptr, char_t** string_data_value_ptr) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	// Check parameters.
-	_NODE_check_node_and_board_id();
-	// Check index.
-	if (NODES[node -> board_id].last_string_data_index == 0) {
-		status = NODE_ERROR_NOT_SUPPORTED;
-		goto errors;
-	}
-	if (string_data_index >= (NODES[node -> board_id].last_string_data_index)) { \
-		status = NODE_ERROR_STRING_DATA_INDEX;
-		goto errors;
-	}
-	// Update pointers.
-	(*string_data_name_ptr) = (char_t*) node_ctx.data.string_data_name[string_data_index];
-	(*string_data_value_ptr) = (char_t*) node_ctx.data.string_data_value[string_data_index];
-errors:
-	return status;
-}
-
-/* WRITE NODE DATA.
- * @param node:					Node to write.
- * @param string_data_index:	Node string data index.
- * @param value:				Value to write in corresponding register.
- * @param write_status:			Pointer to the writing operation status.
- * @return status:				Function execution status.
- */
-NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_access_status_t* write_status) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	uint8_t register_address = string_data_index;
-	// Convert string data index to register.
-	if ((NODES[node ->board_id].protocol == NODE_PROTOCOL_AT_BUS) && (string_data_index >= DINFOX_STRING_DATA_INDEX_LAST)) {
-		register_address = (string_data_index + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
-	}
-	// Write register.
-	status = _NODE_write_register(node, register_address, value, write_status);
-	return status;
+	// Init registers.
+	DMM_init_registers();
 }
 
 /* SCAN ALL NODE ON BUS.
@@ -796,6 +612,7 @@ NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, in
 NODE_status_t NODE_scan(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	uint8_t nodes_count = 0;
 	uint8_t idx = 0;
 	// Reset list.
@@ -805,6 +622,9 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
 	NODES_LIST.list[0].address = DINFOX_NODE_ADDRESS_DMM;
 	NODES_LIST.count++;
+	// Turn bus interface on.
+	lpuart1_status = LPUART1_power_on();
+	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Scan LBUS nodes.
 	status = AT_BUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
@@ -835,55 +655,150 @@ NODE_status_t NODE_scan(void) {
 	// Update count.
 	NODES_LIST.count += nodes_count;
 errors:
+	// Turn bus interface off.
+	LPUART1_power_off();
 	return status;
 }
 
-/* READ CURRENT SIGFOX UPLINK PERIOD.
- * @param:								None.
- * @return sigfox_ul_period_seconds:	Sigfox uplink period in seconds.
+/* WRITE NODE DATA.
+ * @param node:				Node to write.
+ * @param line_data_index:	Node line data index.
+ * @param value:			Value to write in corresponding register.
+ * @param write_status:		Pointer to the writing operation status.
+ * @return status:			Function execution status.
  */
-uint32_t NODE_get_sigfox_ul_period(void) {
-	return node_ctx.sigfox_ul_period_seconds;
-}
-
-/* READ CURRENT SIGFOX DOWNLINK PERIOD.
- * @param:								None.
- * @return sigfox_dl_period_seconds:	Sigfox downlink period in seconds.
- */
-uint32_t NODE_get_sigfox_dl_period(void) {
-	return node_ctx.sigfox_dl_period_seconds;
-}
-
-/* SET SIGFOX UPLINK PERIOD.
- * @param ul_period_seconds:	New uplink period in seconds.
- * @return status:				Function executions status.
- */
-NODE_status_t NODE_set_sigfox_ul_period(uint32_t ul_period_seconds) {
+NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t value, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	// Check parameter.
-	if (ul_period_seconds < NODE_SIGFOX_UL_PERIOD_SECONDS_MIN) {
-		status = NODE_ERROR_SIGFOX_UPLINK_PERIOD;
-		goto errors;
-	}
-	node_ctx.sigfox_ul_period_seconds = ul_period_seconds;
+	NODE_line_data_write_t line_data_write;
+	// Check board ID and function.
+	_NODE_check_node_and_board_id();
+	_NODE_check_function_pointer(write_line_data);
+	// Build structure.
+	line_data_write.node_addr = (node -> address);
+	line_data_write.line_data_index = line_data_index;
+	line_data_write.field_value = value;
+	// Execute function of the corresponding board ID.
+	status = NODES[node -> board_id].functions.write_line_data(&line_data_write, write_status);
 errors:
 	return status;
 }
 
-/* SET SIGFOX DOWNLINK PERIOD.
- * @param dl_period_seconds:	New downlink period in seconds.
- * @return status:				Function executions status.
+/* PERFORM A SINGLE NODE MEASUREMENT.
+ * @param node:				Node to update.
+ * @param line_data_index:	Node string data index.
+ * @param read_status:		Pointer to the reading operation status.
+ * @return status:			Function execution status.
  */
-NODE_status_t NODE_set_sigfox_dl_period(uint32_t dl_period_seconds) {
+NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	// Check parameter.
-	if (dl_period_seconds < NODE_SIGFOX_DL_PERIOD_SECONDS_MIN) {
-		status = NODE_ERROR_SIGFOX_DOWNLINK_PERIOD;
+	NODE_line_data_read_t line_data_read;
+	// Check board ID and function.
+	_NODE_check_node_and_board_id();
+	_NODE_check_function_pointer(read_line_data);
+	// Flush line.
+	_NODE_flush_line_data_value(line_data_index);
+	// Build structure.
+	line_data_read.node_addr = (node -> address);
+	line_data_read.line_data_index = line_data_index;
+	line_data_read.name_ptr = (char_t*) &(node_ctx.data.line_data_name[line_data_index]);
+	line_data_read.value_ptr = (char_t*) &(node_ctx.data.line_data_value[line_data_index]);
+	// Execute function of the corresponding board ID.
+	status = NODES[node -> board_id].functions.read_line_data(&line_data_read, read_status);
+errors:
+	return status;
+}
+
+/* PERFORM ALL NODE MEASUREMENTS.
+ * @param node:		Node to update.
+ * @return status:	Function execution status.
+ */
+NODE_status_t NODE_read_line_data_all(NODE_t* node) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t access_status;
+	uint8_t idx = 0;
+	// Check board ID.
+	_NODE_check_node_and_board_id();
+	// Check indexes.
+	if ((NODES[node -> board_id].last_line_data_index) == 0) {
+		status = NODE_ERROR_NOT_SUPPORTED;
 		goto errors;
 	}
-	node_ctx.sigfox_dl_period_seconds = dl_period_seconds;
+	// Reset buffers.
+	_NODE_flush_all_data_value();
+	// Check protocol.
+	if ((NODES[node -> board_id].protocol) == NODE_PROTOCOL_AT_BUS) {
+		// Perform node measurements.
+		status = _NODE_write_register(node, COMMON_REG_ADDR_STATUS_CONTROL_0, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG, &access_status);
+		if (status != NODE_SUCCESS) goto errors;
+	}
+	// String data loop.
+	for (idx=0 ; idx<(NODES[node -> board_id].last_line_data_index) ; idx++) {
+		status = NODE_read_line_data(node, idx, &access_status);
+		if (status != NODE_SUCCESS) goto errors;
+	}
+errors:
+	return status;
+}
+
+/* GET NODE BOARD NAME.
+ * @param node:				Node to get name of.
+ * @param board_name_ptr:	Pointer to string that will contain board name.
+ * @return status:			Function execution status.
+ */
+NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name_ptr) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Check board ID.
+	_NODE_check_node_and_board_id();
+	// Get name of the corresponding board ID.
+	(*board_name_ptr) = (char_t*) NODES[node -> board_id].name;
+errors:
+	return status;
+}
+
+/* GET NODE LAST STRING INDEX.
+ * @param node:						Node to get name of.
+ * @param last_line_data_index:	Pointer to byte that will contain last string index.
+ * @return status:					Function execution status.
+ */
+NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_data_index) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Check board ID.
+	_NODE_check_node_and_board_id();
+	// Get name of the corresponding board ID.
+	(*last_line_data_index) = NODES[node -> board_id].last_line_data_index;
+errors:
+	return status;
+}
+
+/* UNSTACK NODE DATA FORMATTED AS STRING.
+ * @param node:						Node to read.
+ * @param line_data_index:		Node string data index.
+ * @param line_data_name_ptr:		Pointer to string that will contain next measurement name.
+ * @param line_data_value_ptr:	Pointer to string that will contain next measurement value.
+ * @return status:					Function execution status.
+ */
+NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Check parameters.
+	_NODE_check_node_and_board_id();
+	// Check index.
+	if (NODES[node -> board_id].last_line_data_index == 0) {
+		status = NODE_ERROR_NOT_SUPPORTED;
+		goto errors;
+	}
+	if (line_data_index >= (NODES[node -> board_id].last_line_data_index)) { \
+		status = NODE_ERROR_LINE_DATA_INDEX;
+		goto errors;
+	}
+	// Update pointers.
+	(*line_data_name_ptr) = (char_t*) node_ctx.data.line_data_name[line_data_index];
+	(*line_data_value_ptr) = (char_t*) node_ctx.data.line_data_value[line_data_index];
 errors:
 	return status;
 }
@@ -896,18 +811,17 @@ NODE_status_t NODE_task(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	NODE_access_parameters_t read_params;
+	NODE_access_status_t unused_read_status;
+	uint32_t reg_value = 0;
 	uint32_t loop_count = 0;
 	uint8_t bidirectional_flag = 0;
-	uint8_t node_update_required = 1;
 	uint8_t ul_next_time_update_required = 0;
 	uint8_t dl_next_time_update_required = 0;
 #ifdef BMS
 	NODE_access_status_t access_status;
 	int32_t vbatt_mv = 0;
 #endif
-	// Turn bus interface on.
-	lpuart1_status = LPUART1_power_on();
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 	// Check uplink period.
 	if (RTC_get_time_seconds() >= node_ctx.sigfox_ul_next_time_seconds) {
 		// Next time update needed.
@@ -918,16 +832,11 @@ NODE_status_t NODE_task(void) {
 			dl_next_time_update_required = 1;
 			bidirectional_flag = 1;
 		}
+		// Turn bus interface on.
+		lpuart1_status = LPUART1_power_on();
+		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
 		// Search next Sigfox message to send.
 		do {
-			// Update node data if needed.
-			if (node_update_required != 0) {
-				// Clear flag.
-				node_update_required = 0;
-				// Update data.
-				status = NODE_update_all_data(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]));
-				if (status != NODE_SUCCESS) goto next_node;
-			}
 			// Set radio times to now to compensate node update duration.
 			if (ul_next_time_update_required != 0) {
 				node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
@@ -937,14 +846,12 @@ NODE_status_t NODE_task(void) {
 			}
 			// Send data through radio.
 			status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, bidirectional_flag);
-next_node:
 			// Increment payload type index.
 			node_ctx.sigfox_ul_payload_type_index++;
 			if (node_ctx.sigfox_ul_payload_type_index >= NODE_SIGFOX_PAYLOAD_TYPE_LAST) {
 				// Switch to next node.
 				node_ctx.sigfox_ul_payload_type_index = 0;
 				node_ctx.sigfox_ul_node_list_index++;
-				node_update_required = 1;
 				if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
 					// Come back to first node.
 					node_ctx.sigfox_ul_node_list_index = 0;
@@ -1003,12 +910,17 @@ end:
 errors:
 #endif
 	// Update next radio times.
+	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
+	read_params.reg_addr = DMM_REG_ADDR_SYSTEM_CONFIGURATION;
+	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
+	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
+	DMM_read_register(&read_params, &reg_value, &unused_read_status);
 	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
 	if (ul_next_time_update_required != 0) {
-		node_ctx.sigfox_ul_next_time_seconds += node_ctx.sigfox_ul_period_seconds;
+		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD));
 	}
 	if (dl_next_time_update_required != 0) {
-		node_ctx.sigfox_dl_next_time_seconds += node_ctx.sigfox_dl_period_seconds;
+		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD));
 	}
 	// Turn bus interface off.
 	LPUART1_power_off();

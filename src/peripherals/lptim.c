@@ -16,6 +16,9 @@
 #include "rcc_reg.h"
 #include "types.h"
 
+#include "mapping.h"
+#include "gpio.h"
+
 /*** LPTIM local macros ***/
 
 #define LPTIM_TIMEOUT_COUNT		1000000

@@ -9,8 +9,10 @@
 #define __NODE_H__
 
 #include "adc.h"
+#include "i2c.h"
 #include "lptim.h"
 #include "lpuart.h"
+#include "node_common.h"
 #include "string.h"
 #include "types.h"
 
@@ -45,8 +47,9 @@ typedef enum {
 	NODE_ERROR_REGISTER_ADDRESS,
 	NODE_ERROR_REGISTER_FORMAT,
 	NODE_ERROR_REGISTER_READ_ONLY,
-	NODE_ERROR_STRING_DATA_INDEX,
-	NODE_ERROR_READ_TYPE,
+	NODE_ERROR_REGISTER_LIST_SIZE,
+	NODE_ERROR_LINE_DATA_INDEX,
+	NODE_ERROR_REPLY_TYPE,
 	NODE_ERROR_ACCESS,
 	NODE_ERROR_NONE_RADIO_MODULE,
 	NODE_ERROR_SIGFOX_PAYLOAD_TYPE,
@@ -56,18 +59,19 @@ typedef enum {
 	NODE_ERROR_SIGFOX_READ,
 	NODE_ERROR_SIGFOX_UPLINK_PERIOD,
 	NODE_ERROR_SIGFOX_DOWNLINK_PERIOD,
+	NODE_ERROR_DOWNLINK_PAYLOAD_NOT_AVAILABLE,
 	NODE_ERROR_DOWNLINK_NODE_ADDRESS,
 	NODE_ERROR_DOWNLINK_BOARD_ID,
 	NODE_ERROR_DOWNLINK_OPERATION_CODE,
 	NODE_ERROR_ACTION_INDEX,
+	NODE_ERROR_RELAY_ID,
 	NODE_ERROR_BASE_ADC = 0x0100,
-	NODE_ERROR_BASE_LPUART = (NODE_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
+	NODE_ERROR_BASE_I2C = (NODE_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
+	NODE_ERROR_BASE_LPUART = (NODE_ERROR_BASE_I2C + I2C_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } NODE_status_t;
-
-typedef uint8_t	NODE_address_t;
 
 typedef struct {
 	NODE_address_t address;
@@ -80,69 +84,27 @@ typedef struct {
 	uint8_t count;
 } NODE_list_t;
 
-typedef enum {
-	NODE_REPLY_TYPE_NONE = 0,
-	NODE_REPLY_TYPE_RAW,
-	NODE_REPLY_TYPE_OK,
-	NODE_REPLY_TYPE_VALUE,
-	NODE_REPLY_TYPE_BYTE_ARRAY,
-	NODE_REPLY_TYPE_LAST
-} NODE_reply_type_t;
+typedef struct {
+	uint8_t reg_addr;
+	uint32_t field_mask;
+	char_t* name;
+	STRING_format_t print_format;
+	uint8_t print_prefix;
+	char_t* unit;
+} NODE_line_data_t;
 
 typedef struct {
-	NODE_address_t node_address;
-	char_t* command;
-} NODE_command_parameters_t;
-
-typedef struct {
-	NODE_reply_type_t type;
-	STRING_format_t format; // Expected value format.
-	uint32_t timeout_ms;
-	// For byte array.
-	uint8_t byte_array_size;
-	uint8_t exact_length;
-} NODE_reply_parameters_t;
-
-typedef struct {
-	NODE_address_t node_address;
-	uint8_t register_address;
-	uint32_t timeout_ms;
-	STRING_format_t format; // Expected value format.
-	NODE_reply_type_t type;
-} NODE_read_parameters_t;
-
-typedef struct {
-	char_t* raw;
-	int32_t value;
-	uint8_t* byte_array;
-	uint8_t extracted_length;
-} NODE_read_data_t;
-
-typedef struct {
-	NODE_address_t node_address;
-	uint8_t register_address;
-	uint32_t timeout_ms;
-	STRING_format_t format; // Register value format.
-	int32_t value;
-} NODE_write_parameters_t;
-
-typedef union {
-	struct {
-		unsigned error_received : 1;
-		unsigned parser_error : 1;
-		unsigned reply_timeout : 1;
-		unsigned sequence_timeout : 1;
-	};
-	uint8_t all;
-} NODE_access_status_t;
-
-typedef struct {
-	NODE_address_t node_address;
-	uint8_t string_data_index;
+	NODE_address_t node_addr;
+	uint8_t line_data_index;
 	char_t* name_ptr;
 	char_t* value_ptr;
-	int32_t* registers_value_ptr;
-} NODE_data_update_t;
+} NODE_line_data_read_t;
+
+typedef struct {
+	NODE_address_t node_addr;
+	uint8_t line_data_index;
+	uint32_t field_value;
+} NODE_line_data_write_t;
 
 typedef enum {
 	NODE_SIGFOX_PAYLOAD_TYPE_STARTUP = 0,
@@ -150,6 +112,13 @@ typedef enum {
 	NODE_SIGFOX_PAYLOAD_TYPE_DATA,
 	NODE_SIGFOX_PAYLOAD_TYPE_LAST
 } NODE_sigfox_ul_payload_type_t;
+
+typedef struct {
+	NODE_address_t node_addr;
+	NODE_sigfox_ul_payload_type_t type;
+	uint8_t* ul_payload;
+	uint8_t* size;
+} NODE_ul_payload_update_t;
 
 /*** NODES global variables ***/
 
@@ -160,41 +129,39 @@ NODE_list_t NODES_LIST;
 void NODE_init(void);
 NODE_status_t NODE_scan(void);
 
-NODE_status_t NODE_update_data(NODE_t* node, uint8_t string_data_index);
-NODE_status_t NODE_update_all_data(NODE_t* node);
+NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t value, NODE_access_status_t* write_status);
+NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status);
+NODE_status_t NODE_read_line_data_all(NODE_t* node);
 
 NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name);
-NODE_status_t NODE_get_last_string_data_index(NODE_t* node, uint8_t* last_string_data_index);
-NODE_status_t NODE_read_string_data(NODE_t* node, uint8_t string_data_index, char_t** string_data_name_ptr, char_t** string_data_value_ptr);
-NODE_status_t NODE_write_string_data(NODE_t* node, uint8_t string_data_index, int32_t value, NODE_access_status_t* write_status);
-
-uint32_t NODE_get_sigfox_ul_period(void);
-uint32_t NODE_get_sigfox_dl_period(void);
-NODE_status_t NODE_set_sigfox_ul_period(uint32_t ul_period_seconds);
-NODE_status_t NODE_set_sigfox_dl_period(uint32_t dl_period_seconds);
+NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_data_index);
+NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr);
 
 NODE_status_t NODE_task(void);
 
-#define NODE_append_string_name(str) { \
-	string_status = STRING_append_string((data_update -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
+#define NODE_append_name_string(str) { \
+	string_status = STRING_append_string((line_data_read -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
 	STRING_status_check(NODE_ERROR_BASE_STRING); \
 }
 
-#define NODE_append_string_value(str) { \
-	string_status = STRING_append_string((data_update -> value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
+#define NODE_append_value_string(str) { \
+	string_status = STRING_append_string((line_data_read -> value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
 	STRING_status_check(NODE_ERROR_BASE_STRING); \
+}
+
+#define NODE_append_value_int32(value, format, prefix) { \
+	char_t str[NODE_STRING_BUFFER_SIZE]; \
+	string_status = STRING_value_to_string((int32_t) value, format, prefix, str); \
+	STRING_status_check(NODE_ERROR_BASE_STRING); \
+	NODE_append_value_string(str); \
 }
 
 #define NODE_flush_string_value(void) { \
 	uint8_t char_idx = 0; \
 	for (char_idx=0 ; char_idx<NODE_STRING_BUFFER_SIZE ; char_idx++) { \
-		(data_update -> value_ptr)[char_idx] = STRING_CHAR_NULL; \
+		(line_data_read -> value_ptr)[char_idx] = STRING_CHAR_NULL; \
 	} \
 	buffer_size = 0; \
-}
-
-#define NODE_update_value(addr, val) { \
-	(data_update -> registers_value_ptr)[addr] = val; \
 }
 
 #define NODE_status_check(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; }}

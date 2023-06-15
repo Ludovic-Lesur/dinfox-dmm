@@ -30,9 +30,9 @@
 /*** ADC local structures ***/
 
 typedef enum {
-	ADC_CHANNEL_VUSB = 1,
-	ADC_CHANNEL_VHMI = 4,
 	ADC_CHANNEL_VRS = 6,
+	ADC_CHANNEL_VHMI = 4,
+	ADC_CHANNEL_VUSB = 1,
 	ADC_CHANNEL_VREFINT = 17,
 	ADC_CHANNEL_TMCU = 18,
 	ADC_CHANNEL_LAST = 19
@@ -61,9 +61,9 @@ typedef struct {
 
 static const ADC_input_t ADC_INPUTS[ADC_DATA_INDEX_LAST] = {
 	{ADC_CHANNEL_VREFINT, ADC_CONVERSION_TYPE_VMCU, 0},
-	{ADC_CHANNEL_VUSB, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2},
 	{ADC_CHANNEL_VRS, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 10},
-	{ADC_CHANNEL_VHMI, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2}
+	{ADC_CHANNEL_VHMI, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2},
+	{ADC_CHANNEL_VUSB, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2}
 };
 static ADC_context_t adc_ctx;
 
@@ -263,7 +263,6 @@ ADC_status_t ADC1_perform_measurements(void) {
 	ADC_status_t status = ADC_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
 	uint32_t loop_count = 0;
-	uint8_t hmi_on = 0;
 	// Enable ADC peripheral.
 	ADC1 -> CR |= (0b1 << 0); // ADEN='1'.
 	while (((ADC1 -> ISR) & (0b1 << 0)) == 0) {
@@ -274,12 +273,8 @@ ADC_status_t ADC1_perform_measurements(void) {
 			goto errors;
 		}
 	}
-	// Enable voltage dividers and HMI power supply.
+	// Enable voltage dividers.
 	GPIO_write(&GPIO_MNTR_EN, 1);
-	hmi_on = GPIO_read(&GPIO_HMI_POWER_ENABLE);
-	if (hmi_on == 0) {
-		GPIO_write(&GPIO_HMI_POWER_ENABLE, 1);
-	}
 	// Wait voltage dividers stabilization.
 	lptim1_status = LPTIM1_delay_milliseconds(100, LPTIM_DELAY_MODE_STOP);
 	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
@@ -297,9 +292,6 @@ errors:
 	ADC1 -> CCR &= ~(0b11 << 22); // TSEN='0' and VREFEF='0'.
 	// Disable voltage dividers and HMI power supply.
 	GPIO_write(&GPIO_MNTR_EN, 0);
-	if (hmi_on == 0) {
-		GPIO_write(&GPIO_HMI_POWER_ENABLE, 0);
-	}
 	// Disable ADC peripheral.
 	ADC1 -> CR |= (0b1 << 1); // ADDIS='1'.
 	return status;

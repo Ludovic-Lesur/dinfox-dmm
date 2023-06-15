@@ -9,67 +9,41 @@
 #define __R4S8CR_H__
 
 #include "node.h"
+#include "r4s8cr_reg.h"
 
 /*** R4S8CR macros ***/
 
 #define R4S8CR_DEFAULT_TIMEOUT_MS	100
-#define R4S8CR_NODE_ADDRESS			0xFF
 
 /*** R4S8CR structures ***/
 
 typedef enum {
-	R4S8CR_REGISTER_RELAY_1_STATE = 0,
-	R4S8CR_REGISTER_RELAY_2_STATE,
-	R4S8CR_REGISTER_RELAY_3_STATE,
-	R4S8CR_REGISTER_RELAY_4_STATE,
-	R4S8CR_REGISTER_RELAY_5_STATE,
-	R4S8CR_REGISTER_RELAY_6_STATE,
-	R4S8CR_REGISTER_RELAY_7_STATE,
-	R4S8CR_REGISTER_RELAY_8_STATE,
-	R4S8CR_REGISTER_LAST,
-} R4S8CR_register_address_t;
+	R4S8CR_LINE_DATA_INDEX_R1ST = 0,
+	R4S8CR_LINE_DATA_INDEX_R2ST,
+	R4S8CR_LINE_DATA_INDEX_R3ST,
+	R4S8CR_LINE_DATA_INDEX_R4ST,
+	R4S8CR_LINE_DATA_INDEX_R5ST,
+	R4S8CR_LINE_DATA_INDEX_R6ST,
+	R4S8CR_LINE_DATA_INDEX_R7ST,
+	R4S8CR_LINE_DATA_INDEX_R8ST,
+	R4S8CR_LINE_DATA_INDEX_LAST,
+} R4S8CR_line_data_index_t;
 
-typedef enum {
-	R4S8CR_STRING_DATA_INDEX_RELAY_1_STATE = 0,
-	R4S8CR_STRING_DATA_INDEX_RELAY_2_STATE,
-	R4S8CR_STRING_DATA_INDEX_RELAY_3_STATE,
-	R4S8CR_STRING_DATA_INDEX_RELAY_4_STATE,
-	R4S8CR_STRING_DATA_INDEX_RELAY_5_STATE,
-	R4S8CR_STRING_DATA_INDEX_RELAY_6_STATE,
-	R4S8CR_STRING_DATA_INDEX_RELAY_7_STATE,
-	R4S8CR_STRING_DATA_INDEX_RELAY_8_STATE,
-	R4S8CR_STRING_DATA_INDEX_LAST,
-} R4S8CR_string_data_index_t;
-
-static const STRING_format_t R4S8CR_REGISTER_FORMAT[R4S8CR_REGISTER_LAST] = {
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN,
-	STRING_FORMAT_BOOLEAN
-};
-
-static const uint32_t R4S8CR_REGISTER_WRITE_TIMEOUT_MS[R4S8CR_REGISTER_LAST] = {
-	R4S8CR_DEFAULT_TIMEOUT_MS,
-	R4S8CR_DEFAULT_TIMEOUT_MS,
-	R4S8CR_DEFAULT_TIMEOUT_MS,
-	R4S8CR_DEFAULT_TIMEOUT_MS,
-	R4S8CR_DEFAULT_TIMEOUT_MS,
-	R4S8CR_DEFAULT_TIMEOUT_MS,
-	R4S8CR_DEFAULT_TIMEOUT_MS,
+static const uint32_t R4S8CR_REG_WRITE_TIMEOUT_MS[R4S8CR_REG_ADDR_LAST] = {
 	R4S8CR_DEFAULT_TIMEOUT_MS
 };
 
 /*** R4S8CR functions ***/
 
-NODE_status_t R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status);
-NODE_status_t R4S8CR_write_register(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status);
+NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
+NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status);
+
 NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count);
-NODE_status_t R4S8CR_update_data(NODE_data_update_t* data_update);
-NODE_status_t R4S8CR_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size);
+
+NODE_status_t R4S8CR_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status);
+NODE_status_t R4S8CR_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status);
+NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update);
+
 void R4S8CR_fill_rx_buffer(uint8_t rx_byte);
 
 #endif /* __R4S8CR_H__ */

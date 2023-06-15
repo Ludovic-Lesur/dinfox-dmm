@@ -1,266 +1,395 @@
 /*
  * dmm.c
  *
- *  Created on: 4 mar. 2023
+ *  Created on: 04 mar. 2023
  *      Author: Ludo
  */
 
 #include "dmm.h"
 
-#include "adc.h"
+#include "at_bus.h"
+#include "dmm_reg.h"
+#include "common.h"
 #include "dinfox.h"
+#include "error.h"
+#include "gpio.h"
+#include "i2c.h"
+#include "mapping.h"
 #include "node.h"
-#include "nvm.h"
+#include "pwr.h"
+#include "rcc_reg.h"
 #include "string.h"
+#include "version.h"
+#include "xm.h"
 
 /*** DMM local macros ***/
 
-#define DMM_SIGFOX_PAYLOAD_MONITORING_SIZE		10
+#define DMM_SIGFOX_PAYLOAD_MONITORING_SIZE		5
 
-static const char_t* DMM_STRING_DATA_NAME[DMM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
-	"VUSB =",
-	"VRS =",
-	"VHMI =",
-	"NODES_CNT =",
-	"UL_PRD = ",
-	"DL_PRD = "
-};
-static const char_t* DMM_STRING_DATA_UNIT[DMM_NUMBER_OF_SPECIFIC_STRING_DATA] = {
-	"mV",
-	"mV",
-	"mV",
-	STRING_NULL,
-	"s",
-	"s"
-};
-static const int32_t DMM_ERROR_VALUE[DMM_NUMBER_OF_SPECIFIC_REGISTERS] = {
-	NODE_ERROR_VALUE_ANALOG_16BITS,
-	NODE_ERROR_VALUE_ANALOG_16BITS,
-	NODE_ERROR_VALUE_ANALOG_16BITS,
-	0,
-	0,
-	0
-};
+#define NODE_SIGFOX_UL_PERIOD_SECONDS_MIN		60
+#define NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	300
+
+#define NODE_SIGFOX_DL_PERIOD_SECONDS_MIN		300
+#define NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
 
 /*** DMM local global variables ***/
 
-static char_t dmm_register_value_str[NODE_STRING_BUFFER_SIZE] = {STRING_CHAR_NULL};
+static uint32_t DMM_REGISTERS[DMM_REG_ADDR_LAST];
+
+static const NODE_line_data_t DMM_LINE_DATA[DMM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
+	{DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VRS, "VRS =", STRING_FORMAT_DECIMAL, 0, " V"},
+	{DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VHMI, "VHMI =", STRING_FORMAT_DECIMAL, 0, " V"},
+	{DMM_REG_ADDR_ANALOG_DATA_2, DMM_REG_ANALOG_DATA_2_MASK_VUSB, "VUSB =", STRING_FORMAT_DECIMAL, 0, " V"},
+	{DMM_REG_ADDR_STATUS_CONTROL_1, DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT, "NODES_CNT =", STRING_FORMAT_DECIMAL, 0, STRING_NULL},
+	{DMM_REG_ADDR_SYSTEM_CONFIGURATION, DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD, "UL_PRD =", STRING_FORMAT_DECIMAL, 0, " s"},
+	{DMM_REG_ADDR_SYSTEM_CONFIGURATION, DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD, "DL_PRD =", STRING_FORMAT_DECIMAL, 0, " s"}
+};
+
+static const uint8_t DMM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
+	DMM_REG_ADDR_STATUS_CONTROL_1,
+	DMM_REG_ADDR_ANALOG_DATA_1
+};
+
+static const DINFOX_register_access_t DMM_REG_ACCESS[DMM_REG_ADDR_LAST] = {
+	COMMON_REG_ACCESS
+	DINFOX_REG_ACCESS_READ_WRITE,
+	DINFOX_REG_ACCESS_READ_ONLY,
+	DINFOX_REG_ACCESS_READ_ONLY
+};
 
 /*** DMM local structures ***/
+
 
 typedef union {
 	uint8_t frame[DMM_SIGFOX_PAYLOAD_MONITORING_SIZE];
 	struct {
-		unsigned vmcu_mv : 16;
-		unsigned tmcu_degrees : 8;
-		unsigned vusb_mv : 16;
-		unsigned vrs_mv : 16;
-		unsigned vhmi_mv : 16;
+		unsigned vrs : 16;
+		unsigned vhmi : 16;
 		unsigned nodes_count : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } DMM_sigfox_payload_monitoring_t;
 
+/*** DMM local functions ***/
+
+/* RESET DMM ANALOG DATA.
+ * @param:	None.
+ * @return:	None.
+ */
+void _DMM_reset_analog_data(void) {
+	// Reset to error value.
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), DINFOX_VOLTAGE_ERROR_VALUE, COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), DINFOX_TEMPERATURE_ERROR_VALUE, COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
+	DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_1_MASK_VRS);
+	DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_1_MASK_VHMI);
+	DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_2_MASK_VUSB);
+}
+
 /*** DMM functions ***/
 
-/* READ DMM REGISTER.
- * @param read_params:	Pointer to the read operation parameters.
- * @param read_data:	Pointer to the read result.
- * @param read_status:	Pointer to the read operation status.
- * @return status:		Function execution status.
+/* INIT DMM REGISTERS.
+ * @param:	None.
+ * @return:	None.
  */
-NODE_status_t DMM_read_register(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status) {
+void DMM_init_registers(void) {
+	// Local variables.
+	uint8_t idx = 0;
+	// Reset all registers.
+	for (idx=0 ; idx<DMM_REG_ADDR_LAST ; idx++) {
+		DMM_REGISTERS[idx] = 0;
+	}
+	// Node ID register.
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_NODE_ID]), DINFOX_NODE_ADDRESS_DMM, COMMON_REG_NODE_ID_MASK_NODE_ADDR);
+	DINFOX_write_field(COMMON_REG_ADDR_NODE_ID, DINFOX_BOARD_ID_DMM, COMMON_REG_NODE_ID_MASK_BOARD_ID);
+	// HW version register.
+#ifdef HW1_0
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_HW_VERSION]), 1, COMMON_REG_HW_VERSION_MASK_MAJOR);
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_HW_VERSION]), 0, COMMON_REG_HW_VERSION_MASK_MINOR);
+#endif
+	// SW version register 0.
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), GIT_MAJOR_VERSION, COMMON_REG_SW_VERSION_0_MASK_MAJOR);
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), GIT_MINOR_VERSION, COMMON_REG_SW_VERSION_0_MASK_MINOR);
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), GIT_COMMIT_INDEX, COMMON_REG_SW_VERSION_0_MASK_COMMIT_INDEX);
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), GIT_DIRTY_FLAG, COMMON_REG_SW_VERSION_0_MASK_DTYF);
+	// SW version register 1.
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_SW_VERSION_1]), GIT_COMMIT_ID, COMMON_REG_SW_VERSION_1_MASK_COMMIT_ID);
+	// Reset flags registers.
+	DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_RESET_FLAGS]), ((uint32_t) (((RCC -> CSR) >> 24) & 0xFF)), COMMON_REG_RESET_FLAGS_MASK_ALL);
+	// Load default values.
+	_DMM_reset_analog_data();
+	DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), DINFOX_convert_seconds(NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD);
+	DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), DINFOX_convert_seconds(NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD);
+}
+
+/* WRITE DMM REGISTER.
+ * @param write_params:		Writing operation parameters.
+ * @param reg_value:		Value to write in register.
+ * @param reg_mask:			Write operation mask.
+ * @param write_status:		Pointer to the writing operation status.
+ * @return status:			Function execution status.
+ */
+NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	ADC_status_t adc1_status = ADC_SUCCESS;
-	STRING_status_t string_status = STRING_SUCCESS;
-	uint32_t generic_u32 = 0;
-	// Check parameters.
-	if ((read_params == NULL) || (read_data == NULL) || (read_status == NULL)) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	// Check address.
-	if ((read_params -> node_address) != DINFOX_NODE_ADDRESS_DMM) {
-		status = NODE_ERROR_NODE_ADDRESS;
-		goto errors;
-	}
-	// Read register.
-	switch (read_params -> register_address) {
-	case DMM_REGISTER_VUSB_MV:
-	case DMM_REGISTER_VRS_MV:
-	case DMM_REGISTER_VHMI_MV:
-		// Note: indexing only works if registers addresses are ordered in the same way as ADC data indexes.
-		adc1_status = ADC1_get_data((ADC_DATA_INDEX_VUSB_MV + ((read_params -> register_address) - DMM_REGISTER_VUSB_MV)), &generic_u32);
-		ADC1_status_check(NODE_ERROR_BASE_ADC);
-		(read_data -> value) = (int32_t) generic_u32;
-		break;
-	case DMM_REGISTER_NODES_COUNT:
-		(read_data -> value) = (int32_t) NODES_LIST.count;
-		break;
-	case DMM_REGISTER_SIGFOX_UL_PERIOD_SECONDS:
-		(read_data -> value) = (int32_t) NODE_get_sigfox_ul_period();
-		break;
-	case DMM_REGISTER_SIGFOX_DL_PERIOD_SECONDS:
-		(read_data -> value) = (int32_t) NODE_get_sigfox_dl_period();
-		break;
-	default:
-		status = NODE_ERROR_REGISTER_ADDRESS;
-		goto errors;
-	}
-	// Convert value to string.
-	string_status = STRING_value_to_string((read_data -> value), DMM_REGISTER_FORMAT[(read_params -> register_address) - DINFOX_REGISTER_LAST], 0, dmm_register_value_str);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
-	// Update raw data.
-	(read_data -> raw) = (char_t*) dmm_register_value_str;
-	(read_data -> byte_array) = NULL;
-	(read_data -> extracted_length) = 0;
-	// Update status.
-	(*read_status).all = 0;
-errors:
-	return status;
-}
-
-/* WRITE AT BUS NODE REGISTER.
- * @param write_params:	Pointer to the write operation parameters.
- * @param write_status:	Pointer to the write operation status.
- * @return status:		Function execution status.
- */
-NODE_status_t DMM_write_register(NODE_write_parameters_t* write_params, NODE_access_status_t* write_status) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
+	I2C_status_t i2c1_status = I2C_SUCCESS;
+	uint32_t adc_data = 0;
+	int8_t tmcu_degrees = 0;
+	uint32_t temp = 0;
+	uint8_t hmi_on = 0;
+	// Reset read status.
+	(*write_status).all = 0;
 	// Check parameters.
 	if ((write_params == NULL) || (write_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Check address.
-	if ((write_params -> node_address) != DINFOX_NODE_ADDRESS_DMM) {
-		status = NODE_ERROR_NODE_ADDRESS;
-		goto errors;
-	}
-	if ((write_params -> register_address) >= DMM_REGISTER_LAST) {
+	if ((write_params -> reg_addr) >= DMM_REG_ADDR_LAST) {
 		status = NODE_ERROR_REGISTER_ADDRESS;
 		goto errors;
 	}
-	// Write register.
-	switch (write_params -> register_address) {
-	case DMM_REGISTER_SIGFOX_UL_PERIOD_SECONDS:
-		status = NODE_set_sigfox_ul_period((uint32_t) (write_params -> value));
-		if (status != NODE_SUCCESS) goto errors;
-		break;
-	case DMM_REGISTER_SIGFOX_DL_PERIOD_SECONDS:
-		status = NODE_set_sigfox_dl_period((uint32_t) (write_params -> value));
-		if (status != NODE_SUCCESS) goto errors;
-		break;
-	default:
+	// Check access.
+	if (DMM_REG_ACCESS[(write_params -> reg_addr)] == DINFOX_REG_ACCESS_READ_ONLY) {
 		status = NODE_ERROR_REGISTER_READ_ONLY;
 		goto errors;
 	}
-	// Update status.
-	(*write_status).all = 0;
+	// Read register.
+	temp = DMM_REGISTERS[(write_params -> reg_addr)];
+	// Compute new value.
+	temp &= ~reg_mask;
+	temp |= (reg_value & reg_mask);
+	// Write register.
+	DMM_REGISTERS[(write_params -> reg_addr)] = temp;
+	// Check actions.
+	if (DINFOX_read_field(DMM_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0], COMMON_REG_STATUS_CONTROL_0_MASK_RTRG) != 0) {
+		// Clear flag.
+		DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0]), 0, COMMON_REG_STATUS_CONTROL_0_MASK_RTRG);
+		// Reset MCU.
+		PWR_software_reset();
+	}
+	// Measure trigger bit.
+	if (DINFOX_read_field(DMM_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0], COMMON_REG_STATUS_CONTROL_0_MASK_MTRG) != 0) {
+		// Clear flag.
+		DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0]), 0, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG);
+		// Reset results.
+		_DMM_reset_analog_data();
+		// Check HMI power status.
+		hmi_on = GPIO_read(&GPIO_HMI_POWER_ENABLE);
+		if (hmi_on == 0) {
+			// Turn HMI on.
+			i2c1_status = I2C1_power_on();
+			I2C1_status_check(NODE_ERROR_BASE_I2C);
+		}
+		// Perform analog measurements.
+		adc1_status = ADC1_perform_measurements();
+		// Disable HMI power supply.
+		if (hmi_on == 0) {
+			I2C1_power_off();
+		}
+		ADC1_status_check(NODE_ERROR_BASE_ADC);
+		// VMCU.
+		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VMCU_MV, &adc_data);
+		ADC1_status_check(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), DINFOX_convert_mv(adc_data), COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+		// TMCU.
+		adc1_status = ADC1_get_tmcu(&tmcu_degrees);
+		ADC1_status_check(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), DINFOX_convert_degrees(tmcu_degrees), COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
+		// VRS.
+		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &adc_data);
+		ADC1_status_check(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VRS);
+		// VHMI.
+		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VHMI_MV, &adc_data);
+		ADC1_status_check(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VHMI);
+		// VHMI.
+		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &adc_data);
+		ADC1_status_check(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_2_MASK_VUSB);
+	}
 errors:
 	return status;
 }
 
-/* RETRIEVE SPECIFIC DATA OF DMM NODE.
- * @param data_update:	Pointer to the data update structure.
+/* READ DMM REGISTER.
+ * @param read_params:	Pointer to the read operation parameters.
+ * @param reg_value:	Pointer to the register value.
+ * @param read_status:	Pointer to the read operation status.
  * @return status:		Function execution status.
  */
-NODE_status_t DMM_update_data(NODE_data_update_t* data_update) {
+NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_read_parameters_t read_params;
-	NODE_read_data_t read_data;
-	NODE_access_status_t read_status;
-	STRING_status_t string_status = STRING_SUCCESS;
-	uint8_t register_address = 0;
-	uint8_t buffer_size = 0;
+	// Reset read status.
+	(*read_status).all = 0;
 	// Check parameters.
-	if (data_update == NULL) {
+	if ((read_params == NULL) || (read_status == NULL) || (reg_value == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (((data_update -> name_ptr) == NULL) || ((data_update -> value_ptr) == NULL) || ((data_update -> registers_value_ptr) == NULL)) {
+	// Check address.
+	if ((read_params -> reg_addr) >= DMM_REG_ADDR_LAST) {
+		status = NODE_ERROR_REGISTER_ADDRESS;
+		goto errors;
+	}
+	// Update required registers.
+	switch (read_params -> reg_addr) {
+	case COMMON_REG_ADDR_ERROR_STACK:
+		// Unstack error.
+		DINFOX_write_field(&(DMM_REGISTERS[COMMON_REG_ADDR_ERROR_STACK]), (uint32_t) (ERROR_stack_read()), COMMON_REG_ERROR_STACK_MASK_ERROR);
+		break;
+	case DMM_REG_ADDR_STATUS_CONTROL_1:
+		DINFOX_write_field(&(DMM_REGISTERS[DMM_REG_ADDR_STATUS_CONTROL_1]), (uint32_t) (NODES_LIST.count), DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT);
+		break;
+	}
+	// Read register.
+	(*reg_value) = DMM_REGISTERS[(read_params -> reg_addr)];
+errors:
+	return status;
+}
+
+/* WRITE DMM DATA.
+ * @param line_data_write:	Pointer to the data write structure.
+ * @param read_status:		Pointer to the writing operation status.
+ * @return status:			Function execution status.
+ */
+NODE_status_t DMM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Call common function with local data.
+	status = XM_write_line_data(line_data_write, (NODE_line_data_t*) DMM_LINE_DATA, (uint32_t*) DMM_REG_WRITE_TIMEOUT_MS, write_status);
+	return status;
+}
+
+/* READ DMM DATA.
+ * @param line_data_read:	Pointer to the data read structure.
+ * @param read_status:		Pointer to the reading operation status.
+ * @return status:			Function execution status.
+ */
+NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	STRING_status_t string_status = STRING_SUCCESS;
+	uint32_t field_value = 0;
+	char_t field_str[STRING_DIGIT_FUNCTION_SIZE];
+	uint8_t str_data_idx = 0;
+	uint8_t buffer_size = 0;
+	// Check parameters.
+	if (line_data_read == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if (((line_data_read -> name_ptr) == NULL) || ((line_data_read -> value_ptr) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Check index.
-	if (((data_update -> string_data_index) < DINFOX_STRING_DATA_INDEX_LAST) || ((data_update -> string_data_index) >= DMM_STRING_DATA_INDEX_LAST)) {
-		status = NODE_ERROR_STRING_DATA_INDEX;
+	if ((line_data_read -> line_data_index) >= DMM_LINE_DATA_INDEX_LAST) {
+		status = NODE_ERROR_LINE_DATA_INDEX;
 		goto errors;
 	}
-	// Convert to register address.
-	register_address = ((data_update -> string_data_index) + DINFOX_REGISTER_LAST - DINFOX_STRING_DATA_INDEX_LAST);
-	// Build read parameters.
-	read_params.node_address = DINFOX_NODE_ADDRESS_DMM;
-	read_params.register_address = register_address;
-	read_params.format = STRING_FORMAT_DECIMAL;
-	read_params.timeout_ms = 0;
-	read_params.type = NODE_REPLY_TYPE_VALUE;
-	// Configure read data.
-	read_data.raw = NULL;
-	read_data.value = 0;
-	read_data.byte_array = NULL;
-	read_data.extracted_length = 0;
-	// Read register.
-	status = DMM_read_register(&read_params, &read_data, &read_status);
-	if (status != NODE_SUCCESS) goto errors;
-	// Add data name.
-	NODE_append_string_name((char_t*) DMM_STRING_DATA_NAME[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
-	buffer_size = 0;
-	// Add data value.
-	if (read_status.all == 0) {
-		// Add value and unit.
-		NODE_append_string_value(read_data.raw);
-		NODE_append_string_value((char_t*) DMM_STRING_DATA_UNIT[(data_update -> string_data_index) - DINFOX_STRING_DATA_INDEX_LAST]);
-		// Update integer data.
-		NODE_update_value(register_address, read_data.value);
+	// Check common range.
+	if ((line_data_read -> line_data_index) < COMMON_LINE_DATA_INDEX_LAST) {
+		// Call common function.
+		status = COMMON_read_line_data(line_data_read, (uint32_t*) DMM_REGISTERS);
+		if (status != NODE_SUCCESS) goto errors;
 	}
 	else {
-		NODE_flush_string_value();
-		NODE_append_string_value((char_t*) NODE_ERROR_STRING);
-		NODE_update_value(register_address, DMM_ERROR_VALUE[register_address - DINFOX_REGISTER_LAST]);
+		// Compute specific string data index.
+		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
+		// Update register.
+		status = XM_read_register((line_data_read -> node_addr), DMM_LINE_DATA[str_data_idx].reg_addr, (uint32_t*) DMM_REGISTERS, read_status);
+		if (status != NODE_SUCCESS) goto errors;
+		// Compute field.
+		field_value = DINFOX_read_field(DMM_REGISTERS[DMM_LINE_DATA[str_data_idx].reg_addr], DMM_LINE_DATA[str_data_idx].field_mask);
+		// Add data name.
+		NODE_append_name_string((char_t*) DMM_LINE_DATA[str_data_idx].name);
+		buffer_size = 0;
+		// Add data value.
+		if ((read_status -> all) == 0) {
+			// Check index.
+			switch (line_data_read -> line_data_index) {
+			case DMM_LINE_DATA_INDEX_VRS:
+			case DMM_LINE_DATA_INDEX_VHMI:
+			case DMM_LINE_DATA_INDEX_VUSB:
+				// Convert to 5 digits string.
+				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+				STRING_status_check(NODE_ERROR_BASE_STRING);
+				// Add string.
+				NODE_append_value_string(field_str);
+				break;
+			case DMM_LINE_DATA_INDEX_NODES_COUNT:
+				// Raw value.
+				NODE_append_value_int32(field_value,  DMM_LINE_DATA[str_data_idx].print_format,  DMM_LINE_DATA[str_data_idx].print_prefix);
+				break;
+			case DMM_LINE_DATA_INDEX_UL_PERIOD:
+			case DMM_LINE_DATA_INDEX_DL_PERIOD:
+				// Convert to seconds.
+				NODE_append_value_int32(DINFOX_get_seconds(field_value),  DMM_LINE_DATA[str_data_idx].print_format,  DMM_LINE_DATA[str_data_idx].print_prefix);
+				break;
+			default:
+				NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
+				break;
+			}
+			// Add unit.
+			NODE_append_value_string((char_t*) DMM_LINE_DATA[str_data_idx].unit);
+		}
+		else {
+			NODE_flush_string_value();
+			NODE_append_value_string((char_t*) NODE_ERROR_STRING);
+		}
 	}
 errors:
 	return status;
 }
 
-/* GET DMM NODE SIGFOX PAYLOAD.
- * @param integer_data_value:	Pointer to the node registers value.
- * @param ul_payload_type:		Sigfox payload type.
- * @param ul_payload:			Pointer that will contain the specific sigfox payload of the node.
- * @param ul_payload_size:		Pointer to byte that will contain sigfox payload size.
+/* UPDATE DMM NODE SIGFOX UPLINK PAYLOAD.
+ * @param ul_payload_update:	Pointer to the UL payload update structure.
  * @return status:				Function execution status.
  */
-NODE_status_t DMM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t* ul_payload, uint8_t* ul_payload_size) {
+NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t unused_write_access;
 	DMM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
 	uint8_t idx = 0;
 	// Check parameters.
-	if ((integer_data_value == NULL) || (ul_payload == NULL) || (ul_payload_size == NULL)) {
+	if (ul_payload_update == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if (((ul_payload_update -> ul_payload) == NULL) || ((ul_payload_update -> size) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Check type.
-	switch (ul_payload_type) {
+	switch (ul_payload_update -> type) {
+	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
+		// Use common format.
+		status = COMMON_build_sigfox_payload_startup(ul_payload_update, (uint32_t*) DMM_REGISTERS);
+		if (status != NODE_SUCCESS) goto errors;
+		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
+		// Perform measurements.
+		status = XM_perform_measurements((ul_payload_update -> node_addr), &unused_write_access);
+		if (status != NODE_SUCCESS) goto errors;
+		// Read related registers.
+		status = XM_read_registers((ul_payload_update -> node_addr), (uint8_t*) DMM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING, sizeof(DMM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING), (uint32_t*) DMM_REGISTERS);
+		if (status != NODE_SUCCESS) goto errors;
 		// Build monitoring payload.
-		sigfox_payload_monitoring.vmcu_mv = integer_data_value[DINFOX_REGISTER_VMCU_MV];
-		sigfox_payload_monitoring.tmcu_degrees = integer_data_value[DINFOX_REGISTER_TMCU_DEGREES];
-		sigfox_payload_monitoring.vusb_mv = integer_data_value[DMM_REGISTER_VUSB_MV];
-		sigfox_payload_monitoring.vrs_mv = integer_data_value[DMM_REGISTER_VRS_MV];
-		sigfox_payload_monitoring.vhmi_mv = integer_data_value[DMM_REGISTER_VHMI_MV];
-		sigfox_payload_monitoring.nodes_count = integer_data_value[DMM_REGISTER_NODES_COUNT];
+		sigfox_payload_monitoring.vrs = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VRS);
+		sigfox_payload_monitoring.vhmi = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VHMI);
+		sigfox_payload_monitoring.nodes_count = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_STATUS_CONTROL_1], DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT);
 		// Copy payload.
 		for (idx=0 ; idx<DMM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-			ul_payload[idx] = sigfox_payload_monitoring.frame[idx];
+			(ul_payload_update -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
 		}
-		(*ul_payload_size) = DMM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+		(*(ul_payload_update -> size)) = DMM_SIGFOX_PAYLOAD_MONITORING_SIZE;
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
 		// No data frame.
-		(*ul_payload_size) = 0;
+		(*(ul_payload_update -> size)) = 0;
 		status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
 		goto errors;
 	default:
@@ -270,4 +399,3 @@ NODE_status_t DMM_get_sigfox_ul_payload(int32_t* integer_data_value, NODE_sigfox
 errors:
 	return status;
 }
-

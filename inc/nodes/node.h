@@ -85,12 +85,12 @@ typedef struct {
 } NODE_list_t;
 
 typedef struct {
-	uint8_t reg_addr;
-	uint32_t field_mask;
 	char_t* name;
+	char_t* unit;
 	STRING_format_t print_format;
 	uint8_t print_prefix;
-	char_t* unit;
+	uint8_t reg_addr;
+	uint32_t field_mask;
 } NODE_line_data_t;
 
 typedef struct {

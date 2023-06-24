@@ -17,7 +17,7 @@
 
 /*** XM functions ***/
 
-/* WRITE BPSM DATA.
+/* WRITE LINE DATA.
  * @param line_data_write:	Pointer to the data write structure.
  * @param node_line_data:	Pointer to the node line data.
  * @param read_status:		Pointer to the writing operation status.
@@ -59,6 +59,40 @@ errors:
 	return status;
 }
 
+/* READ NODE REGISTER.
+ * @param node_addr:		Node address.
+ * @param reg_addr:			Address of the register to update.
+ * @param reg_error_value:	Error value to set in case of read error.
+ * @param reg_value:		Pointer to the read value
+ * @param read_status:		Pointer to the read operation status.
+ * @return status:			Function execution status.
+ */
+NODE_status_t XM_read_register(NODE_address_t node_addr, uint32_t reg_addr, uint32_t reg_error_value, uint32_t* reg_value, NODE_access_status_t* read_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_parameters_t read_params;
+	uint32_t local_reg_value = 0;
+	// Read parameters.
+	read_params.node_addr = node_addr;
+	read_params.reg_addr = reg_addr;
+	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
+	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
+	// Reset value.
+	(*reg_value) = reg_error_value;
+	// Read data.
+	if (node_addr == DINFOX_NODE_ADDRESS_DMM) {
+		status = DMM_read_register(&read_params, &local_reg_value, read_status);
+	}
+	else {
+		status = AT_BUS_read_register(&read_params, &local_reg_value, read_status);
+	}
+	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+	// Update value.
+	(*reg_value) = local_reg_value;
+errors:
+	return status;
+}
+
 /* TRIGGER MEASUREMENT ON NODE.
  * @param node_addr:	Node address.
  * @param write_status:	Pointer to the writing operation status.
@@ -83,62 +117,70 @@ NODE_status_t XM_perform_measurements(NODE_address_t node_addr, NODE_access_stat
 	return status;
 }
 
-/* READ NODE REGISTER.
- * @param node_addr:		Node address.
- * @param reg_addr:			Address of the register to update.
- * @param node_registers:	Pointer to the node registers.
- * @param read_status:		Pointer to the read operation status.
- * @return status:			Function execution status.
+/* RESET REGISTERS LIST.
+ * @param reg_list:	List of register to reset.
+ * @param node_reg:	Pointer to the node registers.
+ * @return status:	Function execution status.
  */
-NODE_status_t XM_read_register(NODE_address_t node_addr, uint8_t reg_addr, uint32_t* node_registers, NODE_access_status_t* read_status) {
+NODE_status_t XM_reset_registers(XM_registers_list_t* reg_list, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_parameters_t read_params;
-	uint32_t reg_value = 0;
-	// Read parameters.
-	read_params.node_addr = node_addr;
-	read_params.reg_addr = reg_addr;
-	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
-	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-	// Read data.
-	if (node_addr == DINFOX_NODE_ADDRESS_DMM) {
-		status = DMM_read_register(&read_params, &reg_value, read_status);
-	}
-	else {
-		status = AT_BUS_read_register(&read_params, &reg_value, read_status);
-	}
-	if (status != NODE_SUCCESS) goto errors;
-	// Update local register.
-	node_registers[reg_addr] = reg_value;
-errors:
-	return status;
-}
-
-/* UPDATE BPSM REGISTERS LIST.
- * @param node_addr:			Node address.
- * @param reg_addr_list:		List of register to update.
- * @param reg_addr_list_size:	Number of register(s) to update.
- * @param node_registers:		Pointer to the node registers.
- * @return status:				Function execution status.
- */
-NODE_status_t XM_read_registers(NODE_address_t node_addr, uint8_t* reg_addr_list, uint8_t reg_addr_list_size, uint32_t* node_registers) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t unused_read_status;
 	uint8_t idx = 0;
+	uint8_t reg_addr = 0;
 	// Check parameters.
-	if (reg_addr_list == NULL) {
+	if ((reg_list == NULL) || (node_reg == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (reg_addr_list_size == 0) {
+	if (((reg_list -> addr_list) == NULL) || ((node_reg -> value) == NULL) || ((node_reg -> error) == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if ((reg_list -> size) == 0) {
 		status = NODE_ERROR_REGISTER_LIST_SIZE;
 		goto errors;
 	}
 	// Read all registers.
-	for (idx=0 ; idx<reg_addr_list_size ; idx++) {
-		status = XM_read_register(node_addr, reg_addr_list[idx], node_registers, &unused_read_status);
-		if (status != NODE_SUCCESS) goto errors;
+	for (idx=0 ; idx<(reg_list -> size) ; idx++) {
+		// Reset to error value.
+		reg_addr = (reg_list -> addr_list)[idx];
+		(node_reg -> value)[reg_addr] = (node_reg -> error)[reg_addr];
+	}
+errors:
+	return status;
+}
+
+/* UPDATE REGISTERS LIST.
+ * @param node_addr:	Node address.
+ * @param reg_list:		List of register to read.
+ * @param node_reg:		Pointer to the node registers.
+ * @return status:		Function execution status.
+ */
+NODE_status_t XM_read_registers(NODE_address_t node_addr, XM_registers_list_t* reg_list, XM_node_registers_t* node_reg) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t unused_read_status;
+	uint8_t reg_addr = 0;
+	uint8_t idx = 0;
+	// Check parameters.
+	if ((reg_list == NULL) || (node_reg == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if (((reg_list -> addr_list) == NULL) || ((node_reg -> value) == NULL) || ((node_reg -> error) == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if ((reg_list -> size) == 0) {
+		status = NODE_ERROR_REGISTER_LIST_SIZE;
+		goto errors;
+	}
+	// Read all registers.
+	for (idx=0 ; idx<(reg_list -> size) ; idx++) {
+		// Read register.
+		// Note: status is not checked is order fill all registers with their error value.
+		reg_addr = (reg_list -> addr_list)[idx];
+		XM_read_register(node_addr, reg_addr, (node_reg -> error)[reg_addr], &((node_reg -> value)[reg_addr]), &unused_read_status);
 	}
 errors:
 	return status;

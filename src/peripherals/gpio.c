@@ -211,11 +211,6 @@ void GPIO_configure(const GPIO_pin_t* gpio, GPIO_mode_t mode, GPIO_output_type_t
 void GPIO_init(void) {
 	// Enable all GPIOx clocks.
 	RCC -> IOPENR |= (0b111 << 0); // IOPxEN='1'.
-	// Programming pins.
-#ifndef DEBUG
-	GPIO_configure(&GPIO_SWDIO, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	GPIO_configure(&GPIO_SWCLK, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-#endif
 }
 
 /* SET THE STATE OF A GPIO.

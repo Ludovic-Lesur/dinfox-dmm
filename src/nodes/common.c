@@ -35,17 +35,17 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } COMMON_sigfox_payload_startup_t;
 
-/*** COMMON local macros ***/
+/*** COMMON local global variables ***/
 
 static const NODE_line_data_t COMMON_LINE_DATA[COMMON_LINE_DATA_INDEX_LAST] = {
-	{COMMON_REG_ADDR_HW_VERSION, DINFOX_REG_MASK_ALL, "HW =", STRING_FORMAT_DECIMAL, 0, STRING_NULL},
-	{COMMON_REG_ADDR_SW_VERSION_0, DINFOX_REG_MASK_ALL, "SW =", STRING_FORMAT_DECIMAL, 0, STRING_NULL},
-	{COMMON_REG_ADDR_RESET_FLAGS, COMMON_REG_RESET_FLAGS_MASK_ALL, "RESET =", STRING_FORMAT_HEXADECIMAL, 1, STRING_NULL},
-	{COMMON_REG_ADDR_ANALOG_DATA_0, COMMON_REG_ANALOG_DATA_0_MASK_VMCU, "VMCU =", STRING_FORMAT_DECIMAL, 0, " V"},
-	{COMMON_REG_ADDR_ANALOG_DATA_0, COMMON_REG_ANALOG_DATA_0_MASK_TMCU, "TMCU =", STRING_FORMAT_DECIMAL, 0, " |C"}
+	{"HW =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, COMMON_REG_ADDR_HW_VERSION, DINFOX_REG_MASK_ALL},
+	{"SW =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, COMMON_REG_ADDR_SW_VERSION_0, DINFOX_REG_MASK_ALL},
+	{"RESET =", STRING_NULL, STRING_FORMAT_HEXADECIMAL, 1, COMMON_REG_ADDR_RESET_FLAGS, COMMON_REG_RESET_FLAGS_MASK_ALL},
+	{"VMCU =", " V", STRING_FORMAT_DECIMAL, 0, COMMON_REG_ADDR_ANALOG_DATA_0, COMMON_REG_ANALOG_DATA_0_MASK_VMCU},
+	{"TMCU =", " |C", STRING_FORMAT_DECIMAL, 0, COMMON_REG_ADDR_ANALOG_DATA_0, COMMON_REG_ANALOG_DATA_0_MASK_TMCU}
 };
 
-static const uint8_t COMMON_REG_ADDR_LIST_SIGFOX_PAYLOAD_STARTUP[] = {
+static const uint32_t COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP[] = {
 	COMMON_REG_ADDR_SW_VERSION_0,
 	COMMON_REG_ADDR_SW_VERSION_1,
 	COMMON_REG_ADDR_RESET_FLAGS
@@ -81,16 +81,17 @@ NODE_status_t COMMON_write_line_data(NODE_line_data_write_t* line_data_write) {
 
 /* UPDATE COMMON MEASUREMENTS OF DINFOX NODES.
  * @param line_data_read:	Pointer to the data update structure.
- * @param node_registers:		Pointer to the node registers.
- * @return status:				Function execution status.
+ * @param node_reg:			Pointer to the node registers.
+ * @return status:			Function execution status.
  */
-NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, uint32_t* node_registers) {
+NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
 	NODE_access_status_t read_status;
 	uint8_t buffer_size = 0;
 	uint8_t str_data_idx = 0;
+	uint8_t reg_addr = 0;
 	uint32_t reg_value = 0;
 	uint32_t field_value = 0;
 	char_t field_str[STRING_DIGIT_FUNCTION_SIZE];
@@ -109,15 +110,20 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, uint3
 		status = NODE_ERROR_LINE_DATA_INDEX;
 		goto errors;
 	}
-	// Update register.
-	status = XM_read_register((line_data_read -> node_addr), COMMON_LINE_DATA[(line_data_read -> line_data_index)].reg_addr, node_registers, &read_status);
-	if (status != NODE_SUCCESS) goto errors;
-	// Get string data index and register value.
+	// Get string data index and register address.
 	str_data_idx = (line_data_read -> line_data_index);
-	reg_value = node_registers[COMMON_LINE_DATA[str_data_idx].reg_addr];
+	reg_addr = COMMON_LINE_DATA[(line_data_read -> line_data_index)].reg_addr;
 	// Add data name.
 	NODE_append_name_string(COMMON_LINE_DATA[line_data_read -> line_data_index].name);
-	buffer_size = 0;
+	// Reset result to error.
+	NODE_flush_string_value();
+	NODE_append_value_string((char_t*) NODE_ERROR_STRING);
+	// Read register.
+	status = XM_read_register((line_data_read -> node_addr), reg_addr, (node_reg -> error)[reg_addr], &reg_value, &read_status);
+	if ((status != NODE_SUCCESS) || (read_status.all != 0)) goto errors;
+	// Update register.
+	NODE_flush_string_value();
+	(node_reg -> value)[reg_addr] = reg_value;
 	// Check index.
 	switch (str_data_idx) {
 	case COMMON_LINE_DATA_INDEX_HW_VERSION:
@@ -174,12 +180,13 @@ errors:
 
 /* BUILD COMMON STARTUP UL PAYLOAD.
  * @param ul_payload_update:	Pointer to the UL payload update structure.
- * @param node_registers:		Pointer to the node registers.
- * @param ul_payload_size:		Pointer that will contain to the UL payload size.
+ * @param node_reg:				Pointer to the node registers.
+ * @return status:				Function execution status.
  */
-NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_payload_update, uint32_t* node_registers) {
+NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_payload_update, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	XM_registers_list_t reg_list;
 	COMMON_sigfox_payload_startup_t sigfox_payload_startup;
 	uint8_t idx = 0;
 	// Check parameters.
@@ -195,16 +202,22 @@ NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_p
 		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
 		goto errors;
 	}
+	// Build registers list.
+	reg_list.addr_list = (uint32_t*) COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP;
+	reg_list.size = sizeof(COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP);
+	// Reset related registers.
+	status = XM_reset_registers(&reg_list, node_reg);
+	if (status != NODE_SUCCESS) goto errors;
 	// Read related registers.
-	status = XM_read_registers((ul_payload_update -> node_addr), (uint8_t*) COMMON_REG_ADDR_LIST_SIGFOX_PAYLOAD_STARTUP, sizeof(COMMON_REG_ADDR_LIST_SIGFOX_PAYLOAD_STARTUP), node_registers);
+	status = XM_read_registers((ul_payload_update -> node_addr), &reg_list, node_reg);
 	if (status != NODE_SUCCESS) goto errors;
 	// Build data payload.
-	sigfox_payload_startup.reset_reason = DINFOX_read_field(node_registers[COMMON_REG_ADDR_RESET_FLAGS], COMMON_REG_RESET_FLAGS_MASK_ALL);
-	sigfox_payload_startup.major_version = DINFOX_read_field(node_registers[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_MAJOR);
-	sigfox_payload_startup.minor_version = DINFOX_read_field(node_registers[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_MINOR);
-	sigfox_payload_startup.commit_index = DINFOX_read_field(node_registers[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_COMMIT_INDEX);
-	sigfox_payload_startup.commit_id = DINFOX_read_field(node_registers[COMMON_REG_ADDR_SW_VERSION_1], COMMON_REG_SW_VERSION_1_MASK_COMMIT_ID);
-	sigfox_payload_startup.dirty_flag = DINFOX_read_field(node_registers[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_DTYF);
+	sigfox_payload_startup.reset_reason = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_RESET_FLAGS], COMMON_REG_RESET_FLAGS_MASK_ALL);
+	sigfox_payload_startup.major_version = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_MAJOR);
+	sigfox_payload_startup.minor_version = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_MINOR);
+	sigfox_payload_startup.commit_index = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_COMMIT_INDEX);
+	sigfox_payload_startup.commit_id = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_1], COMMON_REG_SW_VERSION_1_MASK_COMMIT_ID);
+	sigfox_payload_startup.dirty_flag = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_DTYF);
 	// Copy payload.
 	for (idx=0 ; idx<COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE ; idx++) {
 		(ul_payload_update -> ul_payload)[idx] = sigfox_payload_startup.frame[idx];

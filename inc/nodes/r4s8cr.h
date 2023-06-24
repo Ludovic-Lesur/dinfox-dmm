@@ -35,6 +35,8 @@ static const uint32_t R4S8CR_REG_WRITE_TIMEOUT_MS[R4S8CR_REG_ADDR_LAST] = {
 
 /*** R4S8CR functions ***/
 
+void R4S8CR_init_registers(void);
+
 NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
 NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status);
 

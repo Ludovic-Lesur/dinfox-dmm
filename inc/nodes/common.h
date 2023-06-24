@@ -13,6 +13,19 @@
 #include "node.h"
 #include "string.h"
 #include "types.h"
+#include "xm.h"
+
+/*** COMMON macros ***/
+
+#define COMMON_REG_ERROR_VALUE \
+	0x00000000, \
+	0x00000000, \
+	0x00000000, \
+	0x00000000, \
+	0x00000000, \
+	0x00000000, \
+	0x00000000, \
+	((DINFOX_TEMPERATURE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)), \
 
 /*** COMMON structures ***/
 
@@ -39,7 +52,7 @@ static const uint32_t COMMON_REG_WRITE_TIMEOUT_MS[COMMON_REG_ADDR_LAST] = {
 /*** COMMON functions ***/
 
 NODE_status_t COMMON_write_line_data(NODE_line_data_write_t* line_data_write);
-NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, uint32_t* node_registers);
-NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_payload_update, uint32_t* node_registers);
+NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_node_registers_t* node_reg);
+NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_payload_update, XM_node_registers_t* node_reg);
 
 #endif /* __COMMON_H__ */

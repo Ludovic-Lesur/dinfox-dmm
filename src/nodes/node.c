@@ -603,6 +603,7 @@ void NODE_init(void) {
 	AT_BUS_init();
 	// Init registers.
 	DMM_init_registers();
+	R4S8CR_init_registers();
 }
 
 /* SCAN ALL NODE ON BUS.

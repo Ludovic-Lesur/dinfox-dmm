@@ -20,20 +20,6 @@
 #define GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
 #define GPSM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE		7
 
-/*** GPSM local global variables ***/
-
-static uint32_t GPSM_REGISTERS[GPSM_REG_ADDR_LAST];
-
-static const NODE_line_data_t GPSM_LINE_DATA[GPSM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{GPSM_REG_ADDR_ANALOG_DATA_1, GPSM_REG_ANALOG_DATA_1_MASK_VGPS, "VGPS =", STRING_FORMAT_DECIMAL, 0, " V"},
-	{GPSM_REG_ADDR_ANALOG_DATA_1, GPSM_REG_ANALOG_DATA_1_MASK_VANT, "VANT =", STRING_FORMAT_DECIMAL, 0, " V"},
-};
-
-static const uint8_t GPSM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
-	COMMON_REG_ADDR_ANALOG_DATA_0,
-	GPSM_REG_ADDR_ANALOG_DATA_1,
-};
-
 /*** GPSM local structures ***/
 
 typedef union {
@@ -45,6 +31,36 @@ typedef union {
 		unsigned vant : 16;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } GPSM_sigfox_payload_monitoring_t;
+
+/*** GPSM local global variables ***/
+
+static uint32_t GPSM_REGISTERS[GPSM_REG_ADDR_LAST];
+
+static const NODE_line_data_t GPSM_LINE_DATA[GPSM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
+	{"VGPS =", " V", STRING_FORMAT_DECIMAL, 0, GPSM_REG_ADDR_ANALOG_DATA_1, GPSM_REG_ANALOG_DATA_1_MASK_VGPS},
+	{"VANT =", " V", STRING_FORMAT_DECIMAL, 0, GPSM_REG_ADDR_ANALOG_DATA_1, GPSM_REG_ANALOG_DATA_1_MASK_VANT},
+};
+
+static const uint32_t GPSM_REG_ERROR_VALUE[GPSM_REG_ADDR_LAST] = {
+	COMMON_REG_ERROR_VALUE
+	0x00000000,
+	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000
+};
+
+static const uint8_t GPSM_REG_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
+	COMMON_REG_ADDR_ANALOG_DATA_0,
+	GPSM_REG_ADDR_ANALOG_DATA_1,
+};
 
 /*** GPSM functions ***/
 
@@ -69,10 +85,12 @@ NODE_status_t GPSM_write_line_data(NODE_line_data_write_t* line_data_write, NODE
 NODE_status_t GPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	XM_node_registers_t node_reg;
 	STRING_status_t string_status = STRING_SUCCESS;
 	uint32_t field_value = 0;
 	char_t field_str[STRING_DIGIT_FUNCTION_SIZE];
 	uint8_t str_data_idx = 0;
+	uint8_t reg_addr = 0;
 	uint8_t buffer_size = 0;
 	// Check parameters.
 	if (line_data_read == NULL) {
@@ -88,46 +106,47 @@ NODE_status_t GPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		status = NODE_ERROR_LINE_DATA_INDEX;
 		goto errors;
 	}
+	// Build node registers structure.
+	node_reg.value = (uint32_t*) GPSM_REGISTERS;
+	node_reg.error = (uint32_t*) GPSM_REG_ERROR_VALUE;
 	// Check common range.
 	if ((line_data_read -> line_data_index) < COMMON_LINE_DATA_INDEX_LAST) {
 		// Call common function.
-		status = COMMON_read_line_data(line_data_read, (uint32_t*) GPSM_REGISTERS);
+		status = COMMON_read_line_data(line_data_read, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
 	}
 	else {
-		// Compute specific string data index.
+		// Compute specific string data index and register address.
+		reg_addr = GPSM_LINE_DATA[str_data_idx].reg_addr;
 		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
-		// Update register.
-		status = XM_read_register((line_data_read -> node_addr), GPSM_LINE_DATA[str_data_idx].reg_addr, (uint32_t*) GPSM_REGISTERS, read_status);
-		if (status != NODE_SUCCESS) goto errors;
-		// Compute field.
-		field_value = DINFOX_read_field(GPSM_REGISTERS[GPSM_LINE_DATA[str_data_idx].reg_addr], GPSM_LINE_DATA[str_data_idx].field_mask);
 		// Add data name.
 		NODE_append_name_string((char_t*) GPSM_LINE_DATA[str_data_idx].name);
 		buffer_size = 0;
-		// Add data value.
-		if ((read_status -> all) == 0) {
-			// Check index.
-			switch (line_data_read -> line_data_index) {
-			case GPSM_LINE_DATA_INDEX_VGPS:
-			case GPSM_LINE_DATA_INDEX_VANT:
-				// Convert to 5 digits string.
-				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-				STRING_status_check(NODE_ERROR_BASE_STRING);
-				// Add string.
-				NODE_append_value_string(field_str);
-				break;
-			default:
-				NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
-				break;
-			}
-			// Add unit.
-			NODE_append_value_string((char_t*) GPSM_LINE_DATA[str_data_idx].unit);
+		// Reset result to error.
+		NODE_flush_string_value();
+		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
+		// Update register.
+		status = XM_read_register((line_data_read -> node_addr), reg_addr, GPSM_REG_ERROR_VALUE[reg_addr], (uint32_t*) GPSM_REGISTERS, read_status);
+		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+		// Compute field.
+		NODE_flush_string_value();
+		field_value = DINFOX_read_field(GPSM_REGISTERS[reg_addr], GPSM_LINE_DATA[str_data_idx].field_mask);
+		// Check index.
+		switch (line_data_read -> line_data_index) {
+		case GPSM_LINE_DATA_INDEX_VGPS:
+		case GPSM_LINE_DATA_INDEX_VANT:
+			// Convert to 5 digits string.
+			string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+			STRING_status_check(NODE_ERROR_BASE_STRING);
+			// Add string.
+			NODE_append_value_string(field_str);
+			break;
+		default:
+			NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
+			break;
 		}
-		else {
-			NODE_flush_string_value();
-			NODE_append_value_string((char_t*) NODE_ERROR_STRING);
-		}
+		// Add unit.
+		NODE_append_value_string((char_t*) GPSM_LINE_DATA[str_data_idx].unit);
 	}
 errors:
 	return status;
@@ -140,7 +159,9 @@ errors:
 NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t unused_write_access;
+	NODE_access_status_t write_status;
+	XM_node_registers_t node_reg;
+	XM_registers_list_t reg_list;
 	GPSM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
 	uint8_t idx = 0;
 	// Check parameters.
@@ -152,20 +173,32 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
+	// Build node registers structure.
+	node_reg.value = (uint32_t*) GPSM_REGISTERS;
+	node_reg.error = (uint32_t*) GPSM_REG_ERROR_VALUE;
 	// Check type.
 	switch (ul_payload_update -> type) {
 	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
 		// Use common format.
-		status = COMMON_build_sigfox_payload_startup(ul_payload_update, (uint32_t*) GPSM_REGISTERS);
+		status = COMMON_build_sigfox_payload_startup(ul_payload_update, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
+		// Build registers list.
+		reg_list.addr_list = (uint32_t*) GPSM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
+		reg_list.size = sizeof(GPSM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+		// Reset registers.
+		status = XM_reset_registers(&reg_list, &node_reg);
+		if (status != NODE_SUCCESS) goto errors;
 		// Perform measurements.
-		status = XM_perform_measurements((ul_payload_update -> node_addr), &unused_write_access);
+		status = XM_perform_measurements((ul_payload_update -> node_addr), &write_status);
 		if (status != NODE_SUCCESS) goto errors;
-		// Read related registers.
-		status = XM_read_registers((ul_payload_update -> node_addr), (uint8_t*) GPSM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING, sizeof(GPSM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING), (uint32_t*) GPSM_REGISTERS);
-		if (status != NODE_SUCCESS) goto errors;
+		// Check write status.
+		if (write_status.all == 0) {
+			// Read related registers.
+			status = XM_read_registers((ul_payload_update -> node_addr), &reg_list, &node_reg);
+			if (status != NODE_SUCCESS) goto errors;
+		}
 		// Build monitoring payload.
 		sigfox_payload_monitoring.vmcu = DINFOX_read_field(GPSM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
 		sigfox_payload_monitoring.tmcu = DINFOX_read_field(GPSM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);

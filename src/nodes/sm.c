@@ -20,35 +20,6 @@
 #define SM_SIGFOX_PAYLOAD_MONITORING_SIZE	3
 #define SM_SIGFOX_PAYLOAD_SENSOR_1_SIZE		9
 
-
-/*** SM local global variables ***/
-
-static uint32_t SM_REGISTERS[SM_REG_ADDR_LAST];
-
-static const NODE_line_data_t SM_LINE_DATA[SM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{SM_REG_ADDR_ANALOG_DATA_1, SM_REG_ANALOG_DATA_1_MASK_VAIN0, "AIN0 =", STRING_FORMAT_DECIMAL, 0, " V"},
-	{SM_REG_ADDR_ANALOG_DATA_1, SM_REG_ANALOG_DATA_1_MASK_VAIN1, "AIN1 =", STRING_FORMAT_DECIMAL, 0, " V"},
-	{SM_REG_ADDR_ANALOG_DATA_2, SM_REG_ANALOG_DATA_2_MASK_VAIN2, "AIN2 =", STRING_FORMAT_DECIMAL, 0, " V"},
-	{SM_REG_ADDR_ANALOG_DATA_2, SM_REG_ANALOG_DATA_2_MASK_VAIN3, "AIN3 =", STRING_FORMAT_DECIMAL, 0, " V"},
-	{SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO0, "DIO0 =", STRING_FORMAT_BOOLEAN, 0, STRING_NULL},
-	{SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO1, "DIO1 =", STRING_FORMAT_BOOLEAN, 0, STRING_NULL},
-	{SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO2, "DIO2 =", STRING_FORMAT_BOOLEAN, 0, STRING_NULL},
-	{SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO3, "DIO3 =", STRING_FORMAT_BOOLEAN, 0, STRING_NULL},
-	{SM_REG_ADDR_ANALOG_DATA_3, SM_REG_ANALOG_DATA_3_MASK_TAMB, "TAMB =", STRING_FORMAT_DECIMAL, 0, " |C"},
-	{SM_REG_ADDR_ANALOG_DATA_3, SM_REG_ANALOG_DATA_3_MASK_HAMB, "HAMB =", STRING_FORMAT_DECIMAL, 0, " %"}
-};
-
-static const uint8_t SM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
-	COMMON_REG_ADDR_ANALOG_DATA_0
-};
-
-static const uint8_t SM_REG_ADDR_LIST_SIGFOX_PAYLOAD_ELECTRICAL[] = {
-	SM_REG_ADDR_ANALOG_DATA_1,
-	SM_REG_ADDR_ANALOG_DATA_2,
-	SM_REG_ADDR_ANALOG_DATA_3,
-	SM_REG_ADDR_DIGITAL_DATA
-};
-
 /*** SM local structures ***/
 
 typedef union {
@@ -74,6 +45,42 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } SM_sigfox_payload_data_t;
 
+/*** SM local global variables ***/
+
+static uint32_t SM_REGISTERS[SM_REG_ADDR_LAST];
+
+static const NODE_line_data_t SM_LINE_DATA[SM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
+	{"AIN0 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_1, SM_REG_ANALOG_DATA_1_MASK_VAIN0},
+	{"AIN1 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_1, SM_REG_ANALOG_DATA_1_MASK_VAIN1},
+	{"AIN2 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_2, SM_REG_ANALOG_DATA_2_MASK_VAIN2},
+	{"AIN3 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_2, SM_REG_ANALOG_DATA_2_MASK_VAIN3},
+	{"DIO0 =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO0},
+	{"DIO1 =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO1},
+	{"DIO2 =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO2},
+	{"DIO3 =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO3},
+	{"TAMB =", " |C", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_3, SM_REG_ANALOG_DATA_3_MASK_TAMB},
+	{"HAMB =", " %", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_3, SM_REG_ANALOG_DATA_3_MASK_HAMB}
+};
+
+static const uint32_t SM_REG_ERROR_VALUE[SM_REG_ADDR_LAST] = {
+	COMMON_REG_ERROR_VALUE
+	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	((DINFOX_HUMIDITY_ERROR_VALUE << 8) | (DINFOX_TEMPERATURE_ERROR_VALUE << 0)),
+	0x00000000
+};
+
+static const uint8_t SM_REG_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
+	COMMON_REG_ADDR_ANALOG_DATA_0
+};
+
+static const uint8_t SM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL[] = {
+	SM_REG_ADDR_ANALOG_DATA_1,
+	SM_REG_ADDR_ANALOG_DATA_2,
+	SM_REG_ADDR_ANALOG_DATA_3,
+	SM_REG_ADDR_DIGITAL_DATA
+};
+
 /*** SM functions ***/
 
 /* WRITE SM DATA.
@@ -97,10 +104,12 @@ NODE_status_t SM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_a
 NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	XM_node_registers_t node_reg;
 	STRING_status_t string_status = STRING_SUCCESS;
 	uint32_t field_value = 0;
 	char_t field_str[STRING_DIGIT_FUNCTION_SIZE];
 	uint8_t str_data_idx = 0;
+	uint8_t reg_addr = 0;
 	uint8_t buffer_size = 0;
 	int32_t tamb = 0;
 	// Check parameters.
@@ -117,61 +126,65 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 		status = NODE_ERROR_LINE_DATA_INDEX;
 		goto errors;
 	}
+	// Build node registers structure.
+	node_reg.value = (uint32_t*) SM_REGISTERS;
+	node_reg.error = (uint32_t*) SM_REG_ERROR_VALUE;
 	// Check common range.
 	if ((line_data_read -> line_data_index) < COMMON_LINE_DATA_INDEX_LAST) {
 		// Call common function.
-		status = COMMON_read_line_data(line_data_read, (uint32_t*) SM_REGISTERS);
+		status = COMMON_read_line_data(line_data_read, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
 	}
 	else {
-		// Compute specific string data index.
+		// Compute specific string data index and register address.
+		reg_addr = SM_LINE_DATA[str_data_idx].reg_addr;
 		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
-		// Update register.
-		status = XM_read_register((line_data_read -> node_addr), SM_LINE_DATA[str_data_idx].reg_addr, (uint32_t*) SM_REGISTERS, read_status);
-		if (status != NODE_SUCCESS) goto errors;
-		// Compute field.
-		field_value = DINFOX_read_field(SM_REGISTERS[SM_LINE_DATA[str_data_idx].reg_addr], SM_LINE_DATA[str_data_idx].field_mask);
 		// Add data name.
 		NODE_append_name_string((char_t*) SM_LINE_DATA[str_data_idx].name);
 		buffer_size = 0;
-		// Add data value.
-		if ((read_status -> all) == 0) {
-			// Check index.
-			switch (line_data_read -> line_data_index) {
-			case SM_LINE_DATA_INDEX_DIO0:
-			case SM_LINE_DATA_INDEX_DIO1:
-			case SM_LINE_DATA_INDEX_DIO2:
-			case SM_LINE_DATA_INDEX_DIO3:
-			case SM_LINE_DATA_INDEX_HAMB:
-				// Specific print for boolean data.
-				NODE_append_value_int32(field_value, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
-				break;
-			case SM_LINE_DATA_INDEX_AIN0:
-			case SM_LINE_DATA_INDEX_AIN1:
-			case SM_LINE_DATA_INDEX_AIN2:
-			case SM_LINE_DATA_INDEX_AIN3:
-				// Convert to 5 digits string.
-				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-				STRING_status_check(NODE_ERROR_BASE_STRING);
-				// Add string.
-				NODE_append_value_string(field_str);
-				break;
-			case SM_LINE_DATA_INDEX_TAMB:
-				// Convert temperature.
-				tamb = (int32_t) DINFOX_get_degrees(field_value);
-				NODE_append_value_int32(tamb, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
-				break;
-			default:
-				NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
-				break;
-			}
-			// Add unit.
-			NODE_append_value_string((char_t*) SM_LINE_DATA[str_data_idx].unit);
+		// Reset result to error.
+		NODE_flush_string_value();
+		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
+		// Update register.
+		status = XM_read_register((line_data_read -> node_addr), reg_addr, SM_REG_ERROR_VALUE[reg_addr], (uint32_t*) SM_REGISTERS, read_status);
+		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+		// Compute field.
+		NODE_flush_string_value();
+		field_value = DINFOX_read_field(SM_REGISTERS[reg_addr], SM_LINE_DATA[str_data_idx].field_mask);
+		// Add data name.
+		NODE_append_name_string((char_t*) SM_LINE_DATA[str_data_idx].name);
+		buffer_size = 0;
+		// Check index.
+		switch (line_data_read -> line_data_index) {
+		case SM_LINE_DATA_INDEX_DIO0:
+		case SM_LINE_DATA_INDEX_DIO1:
+		case SM_LINE_DATA_INDEX_DIO2:
+		case SM_LINE_DATA_INDEX_DIO3:
+		case SM_LINE_DATA_INDEX_HAMB:
+			// Specific print for boolean data.
+			NODE_append_value_int32(field_value, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
+			break;
+		case SM_LINE_DATA_INDEX_AIN0:
+		case SM_LINE_DATA_INDEX_AIN1:
+		case SM_LINE_DATA_INDEX_AIN2:
+		case SM_LINE_DATA_INDEX_AIN3:
+			// Convert to 5 digits string.
+			string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+			STRING_status_check(NODE_ERROR_BASE_STRING);
+			// Add string.
+			NODE_append_value_string(field_str);
+			break;
+		case SM_LINE_DATA_INDEX_TAMB:
+			// Convert temperature.
+			tamb = (int32_t) DINFOX_get_degrees(field_value);
+			NODE_append_value_int32(tamb, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
+			break;
+		default:
+			NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
+			break;
 		}
-		else {
-			NODE_flush_string_value();
-			NODE_append_value_string((char_t*) NODE_ERROR_STRING);
-		}
+		// Add unit.
+		NODE_append_value_string((char_t*) SM_LINE_DATA[str_data_idx].unit);
 	}
 errors:
 	return status;
@@ -184,7 +197,9 @@ errors:
 NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t unused_write_access;
+	NODE_access_status_t write_status;
+	XM_node_registers_t node_reg;
+	XM_registers_list_t reg_list;
 	SM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
 	SM_sigfox_payload_data_t sigfox_payload_data;
 	uint8_t idx = 0;
@@ -197,20 +212,32 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_up
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
+	// Build node registers structure.
+	node_reg.value = (uint32_t*) SM_REGISTERS;
+	node_reg.error = (uint32_t*) SM_REG_ERROR_VALUE;
 	// Check type.
 	switch (ul_payload_update -> type) {
 	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
 		// Use common format.
-		status = COMMON_build_sigfox_payload_startup(ul_payload_update, (uint32_t*) SM_REGISTERS);
+		status = COMMON_build_sigfox_payload_startup(ul_payload_update, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
+		// Build registers list.
+		reg_list.addr_list = (uint32_t*) SM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
+		reg_list.size = sizeof(SM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+		// Reset registers.
+		status = XM_reset_registers(&reg_list, &node_reg);
+		if (status != NODE_SUCCESS) goto errors;
 		// Perform measurements.
-		status = XM_perform_measurements((ul_payload_update -> node_addr), &unused_write_access);
+		status = XM_perform_measurements((ul_payload_update -> node_addr), &write_status);
 		if (status != NODE_SUCCESS) goto errors;
-		// Read related registers.
-		status = XM_read_registers((ul_payload_update -> node_addr), (uint8_t*) SM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING, sizeof(SM_REG_ADDR_LIST_SIGFOX_PAYLOAD_MONITORING), (uint32_t*) SM_REGISTERS);
-		if (status != NODE_SUCCESS) goto errors;
+		// Check write status.
+		if (write_status.all == 0) {
+			// Read related registers.
+			status = XM_read_registers((ul_payload_update -> node_addr), &reg_list, &node_reg);
+			if (status != NODE_SUCCESS) goto errors;
+		}
 		// Build monitoring payload.
 		sigfox_payload_monitoring.vmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
 		sigfox_payload_monitoring.tmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
@@ -221,12 +248,21 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_up
 		(*(ul_payload_update -> size)) = SM_SIGFOX_PAYLOAD_MONITORING_SIZE;
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
+		// Build registers list.
+		reg_list.addr_list = (uint32_t*) SM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL;
+		reg_list.size = sizeof(SM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+		// Reset registers.
+		status = XM_reset_registers(&reg_list, &node_reg);
+		if (status != NODE_SUCCESS) goto errors;
 		// Perform measurements.
-		status = XM_perform_measurements((ul_payload_update -> node_addr), &unused_write_access);
+		status = XM_perform_measurements((ul_payload_update -> node_addr), &write_status);
 		if (status != NODE_SUCCESS) goto errors;
-		// Read related registers.
-		status = XM_read_registers((ul_payload_update -> node_addr), (uint8_t*) SM_REG_ADDR_LIST_SIGFOX_PAYLOAD_ELECTRICAL, sizeof(SM_REG_ADDR_LIST_SIGFOX_PAYLOAD_ELECTRICAL), (uint32_t*) SM_REGISTERS);
-		if (status != NODE_SUCCESS) goto errors;
+		// Check write status.
+		if (write_status.all == 0) {
+			// Read related registers.
+			status = XM_read_registers((ul_payload_update -> node_addr), &reg_list, &node_reg);
+			if (status != NODE_SUCCESS) goto errors;
+		}
 		// Build data payload.
 		sigfox_payload_data.ain0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN0);
 		sigfox_payload_data.ain1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN1);

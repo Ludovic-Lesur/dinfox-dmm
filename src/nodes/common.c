@@ -45,7 +45,7 @@ static const NODE_line_data_t COMMON_LINE_DATA[COMMON_LINE_DATA_INDEX_LAST] = {
 	{"TMCU =", " |C", STRING_FORMAT_DECIMAL, 0, COMMON_REG_ADDR_ANALOG_DATA_0, COMMON_REG_ANALOG_DATA_0_MASK_TMCU}
 };
 
-static const uint32_t COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP[] = {
+static const uint8_t COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP[] = {
 	COMMON_REG_ADDR_SW_VERSION_0,
 	COMMON_REG_ADDR_SW_VERSION_1,
 	COMMON_REG_ADDR_RESET_FLAGS
@@ -203,7 +203,7 @@ NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_p
 		goto errors;
 	}
 	// Build registers list.
-	reg_list.addr_list = (uint32_t*) COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP;
+	reg_list.addr_list = (uint8_t*) COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP;
 	reg_list.size = sizeof(COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP);
 	// Reset related registers.
 	status = XM_reset_registers(&reg_list, node_reg);

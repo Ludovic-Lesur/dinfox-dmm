@@ -213,7 +213,7 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
 		// Build registers list.
-		reg_list.addr_list = (uint32_t*) LVRM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
+		reg_list.addr_list = (uint8_t*) LVRM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
 		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
 		// Reset registers.
 		status = XM_reset_registers(&reg_list, &node_reg);
@@ -238,8 +238,8 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 		break;
 	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
 		// Build registers list.
-		reg_list.addr_list = (uint32_t*) LVRM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL;
-		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+		reg_list.addr_list = (uint8_t*) LVRM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL;
+		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL);
 		// Reset registers.
 		status = XM_reset_registers(&reg_list, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;

@@ -14,7 +14,7 @@
 /*** XM structures ***/
 
 typedef struct {
-	uint32_t* addr_list;
+	uint8_t* addr_list;
 	uint8_t size;
 } XM_registers_list_t;
 

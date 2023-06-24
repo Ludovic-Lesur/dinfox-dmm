@@ -541,8 +541,6 @@ NODE_status_t R4S8CR_read_line_data(NODE_line_data_read_t* line_data_read, NODE_
 		NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
 		break;
 	}
-	// Add unit.
-	NODE_append_value_string((char_t*) R4S8CR_LINE_DATA[str_data_idx].unit);
 errors:
 	return status;
 }

@@ -36,7 +36,7 @@ typedef union {
 static uint32_t UHFM_REGISTERS[UHFM_REG_ADDR_LAST];
 
 static const NODE_line_data_t UHFM_LINE_DATA[UHFM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{"EP ID =", STRING_NULL, STRING_FORMAT_HEXADECIMAL, 1, UHFM_REG_ADDR_SIGFOX_EP_ID, DINFOX_REG_MASK_ALL},
+	{"EP ID", STRING_NULL, STRING_FORMAT_HEXADECIMAL, 1, UHFM_REG_ADDR_SIGFOX_EP_ID, DINFOX_REG_MASK_ALL},
 	{"VRF TX =", " V", STRING_FORMAT_DECIMAL, 0, UHFM_REG_ADDR_ANALOG_DATA_1, UHFM_REG_ANALOG_DATA_1_MASK_VRF_TX},
 	{"VRF RX =", " V", STRING_FORMAT_DECIMAL, 0, UHFM_REG_ADDR_ANALOG_DATA_1, UHFM_REG_ANALOG_DATA_1_MASK_VRF_RX}
 };
@@ -138,32 +138,33 @@ NODE_status_t UHFM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, UHFM_REG_ERROR_VALUE[reg_addr], &(UHFM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
-		NODE_flush_string_value();
 		field_value = DINFOX_read_field(UHFM_REGISTERS[reg_addr], UHFM_LINE_DATA[str_data_idx].field_mask);
-		// Add data name.
-		NODE_append_name_string((char_t*) UHFM_LINE_DATA[str_data_idx].name);
-		buffer_size = 0;
 		// Check index.
 		switch (line_data_read -> line_data_index) {
 		case UHFM_LINE_DATA_INDEX_SIGFOX_EP_ID:
+			NODE_flush_string_value();
 			for (idx=0 ; idx<DINFOX_REG_SIZE_BYTES ; idx++) {
-				NODE_append_value_int32(((field_value >> (DINFOX_REG_SIZE_BYTES - idx - 1)) & 0xFF), STRING_FORMAT_HEXADECIMAL, ((idx == 0) ? 1 : 0));
+				NODE_append_value_int32(((field_value >> (8 * (DINFOX_REG_SIZE_BYTES - idx - 1))) & 0xFF), STRING_FORMAT_HEXADECIMAL, ((idx == 0) ? 1 : 0));
 			}
 			break;
 		case UHFM_LINE_DATA_INDEX_VRF_TX:
 		case UHFM_LINE_DATA_INDEX_VRF_RX:
-			// Convert to 5 digits string.
-			string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-			STRING_status_check(NODE_ERROR_BASE_STRING);
-			// Add string.
-			NODE_append_value_string(field_str);
+			// Check error value.
+			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
+				// Convert to 5 digits string.
+				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+				STRING_status_check(NODE_ERROR_BASE_STRING);
+				// Add string.
+				NODE_flush_string_value();
+				NODE_append_value_string(field_str);
+				// Add unit.
+				NODE_append_value_string((char_t*) UHFM_LINE_DATA[str_data_idx].unit);
+			}
 			break;
 		default:
 			NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
 			break;
 		}
-		// Add unit.
-		NODE_append_value_string((char_t*) UHFM_LINE_DATA[str_data_idx].unit);
 	}
 errors:
 	return status;

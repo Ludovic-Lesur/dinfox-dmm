@@ -599,6 +599,21 @@ STRING_status_t STRING_value_to_5_digits_string(int32_t value, char_t* str) {
 		status = STRING_value_to_string(d1, STRING_FORMAT_DECIMAL, 0, &(str[4]));
 		if (status != STRING_SUCCESS) goto errors;
 	}
+	else if (value < 10000000) {
+		// Format = uuuu
+		u1 = (value) / (1000000);
+		u2 = (value - (u1 * 1000000)) / (100000);
+		u3 = (value - (u1 * 1000000) - (u2 * 100000)) / (10000);
+		u4 = (value - (u1 * 1000000) - (u2 * 100000) - (u3 * 10000)) / (1000);
+		status = STRING_value_to_string(u1, STRING_FORMAT_DECIMAL, 0, &(str[0]));
+		if (status != STRING_SUCCESS) goto errors;
+		status = STRING_value_to_string(u2, STRING_FORMAT_DECIMAL, 0, &(str[1]));
+		if (status != STRING_SUCCESS) goto errors;
+		status = STRING_value_to_string(u3, STRING_FORMAT_DECIMAL, 0, &(str[2]));
+		if (status != STRING_SUCCESS) goto errors;
+		status = STRING_value_to_string(u4, STRING_FORMAT_DECIMAL, 0, &(str[3]));
+		if (status != STRING_SUCCESS) goto errors;
+	}
 	else {
 		// Format = uuuuu
 		u1 = (value) / (10000000);

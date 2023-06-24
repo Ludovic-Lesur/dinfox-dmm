@@ -149,42 +149,56 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, SM_REG_ERROR_VALUE[reg_addr], &(SM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
-		NODE_flush_string_value();
 		field_value = DINFOX_read_field(SM_REGISTERS[reg_addr], SM_LINE_DATA[str_data_idx].field_mask);
-		// Add data name.
-		NODE_append_name_string((char_t*) SM_LINE_DATA[str_data_idx].name);
-		buffer_size = 0;
 		// Check index.
 		switch (line_data_read -> line_data_index) {
 		case SM_LINE_DATA_INDEX_DIO0:
 		case SM_LINE_DATA_INDEX_DIO1:
 		case SM_LINE_DATA_INDEX_DIO2:
 		case SM_LINE_DATA_INDEX_DIO3:
-		case SM_LINE_DATA_INDEX_HAMB:
 			// Specific print for boolean data.
+			NODE_flush_string_value();
 			NODE_append_value_int32(field_value, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
+			break;
+		case SM_LINE_DATA_INDEX_HAMB:
+			// Specific print for humidity.
+			NODE_flush_string_value();
+			NODE_append_value_int32(field_value, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
+			// Add unit.
+			NODE_append_value_string((char_t*) SM_LINE_DATA[str_data_idx].unit);
 			break;
 		case SM_LINE_DATA_INDEX_AIN0:
 		case SM_LINE_DATA_INDEX_AIN1:
 		case SM_LINE_DATA_INDEX_AIN2:
 		case SM_LINE_DATA_INDEX_AIN3:
-			// Convert to 5 digits string.
-			string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-			STRING_status_check(NODE_ERROR_BASE_STRING);
-			// Add string.
-			NODE_append_value_string(field_str);
+			// Check error value.
+			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
+				// Convert to 5 digits string.
+				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+				STRING_status_check(NODE_ERROR_BASE_STRING);
+				// Add string.
+				NODE_flush_string_value();
+				NODE_append_value_string(field_str);
+				// Add unit.
+				NODE_append_value_string((char_t*) SM_LINE_DATA[str_data_idx].unit);
+			}
 			break;
 		case SM_LINE_DATA_INDEX_TAMB:
-			// Convert temperature.
-			tamb = (int32_t) DINFOX_get_degrees(field_value);
-			NODE_append_value_int32(tamb, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
+			// Check error value.
+			if (field_value != DINFOX_TEMPERATURE_ERROR_VALUE) {
+				// Convert temperature.
+				tamb = (int32_t) DINFOX_get_degrees(field_value);
+				// Add string.
+				NODE_flush_string_value();
+				NODE_append_value_int32(tamb, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
+				// Add unit.
+				NODE_append_value_string((char_t*) SM_LINE_DATA[str_data_idx].unit);
+			}
 			break;
 		default:
 			NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
 			break;
 		}
-		// Add unit.
-		NODE_append_value_string((char_t*) SM_LINE_DATA[str_data_idx].unit);
 	}
 errors:
 	return status;

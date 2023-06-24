@@ -325,34 +325,44 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, DMM_REG_ERROR_VALUE[reg_addr], &(DMM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
-		NODE_flush_string_value();
 		field_value = DINFOX_read_field(DMM_REGISTERS[reg_addr], DMM_LINE_DATA[str_data_idx].field_mask);
 		// Check index.
 		switch (line_data_read -> line_data_index) {
 		case DMM_LINE_DATA_INDEX_VRS:
 		case DMM_LINE_DATA_INDEX_VHMI:
 		case DMM_LINE_DATA_INDEX_VUSB:
-			// Convert to 5 digits string.
-			string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-			STRING_status_check(NODE_ERROR_BASE_STRING);
-			// Add string.
-			NODE_append_value_string(field_str);
+			// Check error value.
+			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
+				// Convert to 5 digits string.
+				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+				STRING_status_check(NODE_ERROR_BASE_STRING);
+				// Add string.
+				NODE_flush_string_value();
+				NODE_append_value_string(field_str);
+				// Add unit.
+				NODE_append_value_string((char_t*) DMM_LINE_DATA[str_data_idx].unit);
+			}
 			break;
 		case DMM_LINE_DATA_INDEX_NODES_COUNT:
 			// Raw value.
+			NODE_flush_string_value();
 			NODE_append_value_int32(field_value,  DMM_LINE_DATA[str_data_idx].print_format,  DMM_LINE_DATA[str_data_idx].print_prefix);
+			// Add unit.
+			NODE_append_value_string((char_t*) DMM_LINE_DATA[str_data_idx].unit);
 			break;
 		case DMM_LINE_DATA_INDEX_UL_PERIOD:
 		case DMM_LINE_DATA_INDEX_DL_PERIOD:
 			// Convert to seconds.
+			NODE_flush_string_value();
 			NODE_append_value_int32(DINFOX_get_seconds(field_value),  DMM_LINE_DATA[str_data_idx].print_format,  DMM_LINE_DATA[str_data_idx].print_prefix);
+			// Add unit.
+			NODE_append_value_string((char_t*) DMM_LINE_DATA[str_data_idx].unit);
 			break;
 		default:
+			NODE_flush_string_value();
 			NODE_append_value_int32(field_value, STRING_FORMAT_HEXADECIMAL, 1);
 			break;
 		}
-		// Add unit.
-		NODE_append_value_string((char_t*) DMM_LINE_DATA[str_data_idx].unit);
 	}
 errors:
 	return status;

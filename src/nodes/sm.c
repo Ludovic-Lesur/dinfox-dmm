@@ -137,8 +137,8 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 	}
 	else {
 		// Compute specific string data index and register address.
-		reg_addr = SM_LINE_DATA[str_data_idx].reg_addr;
 		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
+		reg_addr = SM_LINE_DATA[str_data_idx].reg_addr;
 		// Add data name.
 		NODE_append_name_string((char_t*) SM_LINE_DATA[str_data_idx].name);
 		buffer_size = 0;
@@ -146,7 +146,7 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 		NODE_flush_string_value();
 		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 		// Update register.
-		status = XM_read_register((line_data_read -> node_addr), reg_addr, SM_REG_ERROR_VALUE[reg_addr], (uint32_t*) SM_REGISTERS, read_status);
+		status = XM_read_register((line_data_read -> node_addr), reg_addr, SM_REG_ERROR_VALUE[reg_addr], &(SM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
 		NODE_flush_string_value();

@@ -732,7 +732,7 @@ NODE_status_t NODE_read_line_data_all(NODE_t* node) {
 	// Check protocol.
 	if ((NODES[node -> board_id].protocol) == NODE_PROTOCOL_AT_BUS) {
 		// Perform node measurements.
-		status = _NODE_write_register(node, COMMON_REG_ADDR_STATUS_CONTROL_0, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG, &access_status);
+		status = XM_perform_measurements((node -> address), &access_status);
 		if (status != NODE_SUCCESS) goto errors;
 	}
 	// String data loop.

@@ -45,11 +45,17 @@
 /*** NODE local structures ***/
 
 typedef enum {
-	NODE_DOWNLINK_OPERATION_CODE_NOP = 0,
-	NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE,
-	NODE_DOWNLINK_OPERATION_CODE_TOGGLE_OFF_ON,
-	NODE_DOWNLINK_OPERATION_CODE_TOGGLE_ON_OFF,
-	NODE_DOWNLINK_OPERATION_CODE_LAST
+	NODE_DOWNLINK_OP_CODE_NOP = 0,
+	NODE_DOWNLINK_OP_CODE_SINGLE_FULL_WRITE,
+	NODE_DOWNLINK_OP_CODE_SINGLE_MASKED_WRITE,
+	NODE_DOWNLINK_OP_CODE_TEMPORARY_FULL_WRITE,
+	NODE_DOWNLINK_OP_CODE_TEMPORARY_MASKED_WRITE,
+	NODE_DOWNLINK_OP_CODE_SUCCESSIVE_FULL_WRITE,
+	NODE_DOWNLINK_OP_CODE_SUCCESSIVE_MASKED_WRITE,
+	NODE_DOWNLINK_OP_CODE_DUAL_FULL_WRITE,
+	NODE_DOWNLINK_OP_CODE_TRIPLE_FULL_WRITE,
+	NODE_DOWNLINK_OP_CODE_DUAL_NODE_WRITE,
+	NODE_DOWNLINK_OP_CODE_LAST
 } NODE_downlink_operation_code_t;
 
 typedef NODE_status_t (*NODE_write_register_t)(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
@@ -87,11 +93,63 @@ typedef union {
 typedef union {
 	uint8_t frame[UHFM_SIGFOX_DL_PAYLOAD_SIZE];
 	struct {
-		unsigned node_addr : 8;
-		unsigned board_id : 8;
-		unsigned reg_addr : 8;
-		unsigned operation_code : 8;
-		unsigned data : 32;
+		unsigned op_code : 8;
+		union {
+			struct {
+				unsigned node_addr : 8;
+				unsigned reg_addr : 8;
+				unsigned reg_value : 32;
+				unsigned duration : 8; // Unused in single.
+			} full_write;
+			struct {
+				unsigned node_addr : 8;
+				unsigned reg_addr : 8;
+				unsigned reg_mask : 16;
+				unsigned reg_value : 16;
+				unsigned duration : 8; // Unused in single.
+			} masked_write;
+			struct {
+				unsigned node_addr : 8;
+				unsigned reg_addr : 8;
+				unsigned reg_value_1 : 16;
+				unsigned reg_value_2 : 16;
+				unsigned duration : 8;
+			} successive_full_write;
+			struct {
+				unsigned node_addr : 8;
+				unsigned reg_addr : 8;
+				unsigned reg_mask : 8;
+				unsigned reg_value_1 : 8;
+				unsigned reg_value_2 : 8;
+				unsigned duration : 8;
+				unsigned unused : 8;
+			} successive_masked_write;
+			struct {
+				unsigned node_addr : 8;
+				unsigned reg_1_addr : 8;
+				unsigned reg_1_value : 16;
+				unsigned reg_2_addr : 8;
+				unsigned reg_2_value : 16;
+			} dual_full_write;
+			struct {
+				unsigned node_addr : 8;
+				unsigned reg_1_addr : 8;
+				unsigned reg_1_value : 8;
+				unsigned reg_2_addr : 8;
+				unsigned reg_2_value : 8;
+				unsigned reg_3_addr : 8;
+				unsigned reg_3_value : 8;
+			} triple_full_write;
+			struct {
+				unsigned node_1_addr : 8;
+				unsigned reg_1_addr : 8;
+				unsigned reg_1_value : 8;
+				unsigned node_2_addr : 8;
+				unsigned reg_2_addr : 8;
+				unsigned reg_2_value : 8;
+				unsigned unused : 8;
+			} dual_node_write;
+		};
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } NODE_sigfox_dl_payload_t;
 
@@ -405,7 +463,7 @@ NODE_status_t _NODE_radio_read(void) {
 	NODE_access_status_t read_status;
 	// Reset status and operation code.
 	read_status.all = 0;
-	node_ctx.sigfox_dl_payload.operation_code = NODE_DOWNLINK_OPERATION_CODE_NOP;
+	node_ctx.sigfox_dl_payload.op_code = NODE_DOWNLINK_OP_CODE_NOP;
 	// Read downlink payload.
 	status = UHFM_get_dl_payload(node_ctx.uhfm_address, node_ctx.sigfox_dl_payload.frame, &read_status);
 	return status;
@@ -426,6 +484,7 @@ NODE_status_t _NODE_radio_read(void) {
 	node_ctx.actions[action_index].node = NULL;
 	node_ctx.actions[action_index].reg_addr = 0x00;
 	node_ctx.actions[action_index].reg_value = 0;
+	node_ctx.actions[action_index].reg_mask = 0;
 	node_ctx.actions[action_index].timestamp_seconds = 0;
 errors:
 	return status;
@@ -454,20 +513,22 @@ errors:
 	return status;
 }
 
-/* PARSE SIGFOX DL PAYLOAD.
- * @param:			None.
- * @return status:	Function execution status..
+/* SEARCH A NODE IN THE CURRENT LIST.
+ * @param node_addr:	Searched address.
+ * @param node_ptr:		Pointer to the node if found, NULL otherwise.
+ * @return status:		Function execution status.
  */
-NODE_status_t _NODE_execute_downlink(void) {
+NODE_status_t _NODE_search(NODE_address_t node_addr, NODE_t* node_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_action_t action;
 	uint8_t address_match = 0;
 	uint8_t idx = 0;
+	// Reset pointer.
+	node_ptr = NULL;
 	// Search board in nodes list.
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// Compare address
-		if (NODES_LIST.list[idx].address == node_ctx.sigfox_dl_payload.node_addr) {
+		if (NODES_LIST.list[idx].address == node_addr) {
 			address_match = 1;
 			break;
 		}
@@ -477,43 +538,176 @@ NODE_status_t _NODE_execute_downlink(void) {
 		status = NODE_ERROR_DOWNLINK_NODE_ADDRESS;
 		goto errors;
 	}
-	// Check board ID.
-	if (NODES_LIST.list[idx].board_id != node_ctx.sigfox_dl_payload.board_id) {
-		status = NODE_ERROR_DOWNLINK_BOARD_ID;
-		goto errors;
-	}
-	// Create action structure.
-	action.node = &NODES_LIST.list[idx];
-	action.reg_addr = node_ctx.sigfox_dl_payload.reg_addr;
+	// Update pointer.
+	node_ptr = &NODES_LIST.list[idx];
+errors:
+	return status;
+}
+
+/* PARSE SIGFOX DL PAYLOAD.
+ * @param:			None.
+ * @return status:	Function execution status..
+ */
+NODE_status_t _NODE_execute_downlink(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_action_t action;
+	NODE_access_status_t read_status;
+	NODE_t* node_ptr = NULL;
+	uint32_t previous_reg_value = 0;
 	// Check operation code.
-	switch (node_ctx.sigfox_dl_payload.operation_code) {
-	case NODE_DOWNLINK_OPERATION_CODE_NOP:
+	switch (node_ctx.sigfox_dl_payload.op_code) {
+	case NODE_DOWNLINK_OP_CODE_NOP:
 		// No operation.
 		break;
-	case NODE_DOWNLINK_OPERATION_CODE_SINGLE_WRITE:
-		// Instantaneous write operation.
-		action.reg_value = node_ctx.sigfox_dl_payload.data;
+	case NODE_DOWNLINK_OP_CODE_SINGLE_FULL_WRITE:
+		// Search node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.full_write.node_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Register action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.full_write.reg_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.full_write.reg_value;
+		action.reg_mask = DINFOX_REG_MASK_ALL;
 		action.timestamp_seconds = 0;
 		_NODE_record_action(&action);
 		break;
-	case NODE_DOWNLINK_OPERATION_CODE_TOGGLE_OFF_ON:
-		// Instantaneous OFF command.
-		action.reg_value = 0;
+	case NODE_DOWNLINK_OP_CODE_SINGLE_MASKED_WRITE:
+		// Search node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.masked_write.node_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Register action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.masked_write.reg_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.masked_write.reg_value;
+		action.reg_mask = (uint32_t) node_ctx.sigfox_dl_payload.masked_write.reg_mask;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
-		// Program ON command.
-		action.reg_value = 1;
-		action.timestamp_seconds = RTC_get_time_seconds() + node_ctx.sigfox_dl_payload.data;
 		_NODE_record_action(&action);
 		break;
-	case NODE_DOWNLINK_OPERATION_CODE_TOGGLE_ON_OFF:
-		// Instantaneous ON command.
-		action.reg_value = 1;
+	case NODE_DOWNLINK_OP_CODE_TEMPORARY_FULL_WRITE:
+		// Search node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.full_write.node_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Read current register value.
+		status = _NODE_read_register(node_ptr, node_ctx.sigfox_dl_payload.full_write.reg_addr, &previous_reg_value, &read_status);
+		if ((status != NODE_SUCCESS) || ((read_status.all) != 0)) goto errors;
+		// Register first action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.full_write.reg_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.full_write.reg_value;
+		action.reg_mask = DINFOX_REG_MASK_ALL;
 		action.timestamp_seconds = 0;
 		_NODE_record_action(&action);
-		// Program OFF command.
-		action.reg_value = 0;
-		action.timestamp_seconds = RTC_get_time_seconds() + node_ctx.sigfox_dl_payload.data;
+		// Register second action.
+		action.reg_value = previous_reg_value;
+		action.timestamp_seconds = RTC_get_time_seconds() + DINFOX_get_seconds(node_ctx.sigfox_dl_payload.full_write.duration);
+		_NODE_record_action(&action);
+		break;
+	case NODE_DOWNLINK_OP_CODE_TEMPORARY_MASKED_WRITE:
+		// Search node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.masked_write.node_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Read current register value.
+		status = _NODE_read_register(node_ptr, node_ctx.sigfox_dl_payload.masked_write.reg_addr, &previous_reg_value, &read_status);
+		if ((status != NODE_SUCCESS) || ((read_status.all) != 0)) goto errors;
+		// Register first action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.masked_write.reg_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.masked_write.reg_value;
+		action.reg_mask = (uint32_t) node_ctx.sigfox_dl_payload.masked_write.reg_mask;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		// Register second action.
+		action.reg_value = previous_reg_value;
+		action.timestamp_seconds = RTC_get_time_seconds() + DINFOX_get_seconds(node_ctx.sigfox_dl_payload.masked_write.duration);
+		_NODE_record_action(&action);
+		break;
+	case NODE_DOWNLINK_OP_CODE_SUCCESSIVE_FULL_WRITE:
+		// Search node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.successive_full_write.node_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Register first action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.successive_full_write.reg_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.successive_full_write.reg_value_1;
+		action.reg_mask = DINFOX_REG_MASK_ALL;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		// Register second action.
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.successive_full_write.reg_value_2;
+		action.timestamp_seconds = RTC_get_time_seconds() + DINFOX_get_seconds(node_ctx.sigfox_dl_payload.successive_full_write.duration);
+		_NODE_record_action(&action);
+		break;
+	case NODE_DOWNLINK_OP_CODE_SUCCESSIVE_MASKED_WRITE:
+		// Search node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.successive_masked_write.node_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Register first action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.successive_masked_write.reg_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.successive_masked_write.reg_value_1;
+		action.reg_mask = (uint32_t) node_ctx.sigfox_dl_payload.successive_masked_write.reg_mask;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		// Register second action.
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.successive_masked_write.reg_value_2;
+		action.timestamp_seconds = RTC_get_time_seconds() + DINFOX_get_seconds(node_ctx.sigfox_dl_payload.successive_masked_write.duration);
+		_NODE_record_action(&action);
+		break;
+	case NODE_DOWNLINK_OP_CODE_DUAL_FULL_WRITE:
+		// Search node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_full_write.node_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Register first action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.dual_full_write.reg_1_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.dual_full_write.reg_1_value;
+		action.reg_mask = DINFOX_REG_MASK_ALL;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		// Register second action.
+		action.reg_addr = node_ctx.sigfox_dl_payload.dual_full_write.reg_2_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.dual_full_write.reg_2_value;
+		_NODE_record_action(&action);
+		break;
+	case NODE_DOWNLINK_OP_CODE_TRIPLE_FULL_WRITE:
+		// Search node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.triple_full_write.node_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Register first action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.triple_full_write.reg_1_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.triple_full_write.reg_1_value;
+		action.reg_mask = DINFOX_REG_MASK_ALL;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		// Register second action.
+		action.reg_addr = node_ctx.sigfox_dl_payload.triple_full_write.reg_2_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.triple_full_write.reg_2_value;
+		_NODE_record_action(&action);
+		// Register third action.
+		action.reg_addr = node_ctx.sigfox_dl_payload.triple_full_write.reg_3_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.triple_full_write.reg_3_value;
+		_NODE_record_action(&action);
+		break;
+	case NODE_DOWNLINK_OP_CODE_DUAL_NODE_WRITE:
+		// Search first node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_node_write.node_1_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Register first action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.dual_node_write.reg_1_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.dual_node_write.reg_1_value;
+		action.reg_mask = DINFOX_REG_MASK_ALL;
+		action.timestamp_seconds = 0;
+		_NODE_record_action(&action);
+		// Search second node.
+		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_node_write.node_2_addr, node_ptr);
+		if (status != NODE_SUCCESS) goto errors;
+		// Register second action.
+		action.node = node_ptr;
+		action.reg_addr = node_ctx.sigfox_dl_payload.dual_node_write.reg_2_addr;
+		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.dual_node_write.reg_2_value;
 		_NODE_record_action(&action);
 		break;
 	default:

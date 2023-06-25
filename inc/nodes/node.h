@@ -53,13 +53,10 @@ typedef enum {
 	NODE_ERROR_ACCESS,
 	NODE_ERROR_NONE_RADIO_MODULE,
 	NODE_ERROR_SIGFOX_PAYLOAD_TYPE,
-	NODE_ERROR_SIGFOX_PAYLOAD_EMPTY,
-	NODE_ERROR_SIGFOX_LOOP,
+	NODE_ERROR_SIGFOX_PAYLOAD_LOOP,
 	NODE_ERROR_SIGFOX_SEND,
-	NODE_ERROR_SIGFOX_READ,
 	NODE_ERROR_SIGFOX_UPLINK_PERIOD,
 	NODE_ERROR_SIGFOX_DOWNLINK_PERIOD,
-	NODE_ERROR_DOWNLINK_PAYLOAD_NOT_AVAILABLE,
 	NODE_ERROR_DOWNLINK_NODE_ADDRESS,
 	NODE_ERROR_DOWNLINK_BOARD_ID,
 	NODE_ERROR_DOWNLINK_OPERATION_CODE,
@@ -77,6 +74,7 @@ typedef struct {
 	NODE_address_t address;
 	uint8_t board_id;
 	uint8_t startup_data_sent;
+	uint8_t radio_transmission_count;
 } NODE_t;
 
 typedef struct {
@@ -106,16 +104,8 @@ typedef struct {
 	uint32_t field_value;
 } NODE_line_data_write_t;
 
-typedef enum {
-	NODE_SIGFOX_PAYLOAD_TYPE_STARTUP = 0,
-	NODE_SIGFOX_PAYLOAD_TYPE_MONITORING,
-	NODE_SIGFOX_PAYLOAD_TYPE_DATA,
-	NODE_SIGFOX_PAYLOAD_TYPE_LAST
-} NODE_sigfox_ul_payload_type_t;
-
 typedef struct {
-	NODE_address_t node_addr;
-	NODE_sigfox_ul_payload_type_t type;
+	NODE_t* node;
 	uint8_t* ul_payload;
 	uint8_t* size;
 } NODE_ul_payload_update_t;

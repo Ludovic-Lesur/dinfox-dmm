@@ -26,13 +26,22 @@
 
 #define DMM_SIGFOX_PAYLOAD_MONITORING_SIZE		5
 
+#define DMM_SIGFOX_PAYLOAD_LOOP_MAX				10
+
 #define NODE_SIGFOX_UL_PERIOD_SECONDS_MIN		60
 #define NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	300
 
-#define NODE_SIGFOX_DL_PERIOD_SECONDS_MIN		300
+#define NODE_SIGFOX_DL_PERIOD_SECONDS_MIN		600
 #define NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
 
 /*** DMM local structures ***/
+
+typedef enum {
+	DMM_SIGFOX_PAYLOAD_TYPE_STARTUP = 0,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK,
+	DMM_SIGFOX_PAYLOAD_TYPE_LAST
+} DMM_sigfox_payload_type_t;
 
 typedef union {
 	uint8_t frame[DMM_SIGFOX_PAYLOAD_MONITORING_SIZE];
@@ -75,6 +84,21 @@ static const DINFOX_register_access_t DMM_REG_ACCESS[DMM_REG_ADDR_LAST] = {
 	DINFOX_REG_ACCESS_READ_WRITE,
 	DINFOX_REG_ACCESS_READ_ONLY,
 	DINFOX_REG_ACCESS_READ_ONLY
+};
+
+static const DMM_sigfox_payload_type_t DMM_SIGFOX_PAYLOAD_PATTERN[] = {
+	DMM_SIGFOX_PAYLOAD_TYPE_STARTUP,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+	DMM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK
 };
 
 /*** DMM local functions ***/
@@ -380,6 +404,7 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_u
 	XM_registers_list_t reg_list;
 	DMM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
 	uint8_t idx = 0;
+	uint32_t loop_count = 0;
 	// Check parameters.
 	if (ul_payload_update == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -392,48 +417,67 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_u
 	// Build node registers structure.
 	node_reg.value = (uint32_t*) DMM_REGISTERS;
 	node_reg.error = (uint32_t*) DMM_REG_ERROR_VALUE;
-	// Check type.
-	switch (ul_payload_update -> type) {
-	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
-		// Use common format.
-		status = COMMON_build_sigfox_payload_startup(ul_payload_update, &node_reg);
-		if (status != NODE_SUCCESS) goto errors;
-		break;
-	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
-		// Build registers list.
-		reg_list.addr_list = (uint8_t*) DMM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
-		reg_list.size = sizeof(DMM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
-		// Reset registers.
-		status = XM_reset_registers(&reg_list, &node_reg);
-		if (status != NODE_SUCCESS) goto errors;
-		// Perform measurements.
-		status = XM_perform_measurements((ul_payload_update -> node_addr), &write_status);
-		if (status != NODE_SUCCESS) goto errors;
-		// Check write status.
-		if (write_status.all == 0) {
-			// Read related registers.
-			status = XM_read_registers((ul_payload_update -> node_addr), &reg_list, &node_reg);
+	// Reset payload size.
+	(*(ul_payload_update -> size)) = 0;
+	// Main loop.
+	do {
+		// Check payload type.
+		switch (DMM_SIGFOX_PAYLOAD_PATTERN[ul_payload_update -> node -> radio_transmission_count]) {
+		case DMM_SIGFOX_PAYLOAD_TYPE_STARTUP:
+			// Check flag.
+			if ((ul_payload_update -> node -> startup_data_sent) == 0) {
+				// Use common format.
+				status = COMMON_build_sigfox_payload_startup(ul_payload_update, &node_reg);
+				if (status != NODE_SUCCESS) goto errors;
+				// Update flag.
+				(ul_payload_update -> node -> startup_data_sent) = 1;
+			}
+			break;
+		case DMM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK:
+			// Use common format.
+			status = COMMON_build_sigfox_payload_error_stack(ul_payload_update, &node_reg);
 			if (status != NODE_SUCCESS) goto errors;
+			break;
+		case DMM_SIGFOX_PAYLOAD_TYPE_MONITORING:
+			// Build registers list.
+			reg_list.addr_list = (uint8_t*) DMM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
+			reg_list.size = sizeof(DMM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+			// Reset registers.
+			status = XM_reset_registers(&reg_list, &node_reg);
+			if (status != NODE_SUCCESS) goto errors;
+			// Perform measurements.
+			status = XM_perform_measurements((ul_payload_update -> node -> address), &write_status);
+			if (status != NODE_SUCCESS) goto errors;
+			// Check write status.
+			if (write_status.all == 0) {
+				// Read related registers.
+				status = XM_read_registers((ul_payload_update -> node -> address), &reg_list, &node_reg);
+				if (status != NODE_SUCCESS) goto errors;
+			}
+			// Build monitoring payload.
+			sigfox_payload_monitoring.vrs = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VRS);
+			sigfox_payload_monitoring.vhmi = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VHMI);
+			sigfox_payload_monitoring.nodes_count = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_STATUS_CONTROL_1], DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT);
+			// Copy payload.
+			for (idx=0 ; idx<DMM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
+				(ul_payload_update -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
+			}
+			(*(ul_payload_update -> size)) = DMM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+			break;
+		default:
+			status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
+			goto errors;
 		}
-		// Build monitoring payload.
-		sigfox_payload_monitoring.vrs = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VRS);
-		sigfox_payload_monitoring.vhmi = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VHMI);
-		sigfox_payload_monitoring.nodes_count = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_STATUS_CONTROL_1], DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT);
-		// Copy payload.
-		for (idx=0 ; idx<DMM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-			(ul_payload_update -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
+		// Increment transmission count.
+		(ul_payload_update -> node -> radio_transmission_count) = ((ul_payload_update -> node -> radio_transmission_count) + 1) % (sizeof(DMM_SIGFOX_PAYLOAD_PATTERN));
+		// Exit in case of loop error.
+		loop_count++;
+		if (loop_count > DMM_SIGFOX_PAYLOAD_LOOP_MAX) {
+			status = NODE_ERROR_SIGFOX_PAYLOAD_LOOP;
+			goto errors;
 		}
-		(*(ul_payload_update -> size)) = DMM_SIGFOX_PAYLOAD_MONITORING_SIZE;
-		break;
-	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
-		// No data frame.
-		(*(ul_payload_update -> size)) = 0;
-		status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
-		goto errors;
-	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
-		goto errors;
 	}
+	while ((*(ul_payload_update -> size)) == 0);
 errors:
 	return status;
 }

@@ -22,6 +22,7 @@
 #include "lvrm.h"
 #include "lvrm_reg.h"
 #include "mode.h"
+#include "node_common.h"
 #include "r4s8cr.h"
 #include "r4s8cr_reg.h"
 #include "rtc.h"
@@ -38,8 +39,6 @@
 
 #define NODE_SIGFOX_PAYLOAD_SIZE_MAX			12
 #define NODE_SIGFOX_PAYLOAD_HEADER_SIZE			2
-
-#define NODE_SIGFOX_LOOP_MAX					10
 
 #define NODE_ACTIONS_DEPTH						10
 
@@ -114,7 +113,6 @@ typedef struct {
 	NODE_address_t uhfm_address;
 	// Uplink.
 	NODE_sigfox_ul_payload_t sigfox_ul_payload;
-	NODE_sigfox_ul_payload_type_t sigfox_ul_payload_type_index;
 	uint8_t sigfox_ul_payload_size;
 	uint32_t sigfox_ul_next_time_seconds;
 	uint8_t sigfox_ul_node_list_index;
@@ -235,6 +233,7 @@ void _NODE_flush_list(void) {
 		NODES_LIST.list[idx].address = 0xFF;
 		NODES_LIST.list[idx].board_id = DINFOX_BOARD_ID_ERROR;
 		NODES_LIST.list[idx].startup_data_sent = 0;
+		NODES_LIST.list[idx].radio_transmission_count = 0;
 	}
 	NODES_LIST.count = 0;
 }
@@ -345,11 +344,10 @@ errors:
 
 /* SEND NODE DATA THROUGH RADIO.
  * @param node:					Node to monitor by radio.
- * @param sigfox_payload_type:	Type of data to send.
  * @param bidirectional_flag:	Downlink request flag.
  * @return status:				Function execution status.
  */
-NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_payload_type, uint8_t bidirectional_flag) {
+NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t node_data_size = 0;
@@ -364,22 +362,13 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_ul_payload.frame[idx] = 0x00;
 	node_ctx.sigfox_ul_payload_size = 0;
 	// Build update structure.
-	ul_payload_update.node_addr = (node -> address);
-	ul_payload_update.type = ul_payload_type;
+	ul_payload_update.node = node;
 	ul_payload_update.ul_payload = node_ctx.sigfox_ul_payload.node_data;
 	ul_payload_update.size = &node_data_size;
 	// Add board ID and node address.
 	node_ctx.sigfox_ul_payload.board_id = (node -> board_id);
 	node_ctx.sigfox_ul_payload.node_addr = (node -> address);
 	node_ctx.sigfox_ul_payload_size = 2;
-	// Specific case of startup.
-	if (ul_payload_type == NODE_SIGFOX_PAYLOAD_TYPE_STARTUP) {
-		// Check node protocol and if startup data has not already be sent.
-		if ((NODES[node -> board_id].protocol != NODE_PROTOCOL_AT_BUS) || ((node -> startup_data_sent) != 0)) {
-			status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
-			goto errors;
-		}
-	}
 	// Execute function of the corresponding board ID.
 	status = NODES[node -> board_id].functions.get_sigfox_ul_payload(&ul_payload_update);
 	if (status != NODE_SUCCESS) goto errors;
@@ -402,10 +391,6 @@ NODE_status_t _NODE_radio_send(NODE_t* node, NODE_sigfox_ul_payload_type_t ul_pa
 		status = NODE_ERROR_SIGFOX_SEND;
 		goto errors;
 	}
-	// Set startup data flag of the corresponding node.
-	if (ul_payload_type == NODE_SIGFOX_PAYLOAD_TYPE_STARTUP) {
-		(node -> startup_data_sent) = 1;
-	}
 errors:
 	return status;
 }
@@ -418,20 +403,11 @@ NODE_status_t _NODE_radio_read(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t read_status;
-	// Reset status.
+	// Reset status and operation code.
 	read_status.all = 0;
+	node_ctx.sigfox_dl_payload.operation_code = NODE_DOWNLINK_OPERATION_CODE_NOP;
 	// Read downlink payload.
 	status = UHFM_get_dl_payload(node_ctx.uhfm_address, node_ctx.sigfox_dl_payload.frame, &read_status);
-	if (status != NODE_SUCCESS) {
-		node_ctx.sigfox_dl_payload.operation_code = NODE_DOWNLINK_OPERATION_CODE_NOP;
-		goto errors;
-	}
-	// Check send status.
-	if (read_status.all != 0) {
-		node_ctx.sigfox_dl_payload.operation_code = NODE_DOWNLINK_OPERATION_CODE_NOP;
-		status = NODE_ERROR_SIGFOX_READ;
-	}
-errors:
 	return status;
 }
 
@@ -591,7 +567,6 @@ void NODE_init(void) {
 	// Init context.
 	node_ctx.sigfox_ul_node_list_index = 0;
 	node_ctx.sigfox_ul_next_time_seconds = 0;
-	node_ctx.sigfox_ul_payload_type_index = 0;
 	node_ctx.sigfox_dl_next_time_seconds = 0;
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
@@ -815,7 +790,6 @@ NODE_status_t NODE_task(void) {
 	NODE_access_parameters_t read_params;
 	NODE_access_status_t unused_read_status;
 	uint32_t reg_value = 0;
-	uint32_t loop_count = 0;
 	uint8_t bidirectional_flag = 0;
 	uint8_t ul_next_time_update_required = 0;
 	uint8_t dl_next_time_update_required = 0;
@@ -836,36 +810,22 @@ NODE_status_t NODE_task(void) {
 		// Turn bus interface on.
 		lpuart1_status = LPUART1_power_on();
 		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-		// Search next Sigfox message to send.
-		do {
-			// Set radio times to now to compensate node update duration.
-			if (ul_next_time_update_required != 0) {
-				node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
-			}
-			if (dl_next_time_update_required != 0) {
-				node_ctx.sigfox_dl_next_time_seconds = RTC_get_time_seconds();
-			}
-			// Send data through radio.
-			status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), node_ctx.sigfox_ul_payload_type_index, bidirectional_flag);
-			// Increment payload type index.
-			node_ctx.sigfox_ul_payload_type_index++;
-			if (node_ctx.sigfox_ul_payload_type_index >= NODE_SIGFOX_PAYLOAD_TYPE_LAST) {
-				// Switch to next node.
-				node_ctx.sigfox_ul_payload_type_index = 0;
-				node_ctx.sigfox_ul_node_list_index++;
-				if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
-					// Come back to first node.
-					node_ctx.sigfox_ul_node_list_index = 0;
-				}
-			}
-			// Exit if timeout.
-			loop_count++;
-			if (loop_count > NODE_SIGFOX_LOOP_MAX) {
-				status = NODE_ERROR_SIGFOX_LOOP;
-				goto errors;
-			}
+		// Set radio times to now to compensate node update duration.
+		if (ul_next_time_update_required != 0) {
+			node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
 		}
-		while (status != NODE_SUCCESS);
+		if (dl_next_time_update_required != 0) {
+			node_ctx.sigfox_dl_next_time_seconds = RTC_get_time_seconds();
+		}
+		// Send data through radio.
+		status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), bidirectional_flag);
+		// Switch to next node.
+		node_ctx.sigfox_ul_node_list_index++;
+		if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
+			// Come back to first node.
+			node_ctx.sigfox_ul_node_list_index = 0;
+		}
+		if (status != NODE_SUCCESS) goto errors;
 	}
 	// Execute downlink operation if needed.
 	if (bidirectional_flag != 0) {

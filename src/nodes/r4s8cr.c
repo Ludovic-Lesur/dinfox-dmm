@@ -569,43 +569,29 @@ NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payloa
 	// Build node registers structure.
 	node_reg.value = (uint32_t*) R4S8CR_REGISTERS;
 	node_reg.error = (uint32_t*) R4S8CR_REG_ERROR_VALUE;
-	// Check type.
-	switch (ul_payload_update -> type) {
-	case NODE_SIGFOX_PAYLOAD_TYPE_STARTUP:
-	case NODE_SIGFOX_PAYLOAD_TYPE_MONITORING:
-		// No startup or monitoring frame.
-		(*(ul_payload_update -> size)) = 0;
-		status = NODE_ERROR_SIGFOX_PAYLOAD_EMPTY;
-		goto errors;
-	case NODE_SIGFOX_PAYLOAD_TYPE_DATA:
-		// Build registers list.
-		reg_list.addr_list = (uint8_t*) R4S8CR_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL;
-		reg_list.size = sizeof(R4S8CR_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL);
-		// Reset registers.
-		status = XM_reset_registers(&reg_list, &node_reg);
-		if (status != NODE_SUCCESS) goto errors;
-		// Read related registers.
-		status = _R4S8CR_read_registers((ul_payload_update -> node_addr), &reg_list);
-		if (status != NODE_SUCCESS) goto errors;
-		// Build data payload.
-		sigfox_payload_data.r1st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R1ST);
-		sigfox_payload_data.r2st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R2ST);
-		sigfox_payload_data.r3st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R3ST);
-		sigfox_payload_data.r4st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R4ST);
-		sigfox_payload_data.r5st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R5ST);
-		sigfox_payload_data.r6st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R6ST);
-		sigfox_payload_data.r7st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R7ST);
-		sigfox_payload_data.r8st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R8ST);
-		// Copy payload.
-		for (idx=0 ; idx<R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
-			(ul_payload_update -> ul_payload)[idx] = sigfox_payload_data.frame[idx];
-		}
-		(*(ul_payload_update -> size)) = R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE;
-		break;
-	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
-		goto errors;
+	// Build registers list.
+	reg_list.addr_list = (uint8_t*) R4S8CR_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL;
+	reg_list.size = sizeof(R4S8CR_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL);
+	// Reset registers.
+	status = XM_reset_registers(&reg_list, &node_reg);
+	if (status != NODE_SUCCESS) goto errors;
+	// Read related registers.
+	status = _R4S8CR_read_registers((ul_payload_update -> node -> address), &reg_list);
+	if (status != NODE_SUCCESS) goto errors;
+	// Build data payload.
+	sigfox_payload_data.r1st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R1ST);
+	sigfox_payload_data.r2st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R2ST);
+	sigfox_payload_data.r3st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R3ST);
+	sigfox_payload_data.r4st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R4ST);
+	sigfox_payload_data.r5st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R5ST);
+	sigfox_payload_data.r6st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R6ST);
+	sigfox_payload_data.r7st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R7ST);
+	sigfox_payload_data.r8st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R8ST);
+	// Copy payload.
+	for (idx=0 ; idx<R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
+		(ul_payload_update -> ul_payload)[idx] = sigfox_payload_data.frame[idx];
 	}
+	(*(ul_payload_update -> size)) = R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE;
 errors:
 	return status;
 }

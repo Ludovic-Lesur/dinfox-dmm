@@ -184,8 +184,7 @@ int main(void) {
 			break;
 		case DMM_STATE_NODE_TASK:
 			// Process nodes_task.
-			node_status = NODE_task();
-			NODE_error_check();
+			NODE_task();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;

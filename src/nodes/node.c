@@ -10,12 +10,13 @@
 #include "at_bus.h"
 #include "bpsm.h"
 #include "bpsm_reg.h"
+#include "common.h"
 #include "ddrm.h"
 #include "ddrm_reg.h"
 #include "dinfox.h"
 #include "dmm.h"
 #include "dmm_reg.h"
-#include "common.h"
+#include "error.h"
 #include "gpsm.h"
 #include "gpsm_reg.h"
 #include "lpuart.h"
@@ -546,7 +547,7 @@ errors:
 
 /* PARSE SIGFOX DL PAYLOAD.
  * @param:			None.
- * @return status:	Function execution status..
+ * @return status:	Function execution status.
  */
 NODE_status_t _NODE_execute_downlink(void) {
 	// Local variables.
@@ -720,7 +721,7 @@ errors:
 
 /* CHECK AND EXECUTE NODE ACTIONS.
  * @param:			None.
- * @return status:	Function execution status..
+ * @return status:	Function execution status.
  */
 NODE_status_t _NODE_execute_actions(void) {
 	// Local variables.
@@ -746,6 +747,126 @@ NODE_status_t _NODE_execute_actions(void) {
 errors:
 	return status;
 }
+
+/* MAIN RADIO TASK OF NODE LAYER.
+ * @param:			None.
+ * @return status:	Function execution status.
+ */
+NODE_status_t _NODE_radio_task(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	NODE_access_parameters_t read_params;
+	NODE_access_status_t unused_read_status;
+	uint32_t reg_value = 0;
+	uint8_t bidirectional_flag = 0;
+	uint8_t ul_next_time_update_required = 0;
+	uint8_t dl_next_time_update_required = 0;
+	// Check uplink period.
+	if (RTC_get_time_seconds() >= node_ctx.sigfox_ul_next_time_seconds) {
+		// Next time update needed.
+		ul_next_time_update_required = 1;
+		// Check downlink period.
+		if (RTC_get_time_seconds() >= node_ctx.sigfox_dl_next_time_seconds) {
+			// Next time update needed and set bidirectional flag.
+			dl_next_time_update_required = 1;
+			bidirectional_flag = 1;
+		}
+		// Turn bus interface on.
+		lpuart1_status = LPUART1_power_on();
+		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+		// Set radio times to now to compensate node update duration.
+		if (ul_next_time_update_required != 0) {
+			node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
+		}
+		if (dl_next_time_update_required != 0) {
+			node_ctx.sigfox_dl_next_time_seconds = RTC_get_time_seconds();
+		}
+		// Send data through radio.
+		status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), bidirectional_flag);
+		// Switch to next node.
+		node_ctx.sigfox_ul_node_list_index++;
+		if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
+			// Come back to first node.
+			node_ctx.sigfox_ul_node_list_index = 0;
+		}
+		if (status != NODE_SUCCESS) goto errors;
+	}
+	// Execute downlink operation if needed.
+	if (bidirectional_flag != 0) {
+		// Read downlink payload.
+		status = _NODE_radio_read();
+		if (status != NODE_SUCCESS) goto errors;
+		// Decode downlink payload.
+		status = _NODE_execute_downlink();
+		if (status != NODE_SUCCESS) goto errors;
+	}
+errors:
+	// Update next radio times.
+	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
+	read_params.reg_addr = DMM_REG_ADDR_SYSTEM_CONFIGURATION;
+	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
+	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
+	DMM_read_register(&read_params, &reg_value, &unused_read_status);
+	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
+	if (ul_next_time_update_required != 0) {
+		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD));
+	}
+	if (dl_next_time_update_required != 0) {
+		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD));
+	}
+	return status;
+}
+
+#ifdef BMS
+/* MAIN BMS TASK OF NODE LAYER.
+ * @param:			None.
+ * @return status:	Function execution status.
+ */
+NODE_status_t _NODE_bms_task(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	NODE_access_status_t access_status;
+	uint32_t reg_value = 0;
+	uint16_t vbatt_dinfox = 0;
+	uint32_t vbatt_mv = 0;
+	// Check monitoring period.
+	if (RTC_get_time_seconds() >= node_ctx.bms_monitoring_next_time_seconds) {
+		// Update next time.
+		node_ctx.bms_monitoring_next_time_seconds = (RTC_get_time_seconds() + BMS_MONITORING_PERIOD_SECONDS);
+		// Check BMS presence.
+		if (node_ctx.bms_node_ptr == NULL) goto errors;
+		// Turn bus interface on.
+		lpuart1_status = LPUART1_power_on();
+		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+		// Perform measurements.
+		status = XM_perform_measurements((node_ctx.bms_node_ptr -> address), &access_status);
+		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		// Read battery voltage.
+		status = _NODE_read_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_ANALOG_DATA_1, &reg_value, &access_status);
+		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		// Check error value.
+		vbatt_dinfox = (uint16_t) DINFOX_read_field(reg_value, LVRM_REG_ANALOG_DATA_1_MASK_VCOM);
+		if (vbatt_dinfox == DINFOX_VOLTAGE_ERROR_VALUE) goto errors;
+		// Get battery voltage.
+		vbatt_mv = DINFOX_get_mv(vbatt_dinfox);
+		// Check battery voltage.
+		if (vbatt_mv < BMS_VBATT_LOW_THRESHOLD_MV) {
+			// Open relay.
+			status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0x00, LVRM_REG_STATUS_CONTROL_1_MASK_RLST, &access_status);
+			if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		}
+		if (vbatt_mv > BMS_VBATT_HIGH_THRESHOLD_MV) {
+			// Close relay.
+			status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0x01, LVRM_REG_STATUS_CONTROL_1_MASK_RLST, &access_status);
+			if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		}
+	}
+errors:
+	return status;
+}
+#endif
 
 /*** NODE functions ***/
 
@@ -974,110 +1095,23 @@ errors:
 }
 
 /* MAIN TASK OF NODE LAYER.
- * @param:			None.
- * @return status:	Function execution status.
+ * @param:	None.
+ * @return:	None.
  */
-NODE_status_t NODE_task(void) {
+void NODE_task(void) {
 	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	NODE_access_parameters_t read_params;
-	NODE_access_status_t unused_read_status;
-	uint32_t reg_value = 0;
-	uint8_t bidirectional_flag = 0;
-	uint8_t ul_next_time_update_required = 0;
-	uint8_t dl_next_time_update_required = 0;
-#ifdef BMS
-	NODE_access_status_t access_status;
-	int32_t vbatt_mv = 0;
-#endif
-	// Check uplink period.
-	if (RTC_get_time_seconds() >= node_ctx.sigfox_ul_next_time_seconds) {
-		// Next time update needed.
-		ul_next_time_update_required = 1;
-		// Check downlink period.
-		if (RTC_get_time_seconds() >= node_ctx.sigfox_dl_next_time_seconds) {
-			// Next time update needed and set bidirectional flag.
-			dl_next_time_update_required = 1;
-			bidirectional_flag = 1;
-		}
-		// Turn bus interface on.
-		lpuart1_status = LPUART1_power_on();
-		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
-		// Set radio times to now to compensate node update duration.
-		if (ul_next_time_update_required != 0) {
-			node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
-		}
-		if (dl_next_time_update_required != 0) {
-			node_ctx.sigfox_dl_next_time_seconds = RTC_get_time_seconds();
-		}
-		// Send data through radio.
-		status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), bidirectional_flag);
-		// Switch to next node.
-		node_ctx.sigfox_ul_node_list_index++;
-		if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
-			// Come back to first node.
-			node_ctx.sigfox_ul_node_list_index = 0;
-		}
-		if (status != NODE_SUCCESS) goto errors;
-	}
-	// Execute downlink operation if needed.
-	if (bidirectional_flag != 0) {
-		// Read downlink payload.
-		status = _NODE_radio_read();
-		if (status != NODE_SUCCESS) goto errors;
-		// Decode downlink payload.
-		status = _NODE_execute_downlink();
-		if (status != NODE_SUCCESS) goto errors;
-	}
+	NODE_status_t node_status = NODE_SUCCESS;
+	// Radio task.
+	node_status = _NODE_radio_task();
+	NODE_error_check();
 	// Execute node actions.
-	status = _NODE_execute_actions();
-	if (status != NODE_SUCCESS) goto errors;
+	node_status = _NODE_execute_actions();
+	NODE_error_check();
 #ifdef BMS
-errors:
-	// Check monitoring period.
-	if (RTC_get_time_seconds() >= node_ctx.bms_monitoring_next_time_seconds) {
-		// Update next time.
-		node_ctx.bms_monitoring_next_time_seconds = (RTC_get_time_seconds() + BMS_MONITORING_PERIOD_SECONDS);
-		// Check detect flag.
-		if (node_ctx.bms_node_ptr != NULL) {
-			// Read battery voltage.
-			status = _NODE_read_register(node_ctx.bms_node_ptr, LVRM_REGISTER_VCOM_MV, &vbatt_mv, &access_status);
-			if (status != NODE_SUCCESS) goto end;
-			// Check read status.
-			if (access_status.all == 0) {
-				// Check battery voltage.
-				if (vbatt_mv < BMS_VBATT_LOW_THRESHOLD_MV) {
-					// Open relay.
-					status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REGISTER_RELAY_STATE, 0, &access_status);
-					if (status != NODE_SUCCESS) goto end;
-				}
-				if (vbatt_mv > BMS_VBATT_HIGH_THRESHOLD_MV) {
-					// Close relay.
-					status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REGISTER_RELAY_STATE, 1, &access_status);
-					if (status != NODE_SUCCESS) goto end;
-				}
-			}
-		}
-	}
-end:
-#else
-errors:
+	// BMS task.
+	node_status = _NODE_bms_task();
+	NODE_error_check();
 #endif
-	// Update next radio times.
-	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
-	read_params.reg_addr = DMM_REG_ADDR_SYSTEM_CONFIGURATION;
-	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
-	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-	DMM_read_register(&read_params, &reg_value, &unused_read_status);
-	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
-	if (ul_next_time_update_required != 0) {
-		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD));
-	}
-	if (dl_next_time_update_required != 0) {
-		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD));
-	}
 	// Turn bus interface off.
 	LPUART1_power_off();
-	return status;
 }

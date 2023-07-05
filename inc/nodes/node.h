@@ -126,7 +126,7 @@ NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name);
 NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_data_index);
 NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr);
 
-NODE_status_t NODE_task(void);
+void NODE_task(void);
 
 #define NODE_append_name_string(str) { \
 	string_status = STRING_append_string((line_data_read -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \

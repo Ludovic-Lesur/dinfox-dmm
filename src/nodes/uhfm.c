@@ -12,6 +12,7 @@
 #include "common.h"
 #include "dinfox.h"
 #include "node.h"
+#include "sigfox_ep_api.h"
 #include "string.h"
 #include "xm.h"
 
@@ -351,7 +352,7 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t read_params;
-	UHFM_message_status_t message_status;
+	SIGFOX_EP_API_message_status_t message_status;
 	uint32_t reg_value = 0;
 	uint8_t reg_offset = 0;
 	uint8_t idx = 0;
@@ -366,7 +367,7 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	// Compute message status.
 	message_status.all = DINFOX_read_field(reg_value, UHFM_REG_STATUS_CONTROL_1_MASK_MESSAGE_STATUS);
 	// Check DL flag.
-	if (message_status.dl_frame == 0) goto errors;
+	if (message_status.field.dl_frame == 0) goto errors;
 	// Byte loop.
 	for (idx=0 ; idx<UHFM_SIGFOX_DL_PAYLOAD_SIZE ; idx++) {
 		// Check index.

@@ -134,7 +134,7 @@ static ADC_status_t _ADC1_filtered_conversion(ADC_channel_t adc_channel, uint32_
 	}
 	// Apply median filter.
 	math_status = MATH_median_filter_u32(adc_sample_buf, ADC_MEDIAN_FILTER_LENGTH, ADC_CENTER_AVERAGE_LENGTH, adc_result_12bits);
-	MATH_status_check(ADC_ERROR_BASE_MATH);
+	MATH_check_status(ADC_ERROR_BASE_MATH);
 errors:
 	return status;
 }
@@ -235,7 +235,7 @@ ADC_status_t ADC1_init(void) {
 	// Enable ADC voltage regulator.
 	ADC1 -> CR |= (0b1 << 28);
 	lptim1_status = LPTIM1_delay_milliseconds(5, LPTIM_DELAY_MODE_ACTIVE);
-	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
+	LPTIM1_check_status(ADC_ERROR_BASE_LPTIM);
 	// ADC configuration.
 	ADC1 -> CCR |= (0b1 << 25); // Enable low frequency clock (LFMEN='1').
 	ADC1 -> CFGR2 |= (0b11 << 30); // Use PCLK2 as ADCCLK (MSI).
@@ -277,11 +277,11 @@ ADC_status_t ADC1_perform_measurements(void) {
 	GPIO_write(&GPIO_MNTR_EN, 1);
 	// Wait voltage dividers stabilization.
 	lptim1_status = LPTIM1_delay_milliseconds(100, LPTIM_DELAY_MODE_STOP);
-	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
+	LPTIM1_check_status(ADC_ERROR_BASE_LPTIM);
 	// Wake-up VREFINT and temperature sensor.
 	ADC1 -> CCR |= (0b11 << 22); // TSEN='1' and VREFEF='1'.
 	lptim1_status = LPTIM1_delay_milliseconds(10, LPTIM_DELAY_MODE_ACTIVE);
-	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
+	LPTIM1_check_status(ADC_ERROR_BASE_LPTIM);
 	// Perform conversions.
 	status = _ADC1_compute_all_channels();
 	if (status != ADC_SUCCESS) goto errors;

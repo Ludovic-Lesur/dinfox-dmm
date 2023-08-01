@@ -130,18 +130,18 @@ void NODE_task(void);
 
 #define NODE_append_name_string(str) { \
 	string_status = STRING_append_string((line_data_read -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
-	STRING_status_check(NODE_ERROR_BASE_STRING); \
+	STRING_check_status(NODE_ERROR_BASE_STRING); \
 }
 
 #define NODE_append_value_string(str) { \
 	string_status = STRING_append_string((line_data_read -> value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
-	STRING_status_check(NODE_ERROR_BASE_STRING); \
+	STRING_check_status(NODE_ERROR_BASE_STRING); \
 }
 
 #define NODE_append_value_int32(value, format, prefix) { \
 	char_t str[NODE_STRING_BUFFER_SIZE]; \
 	string_status = STRING_value_to_string((int32_t) value, format, prefix, str); \
-	STRING_status_check(NODE_ERROR_BASE_STRING); \
+	STRING_check_status(NODE_ERROR_BASE_STRING); \
 	NODE_append_value_string(str); \
 }
 
@@ -153,8 +153,8 @@ void NODE_task(void);
 	buffer_size = 0; \
 }
 
-#define NODE_status_check(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; }}
-#define NODE_error_check() { ERROR_status_check(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
-#define NODE_error_check_print() { ERROR_status_check_print(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+#define NODE_check_status(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; }}
+#define NODE_stack_error() { ERROR_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+#define NODE_stack_error_print() { ERROR_check_status_print(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
 
 #endif /* __NODE_H__ */

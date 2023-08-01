@@ -36,8 +36,8 @@ void I2C1_power_off(void);
 I2C_status_t I2C1_write(uint8_t slave_address, uint8_t* tx_buf, uint8_t tx_buf_length, uint8_t stop_flag);
 I2C_status_t I2C1_read(uint8_t slave_address, uint8_t* rx_buf, uint8_t rx_buf_length);
 
-#define I2C1_status_check(error_base) { if (i2c1_status != I2C_SUCCESS) { status = error_base + i2c1_status; goto errors; }}
-#define I2C1_error_check() { ERROR_status_check(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
-#define I2C1_error_check_print() { ERROR_status_check_print(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
+#define I2C1_check_status(error_base) { if (i2c1_status != I2C_SUCCESS) { status = error_base + i2c1_status; goto errors; }}
+#define I2C1_stack_error() { ERROR_check_status(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
+#define I2C1_stack_error_print() { ERROR_check_status_print(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
 
 #endif /* __I2C_H__ */

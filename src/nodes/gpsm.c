@@ -161,7 +161,7 @@ NODE_status_t GPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 				// Convert to 5 digits string.
 				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-				STRING_status_check(NODE_ERROR_BASE_STRING);
+				STRING_check_status(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
 				NODE_append_value_string(field_str);

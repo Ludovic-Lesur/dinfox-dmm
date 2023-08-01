@@ -42,8 +42,8 @@ ADC_status_t ADC1_perform_measurements(void);
 ADC_status_t ADC1_get_data(ADC_data_index_t data_idx, uint32_t* data);
 ADC_status_t ADC1_get_tmcu(int8_t* tmcu_degrees);
 
-#define ADC1_status_check(error_base) { if (adc1_status != ADC_SUCCESS) { status = error_base + adc1_status; goto errors; }}
-#define ADC1_error_check() { ERROR_status_check(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1); }
-#define ADC1_error_check_print() { ERROR_status_check_print(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1); }
+#define ADC1_check_status(error_base) { if (adc1_status != ADC_SUCCESS) { status = error_base + adc1_status; goto errors; }}
+#define ADC1_stack_error() { ERROR_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1); }
+#define ADC1_stack_error_print() { ERROR_check_status_print(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1); }
 
 #endif /* __ADC_H__ */

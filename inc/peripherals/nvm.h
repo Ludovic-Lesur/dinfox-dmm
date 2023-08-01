@@ -33,8 +33,8 @@ void NVM_init(void);
 NVM_status_t NVM_read_byte(NVM_address_t address_offset, uint8_t* data);
 NVM_status_t NVM_write_byte(NVM_address_t address_offset, uint8_t data);
 
-#define NVM_status_check(error_base) { if (nvm_status != NVM_SUCCESS) { status = error_base + nvm_status; goto errors; }}
-#define NVM_error_check() { ERROR_status_check(nvm_status, NVM_SUCCESS, ERROR_BASE_NVM); }
-#define NVM_error_check_print() { ERROR_status_check_print(nvm_status, NVM_SUCCESS, ERROR_BASE_NVM); }
+#define NVM_check_status(error_base) { if (nvm_status != NVM_SUCCESS) { status = error_base + nvm_status; goto errors; }}
+#define NVM_stack_error() { ERROR_check_status(nvm_status, NVM_SUCCESS, ERROR_BASE_NVM); }
+#define NVM_stack_error_print() { ERROR_check_status_print(nvm_status, NVM_SUCCESS, ERROR_BASE_NVM); }
 
 #endif /* __NVM_H__ */

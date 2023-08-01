@@ -25,8 +25,8 @@ typedef enum {
 IWDG_status_t IWDG_init(void);
 void IWDG_reload(void);
 
-#define IWDG_status_check(error_base) { if (iwdg_status != IWDG_SUCCESS) { status = error_base + iwdg_status; goto errors; }}
-#define IWDG_error_check() { ERROR_status_check(iwdg_status, IWDG_SUCCESS, ERROR_BASE_IWDG); }
-#define IWDG_error_check_print() { ERROR_status_check_print(iwdg_status, IWDG_SUCCESS, ERROR_BASE_IWDG); }
+#define IWDG_check_status(error_base) { if (iwdg_status != IWDG_SUCCESS) { status = error_base + iwdg_status; goto errors; }}
+#define IWDG_stack_error() { ERROR_check_status(iwdg_status, IWDG_SUCCESS, ERROR_BASE_IWDG); }
+#define IWDG_stack_error_print() { ERROR_check_status_print(iwdg_status, IWDG_SUCCESS, ERROR_BASE_IWDG); }
 
 #endif /* __IWDG_H__ */

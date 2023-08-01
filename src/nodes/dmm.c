@@ -108,12 +108,14 @@ static const DMM_sigfox_payload_type_t DMM_SIGFOX_PAYLOAD_PATTERN[] = {
  * @return:	None.
  */
 void _DMM_reset_analog_data(void) {
+	// Local variables.
+	uint32_t unused_mask = 0;
 	// Reset to error value.
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), DINFOX_VOLTAGE_ERROR_VALUE, COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), DINFOX_TEMPERATURE_ERROR_VALUE, COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_1_MASK_VRS);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_1_MASK_VHMI);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_2_MASK_VUSB);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), &unused_mask, DINFOX_VOLTAGE_ERROR_VALUE, COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), &unused_mask, DINFOX_TEMPERATURE_ERROR_VALUE, COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_1_MASK_VRS);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_1_MASK_VHMI);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), &unused_mask, DINFOX_VOLTAGE_ERROR_VALUE, DMM_REG_ANALOG_DATA_2_MASK_VUSB);
 }
 
 /*** DMM functions ***/
@@ -125,31 +127,32 @@ void _DMM_reset_analog_data(void) {
 void DMM_init_registers(void) {
 	// Local variables.
 	uint8_t idx = 0;
+	uint32_t unused_mask = 0;
 	// Reset all registers.
 	for (idx=0 ; idx<DMM_REG_ADDR_LAST ; idx++) {
 		DMM_INTERNAL_REGISTERS[idx] = 0;
 	}
 	// Node ID register.
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_NODE_ID]), DINFOX_NODE_ADDRESS_DMM, COMMON_REG_NODE_ID_MASK_NODE_ADDR);
-	DINFOX_write_field(COMMON_REG_ADDR_NODE_ID, DINFOX_BOARD_ID_DMM, COMMON_REG_NODE_ID_MASK_BOARD_ID);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_NODE_ID]), &unused_mask, DINFOX_NODE_ADDRESS_DMM, COMMON_REG_NODE_ID_MASK_NODE_ADDR);
+	DINFOX_write_field(COMMON_REG_ADDR_NODE_ID, &unused_mask, DINFOX_BOARD_ID_DMM, COMMON_REG_NODE_ID_MASK_BOARD_ID);
 	// HW version register.
 #ifdef HW1_0
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_HW_VERSION]), 1, COMMON_REG_HW_VERSION_MASK_MAJOR);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_HW_VERSION]), 0, COMMON_REG_HW_VERSION_MASK_MINOR);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_HW_VERSION]), &unused_mask, 1, COMMON_REG_HW_VERSION_MASK_MAJOR);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_HW_VERSION]), &unused_mask, 0, COMMON_REG_HW_VERSION_MASK_MINOR);
 #endif
 	// SW version register 0.
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), GIT_MAJOR_VERSION, COMMON_REG_SW_VERSION_0_MASK_MAJOR);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), GIT_MINOR_VERSION, COMMON_REG_SW_VERSION_0_MASK_MINOR);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), GIT_COMMIT_INDEX, COMMON_REG_SW_VERSION_0_MASK_COMMIT_INDEX);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), GIT_DIRTY_FLAG, COMMON_REG_SW_VERSION_0_MASK_DTYF);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), &unused_mask, GIT_MAJOR_VERSION, COMMON_REG_SW_VERSION_0_MASK_MAJOR);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), &unused_mask, GIT_MINOR_VERSION, COMMON_REG_SW_VERSION_0_MASK_MINOR);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), &unused_mask, GIT_COMMIT_INDEX, COMMON_REG_SW_VERSION_0_MASK_COMMIT_INDEX);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_0]), &unused_mask, GIT_DIRTY_FLAG, COMMON_REG_SW_VERSION_0_MASK_DTYF);
 	// SW version register 1.
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_1]), GIT_COMMIT_ID, COMMON_REG_SW_VERSION_1_MASK_COMMIT_ID);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_SW_VERSION_1]), &unused_mask, GIT_COMMIT_ID, COMMON_REG_SW_VERSION_1_MASK_COMMIT_ID);
 	// Reset flags registers.
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_RESET_FLAGS]), ((uint32_t) (((RCC -> CSR) >> 24) & 0xFF)), COMMON_REG_RESET_FLAGS_MASK_ALL);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_RESET_FLAGS]), &unused_mask, ((uint32_t) (((RCC -> CSR) >> 24) & 0xFF)), COMMON_REG_RESET_FLAGS_MASK_ALL);
 	// Load default values.
 	_DMM_reset_analog_data();
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), DINFOX_convert_seconds(NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), DINFOX_convert_seconds(NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD);
 }
 
 /* WRITE DMM REGISTER.
@@ -168,6 +171,7 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 	int8_t tmcu_degrees = 0;
 	uint32_t temp = 0;
 	uint8_t hmi_on = 0;
+	uint32_t unused_mask = 0;
 	// Reset write status.
 	(*write_status).all = 0;
 	// Check parameters.
@@ -195,14 +199,14 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 	// Check actions.
 	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0], COMMON_REG_STATUS_CONTROL_0_MASK_RTRG) != 0) {
 		// Clear flag.
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0]), 0, COMMON_REG_STATUS_CONTROL_0_MASK_RTRG);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0]), &unused_mask, 0, COMMON_REG_STATUS_CONTROL_0_MASK_RTRG);
 		// Reset MCU.
 		PWR_software_reset();
 	}
 	// Measure trigger bit.
 	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0], COMMON_REG_STATUS_CONTROL_0_MASK_MTRG) != 0) {
 		// Clear flag.
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0]), 0, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0]), &unused_mask, 0, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG);
 		// Reset results.
 		_DMM_reset_analog_data();
 		// Check HMI power status.
@@ -210,7 +214,7 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 		if (hmi_on == 0) {
 			// Turn HMI on.
 			i2c1_status = I2C1_power_on();
-			I2C1_status_check(NODE_ERROR_BASE_I2C);
+			I2C1_check_status(NODE_ERROR_BASE_I2C);
 		}
 		// Perform analog measurements.
 		adc1_status = ADC1_perform_measurements();
@@ -218,27 +222,27 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 		if (hmi_on == 0) {
 			I2C1_power_off();
 		}
-		ADC1_status_check(NODE_ERROR_BASE_ADC);
+		ADC1_check_status(NODE_ERROR_BASE_ADC);
 		// VMCU.
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VMCU_MV, &adc_data);
-		ADC1_status_check(NODE_ERROR_BASE_ADC);
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), DINFOX_convert_mv(adc_data), COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), &unused_mask, DINFOX_convert_mv(adc_data), COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
 		// TMCU.
 		adc1_status = ADC1_get_tmcu(&tmcu_degrees);
-		ADC1_status_check(NODE_ERROR_BASE_ADC);
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), DINFOX_convert_degrees(tmcu_degrees), COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
+		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), &unused_mask, DINFOX_convert_degrees(tmcu_degrees), COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
 		// VRS.
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &adc_data);
-		ADC1_status_check(NODE_ERROR_BASE_ADC);
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VRS);
+		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VRS);
 		// VHMI.
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VHMI_MV, &adc_data);
-		ADC1_status_check(NODE_ERROR_BASE_ADC);
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VHMI);
+		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VHMI);
 		// VHMI.
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &adc_data);
-		ADC1_status_check(NODE_ERROR_BASE_ADC);
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_2_MASK_VUSB);
+		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_2_MASK_VUSB);
 	}
 errors:
 	return status;
@@ -253,6 +257,7 @@ errors:
 NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	uint32_t unused_mask = 0;
 	// Reset read status.
 	(*read_status).all = 0;
 	// Check parameters.
@@ -269,10 +274,10 @@ NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t*
 	switch (read_params -> reg_addr) {
 	case COMMON_REG_ADDR_ERROR_STACK:
 		// Unstack error.
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ERROR_STACK]), (uint32_t) (ERROR_stack_read()), COMMON_REG_ERROR_STACK_MASK_ERROR);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ERROR_STACK]), &unused_mask, (uint32_t) (ERROR_stack_read()), COMMON_REG_ERROR_STACK_MASK_ERROR);
 		break;
 	case DMM_REG_ADDR_STATUS_CONTROL_1:
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_STATUS_CONTROL_1]), (uint32_t) (NODES_LIST.count), DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_STATUS_CONTROL_1]), &unused_mask, (uint32_t) (NODES_LIST.count), DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT);
 		break;
 	default:
 		// Nothing to do on other registers.
@@ -359,7 +364,7 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 				// Convert to 5 digits string.
 				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-				STRING_status_check(NODE_ERROR_BASE_STRING);
+				STRING_check_status(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
 				NODE_append_value_string(field_str);

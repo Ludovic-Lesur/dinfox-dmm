@@ -73,7 +73,7 @@ SH1106_status_t _SH1106_write(SH1106_data_type_t data_type, uint8_t* data, uint8
 	}
 	// Burst write with C0='0'.
 	i2c1_status = I2C1_write(SH1106_I2C_ADDRESS, sh1106_ctx.i2c_tx_buffer, (data_size_bytes + 1), 1);
-	I2C1_status_check(SH1106_ERROR_BASE_I2C);
+	I2C1_check_status(SH1106_ERROR_BASE_I2C);
 errors:
 	return status;
 }
@@ -89,7 +89,7 @@ SH1106_status_t _SH1106_read(uint8_t* data, uint8_t data_size_bytes) {
 	I2C_status_t i2c1_status = I2C_SUCCESS;
 	// Read data.
 	i2c1_status = I2C1_read(SH1106_I2C_ADDRESS, data, data_size_bytes);
-	I2C1_status_check(SH1106_ERROR_BASE_I2C);
+	I2C1_check_status(SH1106_ERROR_BASE_I2C);
 errors:
 	return status;
 }
@@ -262,7 +262,7 @@ SH1106_status_t SH1106_print_text(SH1106_text_t* text) {
 	}
 	// Compute text width.
 	string_status = STRING_get_size((text -> str), &text_size);
-	STRING_status_check(SH1106_ERROR_BASE_STRING);
+	STRING_check_status(SH1106_ERROR_BASE_STRING);
 	text_width_pixels = (text_size * FONT_CHAR_WIDTH_PIXELS);
 	// Check size.
 	if (text_width_pixels > SH1106_SCREEN_WIDTH_PIXELS) {

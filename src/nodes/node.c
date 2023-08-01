@@ -735,7 +735,7 @@ NODE_status_t _NODE_execute_actions(void) {
 		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
 			// Turn bus interface on.
 			lpuart1_status = LPUART1_power_on();
-			LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+			LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 			// Perform write operation.
 			status = _NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].reg_addr, node_ctx.actions[idx].reg_value, node_ctx.actions[idx].reg_mask, &write_status);
 			if (status != NODE_SUCCESS) goto errors;
@@ -774,7 +774,7 @@ NODE_status_t _NODE_radio_task(void) {
 		}
 		// Turn bus interface on.
 		lpuart1_status = LPUART1_power_on();
-		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+		LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 		// Set radio times to now to compensate node update duration.
 		if (ul_next_time_update_required != 0) {
 			node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
@@ -839,7 +839,7 @@ NODE_status_t _NODE_bms_task(void) {
 		if (node_ctx.bms_node_ptr == NULL) goto errors;
 		// Turn bus interface on.
 		lpuart1_status = LPUART1_power_on();
-		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+		LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 		// Perform measurements.
 		status = XM_perform_measurements((node_ctx.bms_node_ptr -> address), &access_status);
 		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
@@ -915,7 +915,7 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.count++;
 	// Turn bus interface on.
 	lpuart1_status = LPUART1_power_on();
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 	// Scan LBUS nodes.
 	status = AT_BUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
@@ -1103,14 +1103,14 @@ void NODE_task(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	// Radio task.
 	node_status = _NODE_radio_task();
-	NODE_error_check();
+	NODE_stack_error();
 	// Execute node actions.
 	node_status = _NODE_execute_actions();
-	NODE_error_check();
+	NODE_stack_error();
 #ifdef BMS
 	// BMS task.
 	node_status = _NODE_bms_task();
-	NODE_error_check();
+	NODE_stack_error();
 #endif
 	// Turn bus interface off.
 	LPUART1_power_off();

@@ -46,8 +46,8 @@ void TIM21_init(void);
 TIM_status_t TIM21_get_lsi_frequency(uint32_t* lsi_frequency_hz);
 void TIM21_disable(void);
 
-#define TIM21_status_check(error_base) { if (tim21_status != TIM_SUCCESS) { status = error_base + tim21_status; goto errors; }}
-#define TIM21_error_check() { ERROR_status_check(tim21_status, TIM_SUCCESS, ERROR_BASE_TIM21); }
-#define TIM21_error_check_print() { ERROR_status_check_print(tim21_status, TIM_SUCCESS, ERROR_BASE_TIM21); }
+#define TIM21_check_status(error_base) { if (tim21_status != TIM_SUCCESS) { status = error_base + tim21_status; goto errors; }}
+#define TIM21_stack_error() { ERROR_check_status(tim21_status, TIM_SUCCESS, ERROR_BASE_TIM21); }
+#define TIM21_stack_error_print() { ERROR_check_status_print(tim21_status, TIM_SUCCESS, ERROR_BASE_TIM21); }
 
 #endif /* __TIM_H__ */

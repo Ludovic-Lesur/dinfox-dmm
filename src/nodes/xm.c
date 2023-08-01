@@ -43,8 +43,7 @@ NODE_status_t XM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_l
 		str_data_idx = ((line_data_write -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
 		// Compute parameters.
 		reg_addr = node_line_data[str_data_idx].reg_addr;
-		reg_mask = node_line_data[str_data_idx].field_mask;
-		reg_value |= (line_data_write -> field_value) << DINFOX_get_field_offset(reg_mask);
+		DINFOX_write_field(&reg_value, &reg_mask, (line_data_write -> field_value), node_line_data[str_data_idx].field_mask);
 		timeout_ms = node_write_timeout[reg_addr - COMMON_REG_ADDR_LAST];
 		// Write parameters.
 		write_params.node_addr = (line_data_write -> node_addr);

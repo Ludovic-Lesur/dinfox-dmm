@@ -124,7 +124,7 @@ static NODE_status_t _R4S8CR_configure_phy(void) {
 	lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
 	lpuart_config.rx_callback = &R4S8CR_fill_rx_buffer;
 	lpuart1_status = LPUART1_configure(&lpuart_config);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 errors:
 	return status;
 }
@@ -158,7 +158,7 @@ static NODE_status_t _R4S8CR_write_relay_state(uint8_t relay_id, uint8_t rxst, N
 	LPUART1_disable_rx();
 	// Send command.
 	lpuart1_status = LPUART1_send(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();
 errors:
@@ -194,14 +194,14 @@ static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, uint32_t ti
 	LPUART1_disable_rx();
 	// Send command.
 	lpuart1_status = LPUART1_send(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();
 	// Wait reply.
 	while (1) {
 		// Delay.
 		lptim1_status = LPTIM1_delay_milliseconds(R4S8CR_REPLY_PARSING_DELAY_MS, LPTIM_DELAY_MODE_STOP);
-		LPTIM1_status_check(NODE_ERROR_BASE_LPTIM);
+		LPTIM1_check_status(NODE_ERROR_BASE_LPTIM);
 		reply_time_ms += R4S8CR_REPLY_PARSING_DELAY_MS;
 		// Check number of received bytes.
 		if (r4s8cr_ctx.reply_size >= R4S8CR_REPLY_SIZE_BYTES) {
@@ -357,6 +357,7 @@ NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t relay_box_id = 0;
 	uint8_t rxst = 0;
+	uint32_t unused_mask = 0;
 	// Check parameters.
 	if ((read_params == NULL) || (reg_value == NULL) || (read_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -381,7 +382,7 @@ NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32
 		status = _R4S8CR_read_relays_state(relay_box_id, ((read_params -> reply_params).timeout_ms), &rxst, read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Write register.
-		DINFOX_write_field(&(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL]), (uint32_t) (rxst), R4S8CR_REG_STATUS_CONTROL_MASK_ALL);
+		DINFOX_write_field(&(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL]), &unused_mask, (uint32_t) (rxst), R4S8CR_REG_STATUS_CONTROL_MASK_ALL);
 		break;
 	default:
 		// Nothing to do on other registers.
@@ -463,8 +464,7 @@ NODE_status_t R4S8CR_write_line_data(NODE_line_data_write_t* line_data_write, NO
 	}
 	// Compute parameters.
 	reg_addr = R4S8CR_LINE_DATA[(line_data_write -> line_data_index)].reg_addr;
-	reg_mask = R4S8CR_LINE_DATA[(line_data_write -> line_data_index)].field_mask;
-	reg_value |= (line_data_write -> field_value) << DINFOX_get_field_offset(reg_mask);
+	DINFOX_write_field(&reg_value, &reg_mask, (line_data_write -> field_value), R4S8CR_LINE_DATA[(line_data_write -> line_data_index)].field_mask);
 	timeout_ms = R4S8CR_REG_WRITE_TIMEOUT_MS[reg_addr];
 	// Write parameters.
 	write_params.node_addr = (line_data_write -> node_addr);

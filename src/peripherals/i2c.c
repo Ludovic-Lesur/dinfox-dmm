@@ -32,7 +32,7 @@ static I2C_status_t _I2C1_clear(void) {
 	// Disable peripheral.
 	I2C1 -> CR1 &= ~(0b1 << 0); // PE='0'.
 	lptim1_status = LPTIM1_delay_milliseconds(1, LPTIM_DELAY_MODE_ACTIVE);
-	LPTIM1_status_check(I2C_ERROR_BASE_LPTIM);
+	LPTIM1_check_status(I2C_ERROR_BASE_LPTIM);
 	// Enable peripheral and clear all flags.
 	I2C1 -> CR1 |= (0b1 << 0); // PE='1'.
 	I2C1 -> ICR |= 0x00003F38;
@@ -75,7 +75,7 @@ I2C_status_t I2C1_power_on(void) {
 	GPIO_write(&GPIO_HMI_POWER_ENABLE, 1);
 	// Warm-up delay.
 	lptim1_status = LPTIM1_delay_milliseconds(200, LPTIM_DELAY_MODE_STOP);
-	LPTIM1_status_check(I2C_ERROR_BASE_LPTIM);
+	LPTIM1_check_status(I2C_ERROR_BASE_LPTIM);
 errors:
 	return status;
 }

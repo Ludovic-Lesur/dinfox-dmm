@@ -107,29 +107,29 @@ void _DMM_init_hw(void) {
 	RTC_reset();
 	// Start oscillators.
 	rcc_status = RCC_enable_lsi();
-	RCC_error_check();
+	RCC_stack_error();
 	dmm_ctx.status.lsi_status = (rcc_status == RCC_SUCCESS) ? 1 : 0;
 	rcc_status = RCC_enable_lse();
-	RCC_error_check();
+	RCC_stack_error();
 	dmm_ctx.status.lse_status = (rcc_status == RCC_SUCCESS) ? 1 : 0;
 	// Start independent watchdog.
 #ifndef DEBUG
 	iwdg_status = IWDG_init();
-	IWDG_error_check();
+	IWDG_stack_error();
 #endif
 	// High speed oscillator.
 	IWDG_reload();
 	rcc_status = RCC_switch_to_hsi();
-	RCC_error_check();
+	RCC_stack_error();
 	// Get LSI effective frequency (must be called after HSI initialization and before RTC inititialization).
 	rcc_status = RCC_get_lsi_frequency(&dmm_ctx.lsi_frequency_hz);
-	RCC_error_check();
+	RCC_stack_error();
 	if (rcc_status != RCC_SUCCESS) dmm_ctx.lsi_frequency_hz = RCC_LSI_FREQUENCY_HZ;
 	IWDG_reload();
 	// RTC.
 	dmm_ctx.lse_running = dmm_ctx.status.lse_status;
 	rtc_status = RTC_init(&dmm_ctx.lse_running, dmm_ctx.lsi_frequency_hz);
-	RTC_error_check();
+	RTC_stack_error();
 	// Update LSE status if RTC failed to start on it.
 	if (dmm_ctx.lse_running == 0) {
 		dmm_ctx.status.lse_status = 0;
@@ -140,7 +140,7 @@ void _DMM_init_hw(void) {
 	TIM3_init();
 	TIM22_init();
 	adc1_status = ADC1_init();
-	ADC1_error_check();
+	ADC1_stack_error();
 	LPUART1_init();
 	I2C1_init();
 	// Init components.
@@ -171,14 +171,14 @@ int main(void) {
 		case DMM_STATE_INIT:
 			// Perform first nodes scan.
 			node_status = NODE_scan();
-			NODE_error_check();
+			NODE_stack_error();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_NODE_TASK;
 			break;
 		case DMM_STATE_HMI:
 			// Process HMI.
 			hmi_status = HMI_task();
-			HMI_error_check();
+			HMI_stack_error();
 			// Compute next state.
 			dmm_ctx.state = DMM_STATE_OFF;
 			break;

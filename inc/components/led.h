@@ -40,8 +40,8 @@ LED_status_t LED_start_single_blink(LED_color_t color, uint32_t blink_duration_m
 uint8_t LED_is_single_blink_done(void);
 void LED_stop_blink(void);
 
-#define LED_status_check(error_base) { if (led_status != LED_SUCCESS) { status = error_base + led_status; goto errors; }}
-#define LED_error_check() { ERROR_status_check(led_status, LED_SUCCESS, ERROR_BASE_LED); }
-#define LED_error_check_print() { ERROR_status_check_print(led_status, LED_SUCCESS, ERROR_BASE_LED); }
+#define LED_check_status(error_base) { if (led_status != LED_SUCCESS) { status = error_base + led_status; goto errors; }}
+#define LED_stack_error() { ERROR_check_status(led_status, LED_SUCCESS, ERROR_BASE_LED); }
+#define LED_stack_error_print() { ERROR_check_status_print(led_status, LED_SUCCESS, ERROR_BASE_LED); }
 
 #endif /* LED_H */

@@ -44,8 +44,8 @@ RCC_status_t RCC_enable_lsi(void);
 RCC_status_t RCC_get_lsi_frequency(uint32_t* lsi_frequency_hz);
 RCC_status_t RCC_enable_lse(void);
 
-#define RCC_status_check(error_base) { if (rcc_status != RCC_SUCCESS) { status = error_base + rcc_status; goto errors; }}
-#define RCC_error_check() { ERROR_status_check(rcc_status, RCC_SUCCESS, ERROR_BASE_RCC); }
-#define RCC_error_check_print() { ERROR_status_check_print(rcc_status, RCC_SUCCESS, ERROR_BASE_RCC); }
+#define RCC_check_status(error_base) { if (rcc_status != RCC_SUCCESS) { status = error_base + rcc_status; goto errors; }}
+#define RCC_stack_error() { ERROR_check_status(rcc_status, RCC_SUCCESS, ERROR_BASE_RCC); }
+#define RCC_stack_error_print() { ERROR_check_status_print(rcc_status, RCC_SUCCESS, ERROR_BASE_RCC); }
 
 #endif /* __RCC_H__ */

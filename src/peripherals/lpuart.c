@@ -173,7 +173,7 @@ LPUART_status_t LPUART1_power_on(void) {
 	LPUART1 -> CR1 |= (0b1 << 0); // UE='1'.
 	// Power on delay.
 	lptim1_status = LPTIM1_delay_milliseconds(100, LPTIM_DELAY_MODE_STOP);
-	LPTIM1_status_check(LPUART_ERROR_BASE_LPTIM);
+	LPTIM1_check_status(LPUART_ERROR_BASE_LPTIM);
 errors:
 	return status;
 }

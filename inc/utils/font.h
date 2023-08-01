@@ -79,6 +79,10 @@
 
 /*** FONT definition ***/
 
+/*!******************************************************************
+ * \global FONT
+ * \brief Font definition.
+ *******************************************************************/
 static const uint8_t FONT[FONT_TABLE_SIZE][FONT_CHAR_WIDTH_PIXELS] = {
 	FONT_CHAR_NULL, // 0x20
 	FONT_CHAR_NULL,

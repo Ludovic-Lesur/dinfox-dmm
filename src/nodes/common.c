@@ -67,8 +67,7 @@ NODE_status_t COMMON_write_line_data(NODE_line_data_write_t* line_data_write) {
 	uint32_t timeout_ms = 0;
 	// Compute parameters.
 	reg_addr = COMMON_LINE_DATA[(line_data_write -> line_data_index)].reg_addr;
-	reg_mask = COMMON_LINE_DATA[(line_data_write -> line_data_index)].field_mask;
-	reg_value |= (line_data_write -> field_value) << DINFOX_get_field_offset(reg_mask);
+	DINFOX_write_field(&reg_value, &reg_mask, (line_data_write -> field_value), COMMON_LINE_DATA[(line_data_write -> line_data_index)].field_mask);
 	timeout_ms = COMMON_REG_WRITE_TIMEOUT_MS[reg_addr - COMMON_REG_ADDR_LAST];
 	// Write parameters.
 	write_params.node_addr = (line_data_write -> node_addr);
@@ -159,7 +158,7 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 		field_value = DINFOX_read_field(reg_value, COMMON_LINE_DATA[str_data_idx].field_mask);
 		// Convert to 5 digits string.
 		string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-		STRING_status_check(NODE_ERROR_BASE_STRING);
+		STRING_check_status(NODE_ERROR_BASE_STRING);
 		// Add string.
 		NODE_append_value_string(field_str);
 		break;

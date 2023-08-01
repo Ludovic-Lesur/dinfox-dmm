@@ -11,6 +11,10 @@
 #include "sh1106.h"
 #include "types.h"
 
+/*!******************************************************************
+ * \global DINFOX_LOGO
+ * \brief DINFox logo bitmap.
+ *******************************************************************/
 static const uint8_t DINFOX_LOGO[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS] = {
 {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

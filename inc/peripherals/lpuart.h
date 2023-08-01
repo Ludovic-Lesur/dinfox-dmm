@@ -49,8 +49,8 @@ void LPUART1_disable_rx(void);
 LPUART_status_t LPUART1_configure(LPUART_config_t* config);
 LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes);
 
-#define LPUART1_status_check(error_base) { if (lpuart1_status != LPUART_SUCCESS) { status = error_base + lpuart1_status; goto errors; }}
-#define LPUART1_error_check() { ERROR_status_check(lpuart1_status, LPUART_SUCCESS, ERROR_BASE_LPUART1); }
-#define LPUART1_error_check_print() { ERROR_status_check_print(lpuart1_status, LPUART_SUCCESS, ERROR_BASE_LPUART1); }
+#define LPUART1_check_status(error_base) { if (lpuart1_status != LPUART_SUCCESS) { status = error_base + lpuart1_status; goto errors; }}
+#define LPUART1_stack_error() { ERROR_check_status(lpuart1_status, LPUART_SUCCESS, ERROR_BASE_LPUART1); }
+#define LPUART1_stack_error_print() { ERROR_check_status_print(lpuart1_status, LPUART_SUCCESS, ERROR_BASE_LPUART1); }
 
 #endif /* __LPUART_H__ */

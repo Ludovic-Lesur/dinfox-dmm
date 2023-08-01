@@ -50,8 +50,8 @@ void HMI_init(void);
 HMI_status_t HMI_task(void);
 void HMI_set_irq_flag(HMI_irq_flag_t irq_flag);
 
-#define HMI_status_check(error_base) { if (hmi_status != HMI_SUCCESS) { status = error_base + hmi_status; goto errors; }}
-#define HMI_error_check() { ERROR_status_check(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
-#define HMI_error_check_print() { ERROR_status_check_print(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
+#define HMI_check_status(error_base) { if (hmi_status != HMI_SUCCESS) { status = error_base + hmi_status; goto errors; }}
+#define HMI_stack_error() { ERROR_check_status(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
+#define HMI_stack_error_print() { ERROR_check_status_print(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
 
 #endif /* __HMI_H__ */

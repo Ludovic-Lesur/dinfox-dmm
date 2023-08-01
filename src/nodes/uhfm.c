@@ -13,6 +13,7 @@
 #include "dinfox.h"
 #include "node.h"
 #include "sigfox_ep_api.h"
+#include "sigfox_types.h"
 #include "string.h"
 #include "xm.h"
 
@@ -95,6 +96,8 @@ static const UHFM_sigfox_payload_type_t UHFM_SIGFOX_PAYLOAD_PATTERN[] = {
 	UHFM_SIGFOX_PAYLOAD_TYPE_MONITORING,
 	UHFM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK
 };
+
+static uint8_t uhfm_ep_configuration_done = 0;
 
 /*** UHFM functions ***/
 
@@ -179,7 +182,7 @@ NODE_status_t UHFM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 				// Convert to 5 digits string.
 				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-				STRING_status_check(NODE_ERROR_BASE_STRING);
+				STRING_check_status(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
 				NODE_append_value_string(field_str);
@@ -298,39 +301,52 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t write_params;
-	uint32_t reg_value = 0;
-	uint32_t reg_mask = 0;
+	uint32_t ep_config_0 = 0;
+	uint32_t ep_config_0_mask = 0;
+	uint32_t ep_config_2 = 0;
+	uint32_t ep_config_2_mask = 0;
+	uint32_t ul_payload_x = 0;
 	uint8_t reg_offset = 0;
 	uint8_t idx = 0;
 	// Common writing parameters.
 	write_params.node_addr = node_addr;
 	write_params.reply_params.type = NODE_REPLY_TYPE_OK;
 	write_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
+	// Write default transmission parameters only at startup, in order to be configurable later on via downlink.
+	if (uhfm_ep_configuration_done == 0) {
+		// RC1, 600bps, N=3, 14dBm.
+		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0b0000, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_RC);
+		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0b01, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_BR);
+		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0b11, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_NFR);
+		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0x0E, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_TX_POWER);
+		// Write register.
+		write_params.reg_addr = UHFM_REG_ADDR_SIGFOX_EP_CONFIGURATION_0;
+		status = AT_BUS_write_register(&write_params, ep_config_0, ep_config_0_mask, send_status);
+		if ((status != NODE_SUCCESS) || ((send_status -> all) != 0)) goto errors;
+		// Resey flag.
+		uhfm_ep_configuration_done = 1;
+	}
 	// Configuration register 2.
-	reg_value |= (0x03 << DINFOX_get_field_offset(UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_MSGT));
-	reg_mask |= UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_MSGT;
-	reg_value |= ((sigfox_message -> bidirectional_flag) << DINFOX_get_field_offset(UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_BF));
-	reg_mask |= UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_BF;
-	reg_value |= ((sigfox_message -> ul_payload_size) << DINFOX_get_field_offset(UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_UL_PAYLOAD_SIZE));
-	reg_mask |= UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_UL_PAYLOAD_SIZE;
+	DINFOX_write_field(&ep_config_2, &ep_config_2_mask, (uint32_t) SIGFOX_APPLICATION_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_MSGT);
+	DINFOX_write_field(&ep_config_2, &ep_config_2_mask, (uint32_t) (sigfox_message -> bidirectional_flag), UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_BF);
+	DINFOX_write_field(&ep_config_2, &ep_config_2_mask, (uint32_t) (sigfox_message -> ul_payload_size), UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_UL_PAYLOAD_SIZE);
 	// Write register.
 	write_params.reg_addr = UHFM_REG_ADDR_SIGFOX_EP_CONFIGURATION_2;
-	status = AT_BUS_write_register(&write_params, reg_value, reg_mask, send_status);
+	status = AT_BUS_write_register(&write_params, ep_config_2, ep_config_2_mask, send_status);
 	if ((status != NODE_SUCCESS) || ((send_status -> all) != 0)) goto errors;
 	// UL payload.
-	reg_value = 0;
 	for (idx=0 ; idx<(sigfox_message -> ul_payload_size) ; idx++) {
 		// Build register.
-		reg_value |= (((sigfox_message -> ul_payload)[idx]) << (8 * (idx % 4)));
+		ul_payload_x |= (((sigfox_message -> ul_payload)[idx]) << (8 * (idx % 4)));
 		// Check index.
 		if ((((idx + 1) % 4) == 0) || (idx == ((sigfox_message -> ul_payload_size) - 1))) {
 			// Write register.
 			write_params.reg_addr = UHFM_REG_ADDR_SIGFOX_UL_PAYLOAD_0 + reg_offset;
-			status = AT_BUS_write_register(&write_params, reg_value, DINFOX_REG_MASK_ALL, send_status);
+			status = AT_BUS_write_register(&write_params, ul_payload_x, DINFOX_REG_MASK_ALL, send_status);
 			if ((status != NODE_SUCCESS) || ((send_status -> all) != 0)) goto errors;
 			// Go to next register and reset value.
 			reg_offset++;
-			reg_value = 0;
+			ul_payload_x = 0;
 		}
 	}
 	// Set proper timeout.

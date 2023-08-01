@@ -12,20 +12,12 @@
 
 /*** STRING local macros ***/
 
-#define STRING_DIGIT_BOOLEAN_LENGTH			1
-#define STRING_DIGIT_DECIMAL_MAX			9
-#define STRING_DIGIT_HEXADECIMAL_MAX		0x0F
-#define STRING_HEXADECICMAL_DIGIT_PER_BYTE	2
-
-#define STRING_VALUE_BUFFER_SIZE			16
-#define STRING_SIZE_MAX						100
+#define STRING_VALUE_BUFFER_SIZE	16
+#define STRING_SIZE_MAX				100
 
 /*** STRING local functions ***/
 
-/* GENERIC MACRO TO CHECK RESULT INPUT POINTER.
- * @param ptr:	Pointer to check.
- * @return:		None.
- */
+/*******************************************************************/
 #define _STRING_check_pointer(ptr) { \
 	if (ptr == NULL) { \
 		status = STRING_ERROR_NULL_PARAMETER; \
@@ -33,21 +25,14 @@
 	} \
 }
 
-/* CHECK IF A GIVEN ASCII CODE CORRESPONDS TO A DECIMAL CHARACTER.
- * @param chr:		Character to analyse.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 static STRING_status_t _STRING_is_decimal_char(char_t chr) {
 	// Local variables.
 	STRING_status_t status = ((chr >= '0') && (chr <= '9')) ? STRING_SUCCESS : STRING_ERROR_DECIMAL_INVALID;
 	return status;
 }
 
-/* CONVERTS THE ASCII CODE OF A DECIMAL CHARACTER TO THE CORRESPONDING 4-BIT VALUE.
- * @param chr:		Decimal ASCII character to convert.
- * @param value:	Pointer to the corresponding value.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 static STRING_status_t _STRING_decimal_char_to_value(char_t chr, uint8_t* value) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
@@ -61,15 +46,12 @@ errors:
 	return status;
 }
 
-/* RETURN CORRESPONDING ASCII CHARACTER OF A GIVEN DECIMAL VALUE.
- * @param value:	Decimal digit.
- * @return chr:		Corresponding ASCII code.
- */
+/*******************************************************************/
 static STRING_status_t _STRING_decimal_value_to_char(uint8_t value, char_t* chr) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
 	// Check parameters.
-	if (value > STRING_DIGIT_DECIMAL_MAX) {
+	if (value > MATH_DECIMAL_DIGIT_MAX_VALUE) {
 		status = STRING_ERROR_DECIMAL_OVERFLOW;
 		goto errors;
 	}
@@ -80,10 +62,7 @@ errors:
 	return status;
 }
 
-/* CHECK IF A GIVEN ASCII CODE CORRESPONDS TO AN HEXADECIMAL CHARACTER.
- * @param chr:		Character to analyse.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 static STRING_status_t _STRING_is_hexadecimal_char(char_t chr) {
 	// Local variables.
 	STRING_status_t status = (((chr >= '0') && (chr <= '9')) || ((chr >= 'A') && (chr <= 'F')) || ((chr >= 'a') && (chr <= 'f'))) ? STRING_SUCCESS : STRING_ERROR_HEXADECIMAL_INVALID;
@@ -117,15 +96,12 @@ errors:
 	return status;
 }
 
-/* CONVERTS A 4-BITS VARIABLE TO THE ASCII CODE OF THE CORRESPONDING HEXADECIMAL CHARACTER IN ASCII.
- * @param value:	Decimal digit.
- * @return chr:		Corresponding ASCII code.
- */
+/*******************************************************************/
 static STRING_status_t _STRING_hexadecimal_value_to_char(uint8_t value, char_t* chr) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
 	// Check parameters.
-	if (value > STRING_DIGIT_HEXADECIMAL_MAX) {
+	if (value > MATH_HEXADECIMAL_DIGIT_MAX_VALUE) {
 		status = STRING_ERROR_HEXADECIMAL_OVERFLOW;
 		goto errors;
 	}
@@ -138,13 +114,7 @@ errors:
 
 /*** STRING functions ***/
 
-/* VALUE TO STRING CONVERT FUNCTION.
- * @param value:        Value to print.
- * @param format:       Printing format.
- * @param print_prefix: Print base prefix is non zero.
- * @param str:       	Output string.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, uint8_t print_prefix, char_t* str) {
     // Local variables.
 	STRING_status_t status = STRING_SUCCESS;
@@ -164,7 +134,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
 	}
 	// Get absolute value.
 	math_status = MATH_abs(value, &abs_value);
-	MATH_status_check();
+	MATH_check_status();
 	// Build string according to format.
 	switch (format) {
 	case STRING_FORMAT_BOOLEAN:
@@ -174,7 +144,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
             str[str_idx++] = 'b';
 		}
 
-		for (idx=(MATH_BINARY_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
+		for (idx=(MATH_BINARY_DIGIT_MAX_NUMBER - 1) ; idx>=0 ; idx--) {
 			if (abs_value & (0b1 << idx)) {
 				str[str_idx++] = '1';
 				first_non_zero_found = 1;
@@ -193,7 +163,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
 			str[str_idx++] = '0';
 			str[str_idx++] = 'x';
 		}
-		for (idx=(MATH_HEXADECIMAL_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
+		for (idx=((MATH_HEXADECIMAL_DIGIT_MAX_NUMBER / 2) - 1) ; idx>=0 ; idx--) {
 			generic_byte = (abs_value >> (8 * idx)) & 0xFF;
 			if (generic_byte != 0) {
 				first_non_zero_found = 1;
@@ -214,9 +184,9 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
 			str[str_idx++] = '0';
 			str[str_idx++] = 'd';
 		}
-		for (idx=(MATH_DECIMAL_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
+		for (idx=(MATH_DECIMAL_DIGIT_MAX_NUMBER - 1) ; idx>=0 ; idx--) {
 			math_status = MATH_pow_10(idx, &current_power);
-			MATH_status_check(STRING_ERROR_BASE_MATH);
+			MATH_check_status(STRING_ERROR_BASE_MATH);
 			generic_byte = (abs_value - previous_decade) / current_power;
 			previous_decade += generic_byte * current_power;
 			if (generic_byte != 0) {
@@ -238,13 +208,8 @@ errors:
 	return status;
 }
 
-/* BYTE ARRAY TO HEXADECIMAL STRING CONVERT FUNCTION.
- * @param data:			Input buffer.
- * @param data_length:	Data length in bytes.
- * @param str:       	Output string.
- * @return status:		Function execution status.
- */
-STRING_status_t STRING_byte_array_to_hexadecimal_string(uint8_t* data, uint8_t data_length, uint8_t print_prefix, char_t* str) {
+/*******************************************************************/
+STRING_status_t STRING_byte_array_to_hexadecimal_string(uint8_t* data, uint8_t data_size, uint8_t print_prefix, char_t* str) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
 	uint8_t idx = 0;
@@ -252,7 +217,7 @@ STRING_status_t STRING_byte_array_to_hexadecimal_string(uint8_t* data, uint8_t d
 	_STRING_check_pointer(data);
 	_STRING_check_pointer(str);
 	// Build string.
-	for (idx=0 ; idx<data_length ; idx++) {
+	for (idx=0 ; idx<data_size ; idx++) {
 		status = STRING_value_to_string((int32_t) data[idx], STRING_FORMAT_HEXADECIMAL, print_prefix, &(str[2 * idx]));
 		if (status != STRING_SUCCESS) goto errors;
 	}
@@ -261,13 +226,7 @@ errors:
 	return status;
 }
 
-/* STRING TO VALUE CONVERT FUNCTION.
- * @param str:				String to convert.
- * @param format:       	Input string format.
- * @param number_of_digits:	Number of digits to parse.
- * @param value:			Pointer to the result.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint8_t number_of_digits, int32_t* value) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
@@ -292,7 +251,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 	switch (format) {
 	case STRING_FORMAT_BOOLEAN:
 		// Check if there is only 1 digit (start and end index are equal).
-		if (number_of_digits != STRING_DIGIT_BOOLEAN_LENGTH) {
+		if (number_of_digits != MATH_BOOLEAN_DIGIT_MAX_NUMBER) {
 			status = STRING_ERROR_BOOLEAN_SIZE;
 			goto errors;
 		}
@@ -316,7 +275,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 			goto errors;
 		}
 		// Check if parameter can be binary coded on 32 bits = 4 bytes.
-		if (number_of_digits > (STRING_HEXADECICMAL_DIGIT_PER_BYTE * MATH_HEXADECIMAL_MAX_LENGTH)) {
+		if (number_of_digits > MATH_HEXADECIMAL_DIGIT_MAX_NUMBER) {
 			// Error in parameter -> value is too large.
 			status = STRING_ERROR_HEXADECIMAL_OVERFLOW;
 			goto errors;
@@ -332,7 +291,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 		break;
 	case STRING_FORMAT_DECIMAL:
 		// Check if parameter can be binary coded on 32 bits.
-		if (number_of_digits > MATH_DECIMAL_MAX_LENGTH) {
+		if (number_of_digits > MATH_DECIMAL_DIGIT_MAX_NUMBER) {
 			// Error in parameter -> value is too large.
 			status = STRING_ERROR_DECIMAL_OVERFLOW;
 			goto errors;
@@ -344,7 +303,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 			if (status != STRING_SUCCESS) goto errors;
 			// Compute power.
 			math_status = MATH_pow_10((number_of_digits -char_idx - 1), &math_power10);
-			MATH_status_check(STRING_ERROR_BASE_MATH);
+			MATH_check_status(STRING_ERROR_BASE_MATH);
 			// Add digit to result.
 			(*value) += (math_power10 * digit_value);
 		}
@@ -361,14 +320,8 @@ errors:
 	return status;
 }
 
-/* HEXADECIMAL STRING TO BYTE ARRAY CONVERT FUNCTION.
- * @param str:				Hexadecimal string to convert.
- * @param end_char:			Ending character of the string.
- * @param data:				Pointer to the output byte array.
- * @param extracted_length:	Pointer to the effective extracted length.
- * @return status:			Function execution status.
- */
-STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_char, uint8_t* data, uint8_t* extracted_length) {
+/*******************************************************************/
+STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_character, uint8_t* data, uint8_t* extracted_length) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
 	uint8_t char_idx = 0;
@@ -380,7 +333,7 @@ STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_
 	// Reset extracted length.
 	(*extracted_length) = 0;
 	// Char loop.
-	while ((str[char_idx] != end_char) && (str[char_idx] != STRING_CHAR_NULL)) {
+	while ((str[char_idx] != end_character) && (str[char_idx] != STRING_CHAR_NULL)) {
 		// Check character.
 		if ((char_idx % 2) == 0) {
 			if (_STRING_is_hexadecimal_char(str[char_idx]) != STRING_SUCCESS) {
@@ -413,10 +366,7 @@ errors:
 	return status;
 }
 
-/* COMPUTE THE LENGTH OF A NULL TERMINATED STRING.
- * @param str:	String to analyze.
- * @param size:	Pointer to byte that will contain string size.
- */
+/*******************************************************************/
 STRING_status_t STRING_get_size(char_t* str, uint8_t* size) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
@@ -438,10 +388,7 @@ errors:
 	return status;
 }
 
-/* COPY A SUBSTRING INTO ANOTHER WITH SPECIFIED JUSTIFICATION.
- * @param copy:		Copy parameters.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 STRING_status_t STRING_copy(STRING_copy_t* copy) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
@@ -491,41 +438,29 @@ errors:
 	return status;
 }
 
-/* APPEND A STRING TO A STRING.
- * @param buffer:			Destination buffer.
- * @param buffer_size_max:	Size of the destination buffer.
- * @param str:				String to append.
- * @param buffer_size:		Pointer that will contain new buffer size after append.
- * @return status:			Function execution status.
- */
-STRING_status_t STRING_append_string(char_t* buffer, uint8_t buffer_size_max, char_t* str, uint8_t* buffer_size) {
+/*******************************************************************/
+STRING_status_t STRING_append_string(char_t* str, uint8_t str_size_max, char_t* new_str, uint8_t* str_size) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
 	uint8_t idx = 0;
 	// Fill buffer.
-	while (str[idx] != STRING_CHAR_NULL) {
+	while (new_str[idx] != STRING_CHAR_NULL) {
 		// Check index.
-		if ((*buffer_size) >= buffer_size_max) {
+		if ((*str_size) >= str_size_max) {
 			status = STRING_ERROR_APPEND_OVERFLOW;
 			goto errors;
 		}
-		buffer[(*buffer_size)] = str[idx];
+		str[(*str_size)] = new_str[idx];
 		// Increment size and index..
-		(*buffer_size)++;
+		(*str_size)++;
 		idx++;
 	}
 errors:
 	return status;
 }
 
-/* APPEND A VALUE TO A STRING.
- * @param buffer:		Destination buffer.
- * @param value:		Value to convert and append.
- * @param format:		Output string format.
- * @param print_prefix:	Print base prefix if non-zero.
- * @return status:		Function execution status.
- */
-STRING_status_t STRING_append_value(char_t* buffer, uint8_t buffer_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* buffer_size) {
+/*******************************************************************/
+STRING_status_t STRING_append_value(char_t* str, uint8_t str_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* str_size) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;
 	char_t str_value[STRING_VALUE_BUFFER_SIZE];
@@ -536,15 +471,12 @@ STRING_status_t STRING_append_value(char_t* buffer, uint8_t buffer_size_max, int
 	status = STRING_value_to_string(value, format, print_prefix, str_value);
 	if (status != STRING_SUCCESS) goto errors;
 	// Add string.
-	status = STRING_append_string(buffer, buffer_size_max, str_value, buffer_size);
+	status = STRING_append_string(str, str_size_max, str_value, str_size);
 errors:
 	return status;
 }
 
-/* CONVERT A VALUE INTO A FRACTIONAL 5 DIGITS STRING.
- * @param value:	(value * 1000) to print (output unit divided by 1000).
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 STRING_status_t STRING_value_to_5_digits_string(int32_t value, char_t* str) {
 	// Local variables.
 	STRING_status_t status = STRING_SUCCESS;

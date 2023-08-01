@@ -79,8 +79,8 @@ SH1106_status_t SH1106_print_text(SH1106_text_t* text);
 SH1106_status_t SH1106_print_horizontal_line(SH1106_horizontal_line_t* horizontal_line);
 SH1106_status_t SH1106_print_image(const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS]);
 
-#define SH1106_status_check(error_base) { if (sh1106_status != SH1106_SUCCESS) { status = error_base + sh1106_status; goto errors; }}
-#define SH1106_error_check() { ERROR_status_check(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
-#define SH1106_error_check_print() { ERROR_status_check_print(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
+#define SH1106_check_status(error_base) { if (sh1106_status != SH1106_SUCCESS) { status = error_base + sh1106_status; goto errors; }}
+#define SH1106_stack_error() { ERROR_check_status(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
+#define SH1106_stack_error_print() { ERROR_check_status_print(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
 
 #endif /* __SH1106_H__ */

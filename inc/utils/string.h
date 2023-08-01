@@ -25,6 +25,10 @@
 
 /*** STRING structures ***/
 
+/*!******************************************************************
+ * \enum STRING_status_t
+ * \brief STRING driver error codes.
+ *******************************************************************/
 typedef enum {
 	STRING_SUCCESS = 0,
 	STRING_ERROR_NULL_PARAMETER,
@@ -44,6 +48,10 @@ typedef enum {
 	STRING_ERROR_BASE_LAST = (STRING_ERROR_BASE_MATH + MATH_ERROR_BASE_LAST)
 } STRING_status_t;
 
+/*!******************************************************************
+ * \enum STRING_format_t
+ * \brief String formats.
+ *******************************************************************/
 typedef enum {
 	STRING_FORMAT_BOOLEAN = 0,
 	STRING_FORMAT_HEXADECIMAL,
@@ -51,6 +59,10 @@ typedef enum {
 	STRING_FORMAT_LAST
 } STRING_format_t;
 
+/*!******************************************************************
+ * \enum STRING_justification_t
+ * \brief String justification formats.
+ *******************************************************************/
 typedef enum {
 	STRING_JUSTIFICATION_LEFT = 0,
 	STRING_JUSTIFICATION_CENTER,
@@ -58,6 +70,10 @@ typedef enum {
 	STRING_JUSTIFICATION_LAST
 } STRING_justification_t;
 
+/*!******************************************************************
+ * \enum STRING_copy_t
+ * \brief String copy operation parameters.
+ *******************************************************************/
 typedef struct {
 	char_t* source;
 	char_t* destination;
@@ -69,22 +85,108 @@ typedef struct {
 
 /*** STRING functions ***/
 
+/*!******************************************************************
+ * \fn STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, uint8_t print_prefix, char_t* str)
+ * \brief Convert an integer to the corresponding string representation.
+ * \param[in]  	value: Integer to convert.
+ * \param[in]	format: Format of the output string.
+ * \param[in]	print_prefix: Print the base prefix if non zero.
+ * \param[out] 	str: Pointer to the destination string.
+ * \retval		Function execution status.
+ *******************************************************************/
 STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, uint8_t print_prefix, char_t* str);
-STRING_status_t STRING_byte_array_to_hexadecimal_string(uint8_t* data, uint8_t data_length, uint8_t print_prefix, char_t* str);
 
+/*!******************************************************************
+ * \fn STRING_status_t STRING_byte_array_to_hexadecimal_string(uint8_t* data, uint8_t data_length, uint8_t print_prefix, char_t* str)
+ * \brief Convert a byte array to the corresponding string representation.
+ * \param[in]  	data: Byte array to convert.
+ * \param[in]	data_size: Size of the input byte array.
+ * \param[in]	print_prefix: Print the base prefix if non zero.
+ * \param[out] 	str: Pointer to the destination string.
+ * \retval		Function execution status.
+ *******************************************************************/
+STRING_status_t STRING_byte_array_to_hexadecimal_string(uint8_t* data, uint8_t data_size, uint8_t print_prefix, char_t* str);
+
+/*!******************************************************************
+ * \fn STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint8_t number_of_digits, int32_t* value)
+ * \brief Convert a string to the corresponding value.
+ * \param[in]  	str: String to convert.
+ * \param[in]	format: Format of the input string.
+ * \param[in]	number_of_digits: Number of digits of the output value.
+ * \param[out] 	value: Pointer to the destination value.
+ * \retval		Function execution status.
+ *******************************************************************/
 STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint8_t number_of_digits, int32_t* value);
-STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_char, uint8_t* data, uint8_t* extracted_length);
 
+/*!******************************************************************
+ * \fn STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_char, uint8_t* data, uint8_t* extracted_length)
+ * \brief Convert a string to the corresponding byte array.
+ * \param[in]  	str: String to convert.
+ * \param[in]	end_character: Character used as string delimiter.
+ * \param[out] 	data: Pointer to the destination byte array.
+ * \param[out]	extracted_length: Pointer to the effective number of bytes converted.
+ * \retval		Function execution status.
+ *******************************************************************/
+STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_character, uint8_t* data, uint8_t* extracted_length);
+
+/*!******************************************************************
+ * \fn STRING_status_t STRING_get_size(char_t* str, uint8_t* size)
+ * \brief Get the size of a NULL terminated string.
+ * \param[in]  	str: String to read.
+ * \param[out] 	size: Pointer to the string size.
+ * \retval		Function execution status.
+ *******************************************************************/
 STRING_status_t STRING_get_size(char_t* str, uint8_t* size);
+
+/*!******************************************************************
+ * \fn STRING_status_t STRING_copy(STRING_copy_t* copy)
+ * \brief Copy a string into another one.
+ * \param[in]  	copy: Pointer to the copy operation parameters.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
 STRING_status_t STRING_copy(STRING_copy_t* copy);
 
-STRING_status_t STRING_append_string(char_t* buffer, uint8_t buffer_size_max, char_t* str, uint8_t* buffer_size);
-STRING_status_t STRING_append_value(char_t* buffer, uint8_t buffer_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* buffer_size);
+/*!******************************************************************
+ * \fn STRING_status_t STRING_append_string(char_t* str, uint8_t str_size_max, char_t* new_str, uint8_t* str_size)
+ * \brief Append a string to another one.
+ * \param[in]  	str: Destination string.
+ * \param[in]	str_size_max: Maximum size of the destination string.
+ * \param[in]	new_str: String to append.
+ * \param[out] 	str_size: Pointer to the new size of the destination string.
+ * \retval		Function execution status.
+ *******************************************************************/
+STRING_status_t STRING_append_string(char_t* str, uint8_t str_size_max, char_t* new_str, uint8_t* str_size);
 
+/*!******************************************************************
+ * \fn STRING_status_t STRING_append_value(char_t* str, uint8_t str_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* str_size)
+ * \brief Append a string to another one.
+ * \param[in]  	str: Destination string.
+ * \param[in]	str_size_max: Maximum size of the destination string.
+ * \param[in]	value: Value to convert and append.
+ * \param[in]	format: Output format of the value to append.
+ * \param[in]	print_prefix: Print the base prefix if non zero.
+ * \param[out] 	str_size: Pointer to the new size of the destination string.
+ * \retval		Function execution status.
+ *******************************************************************/
+STRING_status_t STRING_append_value(char_t* str, uint8_t str_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* str_size);
+
+/*!******************************************************************
+ * \fn STRING_status_t STRING_value_to_5_digits_string(int32_t value, char_t* str)
+ * \brief Convert a value to a 5 digits string.
+ * \param[in]  	value: Value to convert (will be divided by 1000 and represented as a floating number).
+ * \param[out] 	str: Pointer to the destination string.
+ * \retval		Function execution status.
+ *******************************************************************/
 STRING_status_t STRING_value_to_5_digits_string(int32_t value, char_t* str);
 
-#define STRING_status_check(error_base) { if (string_status != STRING_SUCCESS) { status = error_base + string_status; goto errors; }}
-#define STRING_error_check() { ERROR_status_check(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }
-#define STRING_error_check_print() { ERROR_status_check_print(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }
+/*******************************************************************/
+#define STRING_check_status(error_base) { if (string_status != STRING_SUCCESS) { status = error_base + string_status; goto errors; } }
+
+/*******************************************************************/
+#define STRING_stack_error(void) { ERROR_stack_error(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }
+
+/*******************************************************************/
+#define STRING_print_error(void) { ERROR_print_error(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }
 
 #endif /* __STRING_H__ */

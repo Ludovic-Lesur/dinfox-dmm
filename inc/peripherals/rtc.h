@@ -29,8 +29,8 @@ RTC_status_t __attribute__((optimize("-O0"))) RTC_init(uint8_t* rtc_use_lse, uin
 
 uint32_t RTC_get_time_seconds(void);
 
-#define RTC_status_check(error_base) { if (rtc_status != RTC_SUCCESS) { status = error_base + rtc_status; goto errors; }}
-#define RTC_error_check() { ERROR_status_check(rtc_status, RTC_SUCCESS, ERROR_BASE_RTC); }
-#define RTC_error_check_print() { ERROR_status_check(rtc_status, RTC_SUCCESS, ERROR_BASE_RTC); }
+#define RTC_check_status(error_base) { if (rtc_status != RTC_SUCCESS) { status = error_base + rtc_status; goto errors; }}
+#define RTC_stack_error() { ERROR_check_status(rtc_status, RTC_SUCCESS, ERROR_BASE_RTC); }
+#define RTC_stack_error_print() { ERROR_check_status(rtc_status, RTC_SUCCESS, ERROR_BASE_RTC); }
 
 #endif /* __RTC_H__ */

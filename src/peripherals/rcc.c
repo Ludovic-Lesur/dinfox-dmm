@@ -52,7 +52,7 @@ RCC_status_t RCC_switch_to_hsi(void) {
 	uint32_t loop_count = 0;
 	// Set flash latency.
 	flash_status = FLASH_set_latency(1);
-	FLASH_status_check(RCC_ERROR_BASE_FLASH);
+	FLASH_check_status(RCC_ERROR_BASE_FLASH);
 	// Init HSI.
 	RCC -> CR |= (0b1 << 0); // Enable HSI (HSI16ON='1').
 	// Wait for HSI to be stable.
@@ -138,7 +138,7 @@ RCC_status_t RCC_get_lsi_frequency(uint32_t* lsi_frequency_hz) {
 	for (sample_idx=0 ; sample_idx<RCC_LSI_AVERAGING_COUNT ; sample_idx++) {
 		// Perform measurement.
 		tim21_status = TIM21_get_lsi_frequency(&lsi_frequency_sample);
-		TIM21_status_check(RCC_ERROR_BASE_TIM);
+		TIM21_check_status(RCC_ERROR_BASE_TIM);
 		(*lsi_frequency_hz) = (((*lsi_frequency_hz) * sample_idx) + lsi_frequency_sample) / (sample_idx + 1);
 	}
 	// Check value.

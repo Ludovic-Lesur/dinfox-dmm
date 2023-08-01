@@ -23,8 +23,8 @@ typedef enum {
 
 FLASH_status_t FLASH_set_latency(uint8_t wait_states);
 
-#define FLASH_status_check(error_base) { if (flash_status != FLASH_SUCCESS) { status = error_base + flash_status; goto errors; }}
-#define FLASH_error_check() { ERROR_status_check(flash_status, FLASH_SUCCESS, ERROR_BASE_FLASH); }
-#define FLASH_error_check_print() { ERROR_status_check_print(flash_status, FLASH_SUCCESS, ERROR_BASE_FLASH); }
+#define FLASH_check_status(error_base) { if (flash_status != FLASH_SUCCESS) { status = error_base + flash_status; goto errors; }}
+#define FLASH_stack_error() { ERROR_check_status(flash_status, FLASH_SUCCESS, ERROR_BASE_FLASH); }
+#define FLASH_stack_error_print() { ERROR_check_status_print(flash_status, FLASH_SUCCESS, ERROR_BASE_FLASH); }
 
 #endif /* __FLASH_H__ */

@@ -138,7 +138,7 @@ static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, u
 	while (1) {
 		// Delay.
 		lptim1_status = LPTIM1_delay_milliseconds(AT_BUS_REPLY_PARSING_DELAY_MS, LPTIM_DELAY_MODE_STOP);
-		LPTIM1_status_check(NODE_ERROR_BASE_LPTIM);
+		LPTIM1_check_status(NODE_ERROR_BASE_LPTIM);
 		reply_time_ms += AT_BUS_REPLY_PARSING_DELAY_MS;
 		sequence_time_ms += AT_BUS_REPLY_PARSING_DELAY_MS;
 		// Check write index.
@@ -232,7 +232,7 @@ NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params) {
 	_AT_BUS_flush_command();
 	// Add command.
 	string_status = STRING_append_string(at_bus_ctx.command, AT_BUS_BUFFER_SIZE_BYTES, (command_params -> command), &at_bus_ctx.command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	// Add AT ending character.
 	at_bus_ctx.command[at_bus_ctx.command_size++] = AT_BUS_FRAME_END;
 	// Reset replies.
@@ -273,25 +273,25 @@ NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint
 	command_params.command = (char_t*) command;
 	// Build write command.
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_WRITE_REGISTER, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	string_status = DINFOX_register_to_string((uint32_t) (write_params -> reg_addr), str_value);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_SEPARATOR, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	string_status = DINFOX_register_to_string(reg_value, str_value);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	// Add mask if needed.
 	if (reg_mask != DINFOX_REG_MASK_ALL) {
 		string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_SEPARATOR, &command_size);
-		STRING_status_check(NODE_ERROR_BASE_STRING);
+		STRING_check_status(NODE_ERROR_BASE_STRING);
 		string_status = DINFOX_register_to_string(reg_mask, str_value);
-		STRING_status_check(NODE_ERROR_BASE_STRING);
+		STRING_check_status(NODE_ERROR_BASE_STRING);
 		string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
-		STRING_status_check(NODE_ERROR_BASE_STRING);
+		STRING_check_status(NODE_ERROR_BASE_STRING);
 	}
 	// Send command.
 	status = AT_BUS_send_command(&command_params);
@@ -321,9 +321,9 @@ NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32
 	command_params.command = (char_t*) command;
 	// Build read command.
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_READ_REGISTER, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, (read_params -> reg_addr), STRING_FORMAT_HEXADECIMAL, 0, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	// Send command.
 	status = AT_BUS_send_command(&command_params);
 	// Wait reply.

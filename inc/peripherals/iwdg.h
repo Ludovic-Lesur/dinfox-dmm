@@ -8,12 +8,12 @@
 #ifndef __IWDG_H__
 #define __IWDG_H__
 
-/*** IWDG macros ***/
-
-#define IWDG_REFRESH_PERIOD_SECONDS		10
-
 /*** IWDG structures ***/
 
+/*!******************************************************************
+ * \enum IWDG_status_t
+ * \brief IWDG driver error codes.
+ *******************************************************************/
 typedef enum {
 	IWDG_SUCCESS = 0,
 	IWDG_ERROR_TIMEOUT,
@@ -22,11 +22,31 @@ typedef enum {
 
 /*** IWDG functions ***/
 
+/*!******************************************************************
+ * \fn IWDG_status_t IWDG_init(void)
+ * \brief Start independent watchdog.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
 IWDG_status_t IWDG_init(void);
+
+/*!******************************************************************
+ * \fn void IWDG_reload(void)
+ * \brief Refresh independent watchdog.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
 void IWDG_reload(void);
 
-#define IWDG_check_status(error_base) { if (iwdg_status != IWDG_SUCCESS) { status = error_base + iwdg_status; goto errors; }}
-#define IWDG_stack_error() { ERROR_check_status(iwdg_status, IWDG_SUCCESS, ERROR_BASE_IWDG); }
-#define IWDG_stack_error_print() { ERROR_check_status_print(iwdg_status, IWDG_SUCCESS, ERROR_BASE_IWDG); }
+/*******************************************************************/
+#define IWDG_check_status(error_base) { if (iwdg_status != IWDG_SUCCESS) { status = error_base + iwdg_status; goto errors; } }
+
+/*******************************************************************/
+#define IWDG_stack_error(void) { ERROR_stack_error(iwdg_status, IWDG_SUCCESS, ERROR_BASE_IWDG); }
+
+/*******************************************************************/
+#define IWDG_print_error(void) { ERROR_print_error(iwdg_status, IWDG_SUCCESS, ERROR_BASE_IWDG); }
 
 #endif /* __IWDG_H__ */

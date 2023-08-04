@@ -18,6 +18,7 @@
 /*** AT BUS functions ***/
 
 void AT_BUS_init(void);
+void AT_BUS_de_init(void);
 
 NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params);
 

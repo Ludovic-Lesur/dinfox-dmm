@@ -118,7 +118,7 @@ static NODE_status_t _R4S8CR_configure_phy(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	LPUART_config_t lpuart_config;
+	LPUART_configuration_t lpuart_config;
 	// Configure physical interface.
 	lpuart_config.baud_rate = R4S8CR_BAUD_RATE;
 	lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
@@ -157,7 +157,7 @@ static NODE_status_t _R4S8CR_write_relay_state(uint8_t relay_id, uint8_t rxst, N
 	if (status != NODE_SUCCESS) goto errors;
 	LPUART1_disable_rx();
 	// Send command.
-	lpuart1_status = LPUART1_send(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
+	lpuart1_status = LPUART1_write(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
 	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();
@@ -193,7 +193,7 @@ static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, uint32_t ti
 	if (status != NODE_SUCCESS) goto errors;
 	LPUART1_disable_rx();
 	// Send command.
-	lpuart1_status = LPUART1_send(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
+	lpuart1_status = LPUART1_write(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
 	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();

@@ -13,9 +13,9 @@
 #include "dinfox.h"
 #include "error.h"
 #include "gpio.h"
-#include "i2c.h"
 #include "mapping.h"
 #include "node.h"
+#include "power.h"
 #include "pwr.h"
 #include "rcc_reg.h"
 #include "string.h"
@@ -166,7 +166,7 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	ADC_status_t adc1_status = ADC_SUCCESS;
-	I2C_status_t i2c1_status = I2C_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
 	uint32_t adc_data = 0;
 	int8_t tmcu_degrees = 0;
 	uint32_t temp = 0;
@@ -213,14 +213,15 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 		hmi_on = GPIO_read(&GPIO_HMI_POWER_ENABLE);
 		if (hmi_on == 0) {
 			// Turn HMI on.
-			i2c1_status = I2C1_power_on();
-			I2C1_check_status(NODE_ERROR_BASE_I2C);
+			power_status = POWER_enable(POWER_DOMAIN_HMI, LPTIM_DELAY_MODE_STOP);
+			POWER_check_status(NODE_ERROR_BASE_POWER);
 		}
 		// Perform analog measurements.
 		adc1_status = ADC1_perform_measurements();
 		// Disable HMI power supply.
 		if (hmi_on == 0) {
-			I2C1_power_off();
+			power_status = POWER_disable(POWER_DOMAIN_HMI);
+			POWER_check_status(NODE_ERROR_BASE_POWER);
 		}
 		ADC1_check_status(NODE_ERROR_BASE_ADC);
 		// VMCU.

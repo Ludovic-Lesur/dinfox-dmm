@@ -726,7 +726,7 @@ errors:
 NODE_status_t _NODE_execute_actions(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
 	NODE_access_status_t write_status;
 	uint8_t idx = 0;
 	// Loop on action table.
@@ -734,8 +734,8 @@ NODE_status_t _NODE_execute_actions(void) {
 		// Check NODE pointer and timestamp.
 		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
 			// Turn bus interface on.
-			lpuart1_status = LPUART1_power_on();
-			LPUART1_check_status(NODE_ERROR_BASE_LPUART);
+			power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+			POWER_check_status(NODE_ERROR_BASE_POWER);
 			// Perform write operation.
 			status = _NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].reg_addr, node_ctx.actions[idx].reg_value, node_ctx.actions[idx].reg_mask, &write_status);
 			if (status != NODE_SUCCESS) goto errors;
@@ -755,7 +755,7 @@ errors:
 NODE_status_t _NODE_radio_task(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
 	NODE_access_parameters_t read_params;
 	NODE_access_status_t unused_read_status;
 	uint32_t reg_value = 0;
@@ -773,8 +773,8 @@ NODE_status_t _NODE_radio_task(void) {
 			bidirectional_flag = 1;
 		}
 		// Turn bus interface on.
-		lpuart1_status = LPUART1_power_on();
-		LPUART1_check_status(NODE_ERROR_BASE_LPUART);
+		power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+		POWER_check_status(NODE_ERROR_BASE_POWER);
 		// Set radio times to now to compensate node update duration.
 		if (ul_next_time_update_required != 0) {
 			node_ctx.sigfox_ul_next_time_seconds = RTC_get_time_seconds();
@@ -903,7 +903,7 @@ void NODE_init(void) {
 NODE_status_t NODE_scan(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	POWER_status_t power_status = LPUART_SUCCESS;
 	uint8_t nodes_count = 0;
 	uint8_t idx = 0;
 	// Reset list.
@@ -914,8 +914,8 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.list[0].address = DINFOX_NODE_ADDRESS_DMM;
 	NODES_LIST.count++;
 	// Turn bus interface on.
-	lpuart1_status = LPUART1_power_on();
-	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
+	power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+	POWER_check_status(NODE_ERROR_BASE_POWER);
 	// Scan LBUS nodes.
 	status = AT_BUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
@@ -947,7 +947,7 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.count += nodes_count;
 errors:
 	// Turn bus interface off.
-	LPUART1_power_off();
+	POWER_disable(POWER_DOMAIN_RS485);
 	return status;
 }
 
@@ -1101,6 +1101,7 @@ errors:
 void NODE_task(void) {
 	// Local variables.
 	NODE_status_t node_status = NODE_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
 	// Radio task.
 	node_status = _NODE_radio_task();
 	NODE_stack_error();
@@ -1113,5 +1114,6 @@ void NODE_task(void) {
 	NODE_stack_error();
 #endif
 	// Turn bus interface off.
-	LPUART1_power_off();
+	power_status = POWER_disable(POWER_DOMAIN_RS485);
+	POWER_stack_error();
 }

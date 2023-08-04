@@ -19,7 +19,8 @@
 
 /*** LBUS functions ***/
 
-void LBUS_init(void);
+void LBUS_init(NODE_address_t self_address);
+void LBUS_de_init(void);
 NODE_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint32_t data_size_bytes);
 void LBUS_reset(void);
 void LBUS_fill_rx_buffer(uint8_t rx_byte);

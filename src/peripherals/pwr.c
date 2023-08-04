@@ -17,10 +17,7 @@
 
 /*** PWR functions ***/
 
-/* INIT PWR INTERFACE.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void PWR_init(void) {
 	// Enable power interface clock.
 	RCC -> APB1ENR |= (0b1 << 28); // PWREN='1'.
@@ -30,18 +27,13 @@ void PWR_init(void) {
 	FLASH -> ACR |= (0b1 << 3); // SLEEP_PD='1'.
 	// Use HSI clock when waking-up from stop mode.
 	RCC -> CFGR |= (0b1 << 15);
-	// Switch internal voltage reference off in low power mode.
-	PWR -> CR |= (0b1 << 9); // ULP='1'.
-	// Ignore internal voltage reference startup time on wake-up.
-	PWR -> CR |= (0b1 << 10); // FWU='1'.
+	// Switch internal voltage reference off in low power mode and ignore startup time.
+	PWR -> CR |= (0b11 << 9); // ULP='1' and FWU='1'.
 	// Never return in low power sleep mode after wake-up.
 	SCB -> SCR &= ~(0b1 << 1); // SLEEPONEXIT='0'.
 }
 
-/* FUNCTION TO ENTER SLEEP MODE.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void PWR_enter_sleep_mode(void) {
 	// Regulator in normal mode.
 	PWR -> CR &= ~(0b1 << 0); // LPSDSR='0'.
@@ -50,10 +42,16 @@ void PWR_enter_sleep_mode(void) {
 	__asm volatile ("wfi"); // Wait For Interrupt core instruction.
 }
 
-/* FUNCTION TO ENTER STOP MODE.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+void PWR_enter_low_power_sleep_mode(void) {
+	// Regulator in low power mode.
+	PWR -> CR |= (0b1 << 0); // LPSDSR='1'.
+	// Enter low power sleep mode.
+	SCB -> SCR &= ~(0b1 << 2); // SLEEPDEEP='0'.
+	__asm volatile ("wfi"); // Wait For Interrupt core instruction.
+}
+
+/*******************************************************************/
 void PWR_enter_stop_mode(void) {
 	// Regulator in low power mode.
 	PWR -> CR |= (0b1 << 0); // LPSDSR='1'.
@@ -71,10 +69,7 @@ void PWR_enter_stop_mode(void) {
 	__asm volatile ("wfi"); // Wait For Interrupt core instruction.
 }
 
-/* FUNCTION TO FORCE A SOFTWARE RESET.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void PWR_software_reset(void) {
 	// Trigger software reset.
 	SCB -> AIRCR = 0x05FA0000 | ((SCB -> AIRCR) & 0x0000FFFF) | (0b1 << 2);

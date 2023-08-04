@@ -49,7 +49,7 @@ NODE_status_t _LBUS_configure_phy(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	LPUART_config_t lpuart_config;
+	LPUART_configuration_t lpuart_config;
 	// Configure physical interface.
 	lpuart_config.baud_rate = LBUS_BAUD_RATE;
 	lpuart_config.rx_mode = LPUART_RX_MODE_ADDRESSED;
@@ -66,12 +66,20 @@ errors:
  * @param:	None.
  * @return:	None.
  */
-void LBUS_init(void) {
+void LBUS_init(NODE_address_t self_address) {
 	// Init context.
 	lbus_ctx.self_address = DINFOX_NODE_ADDRESS_DMM;
 	lbus_ctx.expected_slave_address = DINFOX_NODE_ADDRESS_BROADCAST;
 	lbus_ctx.source_address_mismatch = 0;
 	lbus_ctx.rx_byte_count = 0;
+	// Init LPUART.
+	LPUART1_init(self_address);
+}
+
+/*******************************************************************/
+void LBUS_de_init(void) {
+	// Release LPUART.
+	LPUART1_de_init();
 }
 
 /* SEND REPLY OVER LBUS.
@@ -99,10 +107,10 @@ NODE_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint3
 	status = _LBUS_configure_phy();
 	if (status != NODE_SUCCESS) goto errors;
 	// Send header.
-	lpuart1_status = LPUART1_send(lbus_header, LBUS_FRAME_FIELD_INDEX_DATA);
+	lpuart1_status = LPUART1_write(lbus_header, LBUS_FRAME_FIELD_INDEX_DATA);
 	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 	// Send command.
-	lpuart1_status = LPUART1_send(data, data_size_bytes);
+	lpuart1_status = LPUART1_write(data, data_size_bytes);
 	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 errors:
 	// Reset RX byte for next reception.

@@ -9,10 +9,10 @@
 #define __NODE_H__
 
 #include "adc.h"
-#include "i2c.h"
 #include "lptim.h"
 #include "lpuart.h"
 #include "node_common.h"
+#include "power.h"
 #include "string.h"
 #include "types.h"
 
@@ -62,11 +62,11 @@ typedef enum {
 	NODE_ERROR_ACTION_INDEX,
 	NODE_ERROR_RELAY_ID,
 	NODE_ERROR_BASE_ADC = 0x0100,
-	NODE_ERROR_BASE_I2C = (NODE_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_LPUART = (NODE_ERROR_BASE_I2C + I2C_ERROR_BASE_LAST),
+	NODE_ERROR_BASE_LPUART = (NODE_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
+	NODE_ERROR_BASE_POWER = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
+	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_POWER + POWER_ERROR_BASE_LAST)
 } NODE_status_t;
 
 typedef struct {
@@ -154,7 +154,7 @@ void NODE_task(void);
 }
 
 #define NODE_check_status(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; }}
-#define NODE_stack_error() { ERROR_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
-#define NODE_stack_error_print() { ERROR_check_status_print(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+#define NODE_stack_error() { ERROR_stack_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+#define NODE_print_error() { ERROR_print_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
 
 #endif /* __NODE_H__ */

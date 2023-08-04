@@ -9,9 +9,7 @@
 
 #include "exti_reg.h"
 #include "gpio.h"
-#include "hmi.h"
 #include "mapping.h"
-#include "nvic.h"
 #include "rcc_reg.h"
 #include "syscfg_reg.h"
 #include "types.h"
@@ -23,99 +21,53 @@
 
 /*** EXTI local global variables ***/
 
-static volatile uint8_t encoder_switch_flag = 0;
+static EXTI_gpio_irq_cb_t exti_gpio_irq_callbacks[GPIO_PINS_PER_PORT];
 
 /*** EXTI local functions ***/
 
-/* EXTI LINES 0-1 INTERRUPT HANDLER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+#define _EXTI_irq_handler(gpio) { \
+	/* Check flag */ \
+	if (((EXTI -> PR) & (0b1 << (gpio.pin))) != 0) { \
+		/* Check mask and callback */ \
+		if ((((EXTI -> IMR) & (0b1 << (gpio.pin))) != 0) && (exti_gpio_irq_callbacks[gpio.pin] != NULL)) { \
+			/* Execute callback */ \
+			exti_gpio_irq_callbacks[gpio.pin](); \
+		} \
+		/* Clear flag */ \
+		EXTI -> PR |= (0b1 << (gpio.pin)); \
+	} \
+}
+
+/*******************************************************************/
 void __attribute__((optimize("-O0"))) EXTI0_1_IRQHandler(void) {
 	// Rotary encoder switch IRQ (PA0).
-	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_SW.pin))) != 0) {
-		// Set flag in HMI driver.
-		HMI_set_irq_flag(HMI_IRQ_ENCODER_SWITCH);
-		encoder_switch_flag = 1;
-		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_SW.pin));
-	}
+	_EXTI_irq_handler(GPIO_ENC_SW);
 }
 
-/* EXTI LINES 2-3 INTERRUPT HANDLER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void __attribute__((optimize("-O0"))) EXTI2_3_IRQHandler(void) {
 	// Rotary encoder channel A (PA2).
-	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_CHA.pin))) != 0) {
-		// Check channel B state.
-		if (GPIO_read(&GPIO_ENC_CHB) == 0) {
-			// Set flag in HMI driver.
-			HMI_set_irq_flag(HMI_IRQ_ENCODER_FORWARD);
-		}
-		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_CHA.pin));
-	}
+	_EXTI_irq_handler(GPIO_ENC_CHA);
 	// Rotary encoder channel B (PA3).
-	if (((EXTI -> PR) & (0b1 << (GPIO_ENC_CHB.pin))) != 0) {
-		// Check channel A state.
-		if (GPIO_read(&GPIO_ENC_CHA) == 0) {
-			// Set flag in HMI driver.
-			HMI_set_irq_flag(HMI_IRQ_ENCODER_BACKWARD);
-		}
-		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_ENC_CHB.pin));
-	}
+	_EXTI_irq_handler(GPIO_ENC_CHB);
 }
 
-/* EXTI LINES 4-15 INTERRUPT HANDLER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void __attribute__((optimize("-O0"))) EXTI4_15_IRQHandler(void) {
 	// BP1 (PB8).
-	if (((EXTI -> PR) & (0b1 << (GPIO_BP1.pin))) != 0) {
-		// Set flag in HMI driver.
-		HMI_set_irq_flag(HMI_IRQ_BP1);
-		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP1.pin));
-	}
+	_EXTI_irq_handler(GPIO_BP1);
 	// BP2 (PB15).
-	if (((EXTI -> PR) & (0b1 << (GPIO_BP2.pin))) != 0) {
-		// Set flag in HMI driver.
-		HMI_set_irq_flag(HMI_IRQ_BP2);
-		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP2.pin));
-	}
+	_EXTI_irq_handler(GPIO_BP2);
 	// BP3 (PB9).
-	if (((EXTI -> PR) & (0b1 << (GPIO_BP3.pin))) != 0) {
-		// Set flag in HMI driver.
-		HMI_set_irq_flag(HMI_IRQ_BP3);
-		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_BP3.pin));
-	}
+	_EXTI_irq_handler(GPIO_BP3);
 	// CMD_ON (PB13).
-	if (((EXTI -> PR) & (0b1 << (GPIO_CMD_ON.pin))) != 0) {
-		// Set flag in HMI driver.
-		HMI_set_irq_flag(HMI_IRQ_CMD_ON);
-		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_CMD_ON.pin));
-	}
+	_EXTI_irq_handler(GPIO_CMD_ON);
 	// CMD_OFF (PB14).
-	if (((EXTI -> PR) & (0b1 << (GPIO_CMD_OFF.pin))) != 0) {
-		// Set flag in HMI driver.
-		HMI_set_irq_flag(HMI_IRQ_CMD_OFF);
-		// Clear flag.
-		EXTI -> PR |= (0b1 << (GPIO_CMD_OFF.pin));
-	}
+	_EXTI_irq_handler(GPIO_CMD_OFF);
 }
 
-/* SET EXTI TRIGGER.
- * @param trigger:	Interrupt edge trigger (see EXTI_trigger_t enum).
- * @param line_idx:	Line index.
- * @return:			None.
- */
+/*******************************************************************/
 static void _EXTI_set_trigger(EXTI_trigger_t trigger, uint8_t line_idx) {
 	// Select triggers.
 	switch (trigger) {
@@ -144,39 +96,42 @@ static void _EXTI_set_trigger(EXTI_trigger_t trigger, uint8_t line_idx) {
 
 /*** EXTI functions ***/
 
-/* INIT EXTI PERIPHERAL.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void EXTI_init(void) {
+	// Local variables.
+	uint8_t idx = 0;
 	// Enable peripheral clock.
 	RCC -> APB2ENR |= (0b1 << 0); // SYSCFEN='1'.
 	// Mask all sources by default.
 	EXTI -> IMR = 0;
 	// Clear all flags.
 	EXTI_clear_all_flags();
+	// Reset callbacks.
+	for (idx=0 ; idx<GPIO_PINS_PER_PORT ; idx++) {
+		exti_gpio_irq_callbacks[idx] = NULL;
+	}
 }
 
-/* CONFIGURE A GPIO AS EXTERNAL INTERRUPT SOURCE.
- * @param gpio:		GPIO to be attached to EXTI peripheral.
- * @param trigger:	Interrupt edge trigger (see EXTI_trigger_t enum).
- * @return:			None.
- */
-void EXTI_configure_gpio(const GPIO_pin_t* gpio, EXTI_trigger_t trigger) {
+/*******************************************************************/
+void EXTI_configure_gpio(const GPIO_pin_t* gpio, EXTI_trigger_t trigger, EXTI_gpio_irq_cb_t irq_callback) {
 	// Select GPIO port.
-	SYSCFG -> EXTICR[((gpio -> pin) / 4)] &= ~(0b1111 << (4 * ((gpio -> pin) % 4)));
-	SYSCFG -> EXTICR[((gpio -> pin) / 4)] |= ((gpio -> port_index) << (4 * ((gpio -> pin) % 4)));
+	SYSCFG -> EXTICR[((gpio -> pin) >> 2)] &= ~(0b1111 << (((gpio -> pin) % 4) << 2));
+	SYSCFG -> EXTICR[((gpio -> pin) >> 2)] |= ((gpio -> port_index) << (((gpio -> pin) % 4) << 2));
 	// Set mask.
 	EXTI -> IMR |= (0b1 << ((gpio -> pin))); // IMx='1'.
 	// Select triggers.
 	_EXTI_set_trigger(trigger, (gpio -> pin));
+	// Register callback.
+	exti_gpio_irq_callbacks[gpio -> pin] = irq_callback;
 }
 
-/* CONFIGURE A LINE AS INTERNAL INTERRUPT SOURCE.
- * @param line:		Line to configure (see EXTI_line_t enum).
- * @param trigger:	Interrupt edge trigger (see EXTI_trigger_t enum).
- * @return:			None.
- */
+/*******************************************************************/
+void EXTI_release_gpio(const GPIO_pin_t* gpio) {
+	// Set mask.
+	EXTI -> IMR &= ~(0b1 << ((gpio -> pin))); // IMx='0'.
+}
+
+/*******************************************************************/
 void EXTI_configure_line(EXTI_line_t line, EXTI_trigger_t trigger) {
 	// Set mask.
 	EXTI -> IMR |= (0b1 << line); // IMx='1'.
@@ -186,36 +141,14 @@ void EXTI_configure_line(EXTI_line_t line, EXTI_trigger_t trigger) {
 	}
 }
 
-/* CLEAR EXTI FLAG.
- * @param line:	Line to clear (see EXTI_line_t enum).
- * @return:		None.
- */
+/*******************************************************************/
 void EXTI_clear_flag(EXTI_line_t line) {
 	// Clear flag.
 	EXTI -> PR |= line; // PIFx='1'.
 }
 
-/* CLEAR ALL EXTI FLAGS.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void EXTI_clear_all_flags(void) {
 	// Clear all flags.
 	EXTI -> PR |= 0x007BFFFF; // PIFx='1'.
-}
-
-/* READ ENCODER SWITCH FLAG.
- * @param:	None.
- * @return:	None.
- */
-uint8_t EXTI_get_encoder_switch_flag(void) {
-	return encoder_switch_flag;
-}
-
-/* CLEAR ENCODER SWITCH FLAG.
- * @param:	None.
- * @return:	None.
- */
-void EXTI_clear_encoder_switch_flag(void) {
-	encoder_switch_flag = 0;
 }

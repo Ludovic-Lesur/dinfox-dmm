@@ -189,11 +189,20 @@ errors:
 
 /*** SH1106 functions ***/
 
-/* INIT SH1106 DRIVER.
- * @param:			None.
- * @return status:	Function execution status.
- */
-SH1106_status_t SH1106_init(void) {
+/*******************************************************************/
+void SH1106_init(void) {
+	// Init I2C interface.
+	I2C1_init();
+}
+
+/*******************************************************************/
+void SH1106_de_init(void) {
+	// Release I2C interface.
+	I2C1_de_init();
+}
+
+/*******************************************************************/
+SH1106_status_t SH1106_setup(void) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
 	// Screen configuration.

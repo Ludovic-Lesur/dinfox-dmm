@@ -1,7 +1,7 @@
 /*
  * i2c.h
  *
- *  Created on: 18 apr. 2020
+ *  Created on: 16 feb. 2023
  *      Author: Ludo
  */
 
@@ -13,6 +13,10 @@
 
 /*** I2C structures ***/
 
+/*!******************************************************************
+ * \enum I2C_status_t
+ * \brief I2C driver error codes.
+ *******************************************************************/
 typedef enum {
 	I2C_SUCCESS = 0,
 	I2C_ERROR_NULL_PARAMETER,
@@ -30,14 +34,54 @@ typedef enum {
 
 /*** I2C functions ***/
 
+/*!******************************************************************
+ * \fn void I2C1_init(void)
+ * \brief Init I2C1 peripheral.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void I2C1_init(void);
-I2C_status_t I2C1_power_on(void);
-void I2C1_power_off(void);
-I2C_status_t I2C1_write(uint8_t slave_address, uint8_t* tx_buf, uint8_t tx_buf_length, uint8_t stop_flag);
-I2C_status_t I2C1_read(uint8_t slave_address, uint8_t* rx_buf, uint8_t rx_buf_length);
 
-#define I2C1_check_status(error_base) { if (i2c1_status != I2C_SUCCESS) { status = error_base + i2c1_status; goto errors; }}
-#define I2C1_stack_error() { ERROR_check_status(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
-#define I2C1_stack_error_print() { ERROR_check_status_print(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
+/*!******************************************************************
+ * \fn void I2C1_init(void)
+ * \brief Release I2C1 peripheral.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
+void I2C1_de_init(void);
+
+/*!******************************************************************
+ * \fn I2C_status_t I2C1_write(uint8_t slave_address, uint8_t* tx_buf, uint8_t tx_buf_length, uint8_t stop_flag)
+ * \brief Write data on I2C1 bus.
+ * \param[in]  	slave_address: 7-bits destination slave address.
+ * \param[in]	data: Byte array to send.
+ * \param[in]	data_size_bytes: Number of bytes to send.
+ * \param[in]	stop_flag: Generate stop condition at the end of the transfer is non zero.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+I2C_status_t I2C1_write(uint8_t slave_address, uint8_t* data, uint8_t data_size_bytes, uint8_t stop_flag);
+
+/*!******************************************************************
+ * \fn I2C_status_t I2C1_read(uint8_t slave_address, uint8_t* data, uint8_t data_size_bytes)
+ * \brief Read data on I2C1 bus.
+ * \param[in]  	slave_address: 7-bits destination slave address.
+ * \param[in]	data: Byte array that will contain the read data.
+ * \param[in]	data_size_bytes: Number of bytes to read.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+I2C_status_t I2C1_read(uint8_t slave_address, uint8_t* data, uint8_t data_size_bytes);
+
+/*******************************************************************/
+#define I2C1_check_status(error_base) { if (i2c1_status != I2C_SUCCESS) { status = error_base + i2c1_status; goto errors; } }
+
+/*******************************************************************/
+#define I2C1_stack_error(void) { ERROR_stack_error(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
+
+/*******************************************************************/
+#define I2C1_print_error(void) { ERROR_print_error(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
 
 #endif /* __I2C_H__ */

@@ -20,9 +20,11 @@
 #include "mapping.h"
 #include "node.h"
 #include "nvic.h"
+#include "power.h"
 #include "pwr.h"
 #include "sh1106.h"
 #include "string.h"
+#include "tim.h"
 #include "types.h"
 
 /*** HMI macros ***/
@@ -56,8 +58,10 @@ static const char_t* HMI_MESSAGE_READING_DATA[HMI_DATA_PAGES_DISPLAYED] = {"READ
 
 /*** HMI local structures ***/
 
-typedef HMI_status_t (*HMI_irq_callback_t)(void);
+/*******************************************************************/
+typedef HMI_status_t (*HMI_process_function_t)(void);
 
+/*******************************************************************/
 typedef enum {
 	HMI_STATE_INIT = 0,
 	HMI_STATE_IDLE,
@@ -65,6 +69,7 @@ typedef enum {
 	HMI_STATE_LAST,
 } HMI_state_t;
 
+/*******************************************************************/
 typedef enum {
 	HMI_SCREEN_OFF = 0,
 	HMI_SCREEN_NODES_LIST,
@@ -74,6 +79,7 @@ typedef enum {
 	HMI_SCREEN_LAST,
 } HMI_screen_t;
 
+/*******************************************************************/
 typedef enum {
 	HMI_PAGE_ADDRESS_TITLE = 0,
 	HMI_PAGE_ADDRESS_SPACE_1,
@@ -86,13 +92,27 @@ typedef enum {
 	HMI_PAGE_ADDRESS_LAST
 } HMI_page_address_t;
 
+/*******************************************************************/
+typedef enum {
+	HMI_IRQ_ENCODER_SWITCH = 0,
+	HMI_IRQ_ENCODER_FORWARD,
+	HMI_IRQ_ENCODER_BACKWARD,
+	HMI_IRQ_CMD_ON,
+	HMI_IRQ_CMD_OFF,
+	HMI_IRQ_BP1,
+	HMI_IRQ_BP2,
+	HMI_IRQ_BP3,
+	HMI_IRQ_LAST
+} HMI_irq_flag_t;
+
+/*******************************************************************/
 typedef struct {
 	// Global.
 	HMI_status_t status;
 	HMI_state_t state;
 	HMI_screen_t screen;
 	volatile uint8_t irq_flags;
-	HMI_irq_callback_t irq_callbacks[HMI_IRQ_LAST];
+	HMI_process_function_t process_functions[HMI_IRQ_LAST];
 	// Screen.
 	char_t text[HMI_DATA_ZONE_WIDTH_CHAR + 1];
 	uint8_t text_width;
@@ -115,10 +135,7 @@ static const uint8_t HMI_DATA_PAGE_ADDRESS[HMI_DATA_PAGES_DISPLAYED] = {HMI_PAGE
 
 /*** HMI local functions ***/
 
-/* FLUSH TEXT BUFFER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _HMI_text_flush(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -127,10 +144,7 @@ static void _HMI_text_flush(void) {
 	hmi_ctx.text_width = 0;
 }
 
-/* FLUSH DATA BUFFER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _HMI_data_flush(void) {
 	// Local variables.
 	uint8_t line_idx = 0;
@@ -145,10 +159,7 @@ static void _HMI_data_flush(void) {
 	hmi_ctx.data_depth = 0;
 }
 
-/* PRINT TITLE ZONE ON SCREEN.
- * @param title:	None.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_print_title(char_t* title) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
@@ -176,10 +187,7 @@ errors:
 	return status;
 }
 
-/* PRINT NAVIGATION ZONE ON SCREEN.
- * @param:			None.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_print_navigation(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
@@ -209,10 +217,7 @@ errors:
 	return status;
 }
 
-/* PRINT DATA ZONE ON SCREEN.
- * @param:			None.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_print_data(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
@@ -236,10 +241,7 @@ errors:
 	return status;
 }
 
-/* UPDATE TITLE ZONE.
- * @param screen:	View to display.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
@@ -299,10 +301,7 @@ errors:
 	return status;
 }
 
-/* UPDATE NAVIGATION ZONE.
- * @param screen:	View to display.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_update_and_print_navigation(HMI_screen_t screen) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
@@ -338,10 +337,7 @@ static HMI_status_t _HMI_update_and_print_navigation(HMI_screen_t screen) {
 	return status;
 }
 
-/* UPDATE VALUE ON CURRENT STRING DATA INDEX.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_update_data(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
@@ -395,10 +391,7 @@ errors:
 	return status;
 }
 
-/* UPDATE DATA ZONE.
- * @param screen:	View to display.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
@@ -578,10 +571,7 @@ errors:
 	return status;
 }
 
-/* RESET NAVIGATION TO THE TOP OF THE LIST.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _HMI_reset_navigation(void) {
 	// Reset indexes.
 	hmi_ctx.data_index = 0;
@@ -589,35 +579,24 @@ static void _HMI_reset_navigation(void) {
 	hmi_ctx.pointer_index = 0;
 }
 
-/* ENABLE HMI INTERRUPTS.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _HMI_enable_irq(void) {
 	// Clear flags.
 	EXTI_clear_all_flags();
 	hmi_ctx.irq_flags = 0;
 	// Enable interrupts.
-	NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_0_1);
-	NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_2_3);
-	NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_4_15);
+	NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_2_3, NVIC_PRIORITY_EXTI_2_3);
+	NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_4_15, NVIC_PRIORITY_EXTI_4_15);
 }
 
-/* DISABLE HMI INTERRUPTS.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _HMI_disable_irq(void) {
 	// Disable interrupts.
-	NVIC_disable_interrupt(NVIC_INTERRUPT_EXTI_0_1);
 	NVIC_disable_interrupt(NVIC_INTERRUPT_EXTI_2_3);
 	NVIC_disable_interrupt(NVIC_INTERRUPT_EXTI_4_15);
 }
 
-/* UPDATE FULL DISPLAY.
- * @param screen:	Screen to display..
- * @return:			None.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_update(HMI_screen_t screen, uint8_t update_all_data, uint8_t update_navigation) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
@@ -650,11 +629,62 @@ errors:
 	return status;
 }
 
-/* ENCODER SWITCH IRQ CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static HMI_status_t _HMI_irq_callback_encoder_switch(void) {
+/*******************************************************************/
+static void _HMI_irq_callback_encoder_switch(void) {
+	// Set local flag.
+	hmi_ctx.irq_flags |= (0b1 << HMI_IRQ_ENCODER_SWITCH);
+}
+
+/*******************************************************************/
+static void _HMI_irq_callback_encoder_forward(void) {
+	// Check channel B state.
+	if (GPIO_read(&GPIO_ENC_CHB) == 0) {
+		// Set local flag.
+		hmi_ctx.irq_flags |= (0b1 << HMI_IRQ_ENCODER_FORWARD);
+	}
+}
+
+/*******************************************************************/
+static void _HMI_irq_callback_encoder_backward(void) {
+	// Check channel B state.
+	if (GPIO_read(&GPIO_ENC_CHA) == 0) {
+		// Set local flag.
+		hmi_ctx.irq_flags |= (0b1 << HMI_IRQ_ENCODER_BACKWARD);
+	}
+}
+
+/*******************************************************************/
+static void _HMI_irq_callback_cmd_on(void) {
+	// Set local flag.
+	hmi_ctx.irq_flags |= (0b1 << HMI_IRQ_CMD_ON);
+}
+
+/*******************************************************************/
+static void _HMI_irq_callback_cmd_off(void) {
+	// Set local flag.
+	hmi_ctx.irq_flags |= (0b1 << HMI_IRQ_CMD_OFF);
+}
+
+/*******************************************************************/
+static void _HMI_irq_callback_bp1(void) {
+	// Set local flag.
+	hmi_ctx.irq_flags |= (0b1 << HMI_IRQ_BP1);
+}
+
+/*******************************************************************/
+static void _HMI_irq_callback_bp2(void) {
+	// Set local flag.
+	hmi_ctx.irq_flags |= (0b1 << HMI_IRQ_BP2);
+}
+
+/*******************************************************************/
+static void _HMI_irq_callback_bp3(void) {
+	// Set local flag.
+	hmi_ctx.irq_flags |= (0b1 << HMI_IRQ_BP3);
+}
+
+/*******************************************************************/
+static HMI_status_t _HMI_process_encoder_switch(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	// Check current screen.
@@ -673,11 +703,8 @@ static HMI_status_t _HMI_irq_callback_encoder_switch(void) {
 	return status;
 }
 
-/* ENCODER FORWARD IRQ CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static HMI_status_t _HMI_irq_callback_encoder_forward(void) {
+/*******************************************************************/
+static HMI_status_t _HMI_process_encoder_forward(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	// Increment data select index.
@@ -699,11 +726,8 @@ static HMI_status_t _HMI_irq_callback_encoder_forward(void) {
 	return status;
 }
 
-/* ENCODER BACKWARD IRQ CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static HMI_status_t _HMI_irq_callback_encoder_backward(void) {
+/*******************************************************************/
+static HMI_status_t _HMI_process_encoder_backward(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	// Increment data select index.
@@ -723,11 +747,8 @@ static HMI_status_t _HMI_irq_callback_encoder_backward(void) {
 	return status;
 }
 
-/* COMMAND ON IRQ CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static HMI_status_t _HMI_irq_callback_cmd_on(void) {
+/*******************************************************************/
+static HMI_status_t _HMI_process_cmd_on(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
@@ -750,11 +771,8 @@ errors:
 	return status;
 }
 
-/* COMMAND OFF IRQ CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static HMI_status_t _HMI_irq_callback_cmd_off(void) {
+/*******************************************************************/
+static HMI_status_t _HMI_process_cmd_off(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
@@ -777,11 +795,8 @@ errors:
 	return status;
 }
 
-/* BP1 IRQ CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static HMI_status_t _HMI_irq_callback_bp1(void) {
+/*******************************************************************/
+static HMI_status_t _HMI_process_bp1(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
@@ -801,11 +816,8 @@ errors:
 	return status;
 }
 
-/* BP2 IRQ CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static HMI_status_t _HMI_irq_callback_bp2(void) {
+/*******************************************************************/
+static HMI_status_t _HMI_process_bp2(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	// Update screen.
@@ -816,11 +828,8 @@ errors:
 	return status;
 }
 
-/* BP3 IRQ CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static HMI_status_t _HMI_irq_callback_bp3(void) {
+/*******************************************************************/
+static HMI_status_t _HMI_process_bp3(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	// Update all data.
@@ -828,25 +837,18 @@ static HMI_status_t _HMI_irq_callback_bp3(void) {
 	return status;
 }
 
-/* HMI INTERNAL STATE MACHINE.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 static HMI_status_t _HMI_state_machine(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	HMI_status_t status = HMI_SUCCESS;
-	I2C_status_t i2c1_status = I2C_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
 	SH1106_status_t sh1106_status = SH1106_SUCCESS;
 	// Read state.
 	switch (hmi_ctx.state) {
 	case HMI_STATE_INIT:
-		// Turn HMI on.
-		i2c1_status = I2C1_power_on();
-		I2C1_check_status(HMI_ERROR_BASE_I2C);
-		// Init OLED screen.
-		sh1106_status = SH1106_init();
+		// Setup OLED screen.
+		sh1106_status = SH1106_setup();
 		SH1106_check_status(HMI_ERROR_BASE_SH1106);
 		// Display DINFox logo.
 		sh1106_status = SH1106_print_image(DINFOX_LOGO);
@@ -868,7 +870,7 @@ static HMI_status_t _HMI_state_machine(void) {
 			// Check flag.
 			if ((hmi_ctx.irq_flags & (0b1 << idx)) != 0) {
 				// Execute callback and clear flag.
-				status = hmi_ctx.irq_callbacks[idx]();
+				status = hmi_ctx.process_functions[idx]();
 				hmi_ctx.irq_flags &= ~(0b1 << idx);
 				// Exit in case of error.
 				if (status != HMI_SUCCESS) goto errors;
@@ -887,67 +889,91 @@ errors:
 
 /*** HMI functions ***/
 
-/* INIT HMI INTERFACE.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+void HMI_init_wakeup(void) {
+	// Init encoder switch used as wake-up signal.
+	GPIO_configure(&GPIO_ENC_SW, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	EXTI_configure_gpio(&GPIO_ENC_SW, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_encoder_switch);
+	// Clear flags.
+	hmi_ctx.irq_flags = 0;
+	// Enable interrupt.
+	NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_0_1, NVIC_PRIORITY_EXTI_0_1);
+}
+
+/*******************************************************************/
 void HMI_init(void) {
 	// Init context.
 	hmi_ctx.node.address = 0xFF;
 	hmi_ctx.node.board_id = DINFOX_BOARD_ID_ERROR;
 	_HMI_reset_navigation();
 	// Init callbacks.
-	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_SWITCH] = &_HMI_irq_callback_encoder_switch;
-	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_FORWARD] = &_HMI_irq_callback_encoder_forward;
-	hmi_ctx.irq_callbacks[HMI_IRQ_ENCODER_BACKWARD] = &_HMI_irq_callback_encoder_backward;
-	hmi_ctx.irq_callbacks[HMI_IRQ_CMD_ON] = &_HMI_irq_callback_cmd_on;
-	hmi_ctx.irq_callbacks[HMI_IRQ_CMD_OFF] = &_HMI_irq_callback_cmd_off;
-	hmi_ctx.irq_callbacks[HMI_IRQ_BP1] = &_HMI_irq_callback_bp1;
-	hmi_ctx.irq_callbacks[HMI_IRQ_BP2] = &_HMI_irq_callback_bp2;
-	hmi_ctx.irq_callbacks[HMI_IRQ_BP3] = &_HMI_irq_callback_bp3;
+	hmi_ctx.process_functions[HMI_IRQ_ENCODER_SWITCH] = &_HMI_process_encoder_switch;
+	hmi_ctx.process_functions[HMI_IRQ_ENCODER_FORWARD] = &_HMI_process_encoder_forward;
+	hmi_ctx.process_functions[HMI_IRQ_ENCODER_BACKWARD] = &_HMI_process_encoder_backward;
+	hmi_ctx.process_functions[HMI_IRQ_CMD_ON] = &_HMI_process_cmd_on;
+	hmi_ctx.process_functions[HMI_IRQ_CMD_OFF] = &_HMI_process_cmd_off;
+	hmi_ctx.process_functions[HMI_IRQ_BP1] = &_HMI_process_bp1;
+	hmi_ctx.process_functions[HMI_IRQ_BP2] = &_HMI_process_bp2;
+	hmi_ctx.process_functions[HMI_IRQ_BP3] = &_HMI_process_bp3;
 	// Init buffers ending.
 	_HMI_data_flush();
 	_HMI_text_flush();
+	// Init OLED screen driver and auto-power off timer.
+	SH1106_init();
+	TIM2_init();
 	// Init buttons.
 	GPIO_configure(&GPIO_BP1, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_configure_gpio(&GPIO_BP1, EXTI_TRIGGER_RISING_EDGE);
+	EXTI_configure_gpio(&GPIO_BP1, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_bp1);
 	GPIO_configure(&GPIO_BP2, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_configure_gpio(&GPIO_BP2, EXTI_TRIGGER_RISING_EDGE);
+	EXTI_configure_gpio(&GPIO_BP2, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_bp2);
 	GPIO_configure(&GPIO_BP3, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_configure_gpio(&GPIO_BP3, EXTI_TRIGGER_RISING_EDGE);
+	EXTI_configure_gpio(&GPIO_BP3, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_bp3);
 	// Init switch.
 	GPIO_configure(&GPIO_CMD_ON, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_configure_gpio(&GPIO_CMD_ON, EXTI_TRIGGER_RISING_EDGE);
+	EXTI_configure_gpio(&GPIO_CMD_ON, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_cmd_on);
 	GPIO_configure(&GPIO_CMD_OFF, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_configure_gpio(&GPIO_CMD_OFF, EXTI_TRIGGER_RISING_EDGE);
+	EXTI_configure_gpio(&GPIO_CMD_OFF, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_cmd_off);
 	// Init encoder.
-	GPIO_configure(&GPIO_ENC_SW, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_configure_gpio(&GPIO_ENC_SW, EXTI_TRIGGER_RISING_EDGE);
 	GPIO_configure(&GPIO_ENC_CHA, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_configure_gpio(&GPIO_ENC_CHA, EXTI_TRIGGER_RISING_EDGE);
+	EXTI_configure_gpio(&GPIO_ENC_CHA, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_encoder_forward);
 	GPIO_configure(&GPIO_ENC_CHB, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_configure_gpio(&GPIO_ENC_CHB, EXTI_TRIGGER_RISING_EDGE);
-	// Set interrupts priority.
-	NVIC_set_priority(NVIC_INTERRUPT_EXTI_0_1, 1);
-	NVIC_set_priority(NVIC_INTERRUPT_EXTI_2_3, 1);
-	NVIC_set_priority(NVIC_INTERRUPT_EXTI_4_15, 1);
+	EXTI_configure_gpio(&GPIO_ENC_CHB, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_encoder_backward);
 }
 
-/* MAIN TASK OF HMI.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
+void HMI_de_init(void) {
+	// Release EXTI inputs.
+	EXTI_release_gpio(&GPIO_BP1);
+	EXTI_release_gpio(&GPIO_BP2);
+	EXTI_release_gpio(&GPIO_BP3);
+	EXTI_release_gpio(&GPIO_CMD_ON);
+	EXTI_release_gpio(&GPIO_CMD_OFF);
+	EXTI_release_gpio(&GPIO_ENC_CHA);
+	EXTI_release_gpio(&GPIO_ENC_CHB);
+	// Release I2C and timer.
+	TIM2_de_init();
+	I2C1_de_init();
+}
+
+/*******************************************************************/
 HMI_status_t HMI_task(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
+	TIM_status_t tim2_status = TIM_SUCCESS;
+	uint8_t timer_has_elapsed = 0;
+	// Check flag.
+	if ((hmi_ctx.irq_flags & (0b1 << HMI_IRQ_ENCODER_SWITCH)) == 0) goto end;
 	// Init context.
 	hmi_ctx.screen = HMI_SCREEN_OFF;
-	hmi_ctx.state = ((hmi_ctx.irq_flags & (0b1 << HMI_IRQ_ENCODER_SWITCH)) != 0) ? HMI_STATE_INIT : HMI_STATE_UNUSED;
+	hmi_ctx.state = HMI_STATE_INIT;
 	// Turn bus interface on.
-	lpuart1_status = LPUART1_power_on();
-	LPUART1_check_status(HMI_ERROR_BASE_LPUART);
+	power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+	POWER_check_status(NODE_ERROR_BASE_POWER);
+	// Turn HMI on.
+	power_status = POWER_enable(POWER_DOMAIN_HMI, LPTIM_DELAY_MODE_STOP);
+	POWER_check_status(HMI_ERROR_BASE_POWER);
 	// Process HMI while it is used.
 	while (hmi_ctx.state != HMI_STATE_UNUSED) {
 		// Perform state machine.
@@ -962,34 +988,30 @@ HMI_status_t HMI_task(void) {
 			goto errors;
 		}
 		// Start auto power-off timer.
-		lptim1_status = LPTIM1_start(HMI_UNUSED_DURATION_THRESHOLD_SECONDS * 1000);
-		LPTIM1_check_status(HMI_ERROR_BASE_LPTIM);
+		tim2_status = TIM2_start(TIM2_CHANNEL_1, (HMI_UNUSED_DURATION_THRESHOLD_SECONDS * 1000), TIM_WAITING_MODE_SLEEP);
+		TIM2_check_status(HMI_ERROR_BASE_TIM);
 		// Enter stop mode.
-		PWR_enter_stop_mode();
+		PWR_enter_sleep_mode();
 		// Wake-up.
 		IWDG_reload();
-		LPTIM1_stop();
-		// Check LPTIM flag.
-		if ((LPTIM1_get_wake_up_flag() != 0) && (hmi_ctx.irq_flags == 0)) {
+		// Read timer status.
+		tim2_status = TIM2_get_status(TIM2_CHANNEL_1, &timer_has_elapsed);
+		TIM2_check_status(HMI_ERROR_BASE_TIM);
+		// Check flags.
+		if ((timer_has_elapsed != 0) && (hmi_ctx.irq_flags == 0)) {
 			// Auto power-off.
 			hmi_ctx.state = HMI_STATE_UNUSED;
 		}
+		tim2_status = TIM2_stop(TIM2_CHANNEL_1);
+		TIM2_check_status(HMI_ERROR_BASE_TIM);
 	}
 errors:
 	// Turn HMI off.
-	LPTIM1_stop();
-	I2C1_power_off();
-	_HMI_disable_irq();
+	POWER_disable(POWER_DOMAIN_HMI);
 	// Turn bus interface off.
-	LPUART1_power_off();
+	POWER_disable(POWER_DOMAIN_RS485);
+	// Disable interrupts.
+	_HMI_disable_irq();
+end:
 	return status;
-}
-
-/* SET IRQ FLAG (CALLED BY EXTI INTERRUPT).
- * @param irq_flag:	IRQ flag to set.
- * @return:			None.
- */
-void HMI_set_irq_flag(HMI_irq_flag_t irq_flag) {
-	// Set local flag.
-	hmi_ctx.irq_flags |= (0b1 << irq_flag);
 }

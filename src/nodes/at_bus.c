@@ -217,7 +217,16 @@ void AT_BUS_init(void) {
 	_AT_BUS_flush_command();
 	_AT_BUS_flush_replies();
 	// Init LBUS layer.
-	LBUS_init();
+	LBUS_init(DINFOX_NODE_ADDRESS_DMM);
+}
+
+/* DE INIT AT BUS INTERFACE.
+ * @param:	None.
+ * @return:	None.
+ */
+void AT_BUS_de_init(void) {
+	// Release LBUS layer.
+	LBUS_de_init();
 }
 
 /* SEND AT BUS COMMAND.

@@ -12,13 +12,10 @@
 #include "tim.h"
 #include "types.h"
 
-/*** LED functions ***/
+/*** LED local functions ***/
 
-/* INIT LED.
- * @param:	None.
- * @return:	None.
- */
-void LED_init(void) {
+/*******************************************************************/
+static void _LED_off(void) {
 	// Configure pins as output high.
 	GPIO_write(&GPIO_LED_RED, 1);
 	GPIO_write(&GPIO_LED_GREEN, 1);
@@ -28,15 +25,23 @@ void LED_init(void) {
 	GPIO_configure(&GPIO_LED_BLUE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 }
 
-/* SET STATIC LED COLOR.
- * @param led_color:	Color to set.
- * @return status:		Function execution status.
- */
+/*** LED functions ***/
+
+/*******************************************************************/
+void LED_init(void) {
+	// Turn LED off.
+	_LED_off();
+	// Init timers.
+	TIM3_init();
+	TIM21_init();
+}
+
+/*******************************************************************/
 LED_status_t LED_set_color(LED_color_t color) {
 	// Local variables.
 	LED_status_t status = LED_SUCCESS;
 	// Turn off by default.
-	LED_init();
+	_LED_off();
 	// Check color.
 	switch (color) {
 	case LED_COLOR_OFF:
@@ -76,11 +81,7 @@ errors:
 	return status;
 }
 
-/* START A SINGLE LED BLINK.
- * @param led_color:		Color to set.
- * @param blink_period_ms:	Blink duration in ms.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 LED_status_t LED_start_single_blink(LED_color_t color, uint32_t blink_duration_ms) {
 	// Local variables.
 	LED_status_t status = LED_SUCCESS;
@@ -95,27 +96,21 @@ LED_status_t LED_start_single_blink(LED_color_t color, uint32_t blink_duration_m
 	}
 	// Start blink.
 	TIM3_start(color);
-	TIM22_start(blink_duration_ms);
+	TIM21_start(blink_duration_ms);
 errors:
 	return status;
 }
 
-/* CHECK LED BLINK STATUS.
- * @param:	None.
- * @return:	'1' if the blink is done, '0' otherwise.
- */
+/*******************************************************************/
 uint8_t LED_is_single_blink_done(void) {
-	return TIM22_is_single_blink_done();
+	return TIM21_is_single_blink_done();
 }
 
-/* STOP LED BLINK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void LED_stop_blink(void) {
 	// Stop timers.
 	TIM3_stop();
-	TIM22_stop();
+	TIM21_stop();
 	// Turn LED off.
 	LED_init();
 }

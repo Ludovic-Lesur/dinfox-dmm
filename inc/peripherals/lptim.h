@@ -1,7 +1,7 @@
 /*
  * lptim.h
  *
- *  Created on: 25 oct. 2022
+ *  Created on: 29 apr. 2018
  *      Author: Ludo
  */
 
@@ -12,6 +12,10 @@
 
 /*** LPTIM structures ***/
 
+/*!******************************************************************
+ * \enum LPTIM_status_t
+ * \brief LPTIM driver error codes.
+ *******************************************************************/
 typedef enum {
 	LPTIM_SUCCESS = 0,
 	LPTIM_ERROR_DELAY_UNDERFLOW,
@@ -21,23 +25,45 @@ typedef enum {
 	LPTIM_ERROR_BASE_LAST = 0x0100
 } LPTIM_status_t;
 
+/*!******************************************************************
+ * \enum LPTIM_delay_mode_t
+ * \brief LPTIM delay waiting modes.
+ *******************************************************************/
 typedef enum {
 	LPTIM_DELAY_MODE_ACTIVE = 0,
+	LPTIM_DELAY_MODE_SLEEP,
 	LPTIM_DELAY_MODE_STOP,
 	LPTIM_DELAY_MODE_LAST
 } LPTIM_delay_mode_t;
 
 /*** LPTIM functions ***/
 
-void LPTIM1_init(uint32_t lsi_freq_hz);
+/*!******************************************************************
+ * \fn void LPTIM1_init(void)
+ * \brief Init LPTIM1 peripheral for delay operation.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
+void LPTIM1_init(void);
+
+/*!******************************************************************
+ * \fn LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t delay_mode)
+ * \brief Delay function.
+ * \param[in]  	delay_ms: Delay to wait in ms.
+ * \param[in]	delay_mode: Delay waiting mode.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
 LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t delay_mode);
 
-LPTIM_status_t LPTIM1_start(uint32_t delay_ms);
-void LPTIM1_stop(void);
-uint8_t LPTIM1_get_wake_up_flag(void);
+/*******************************************************************/
+#define LPTIM1_check_status(error_base) { if (lptim1_status != LPTIM_SUCCESS) { status = error_base + lptim1_status; goto errors; } }
 
-#define LPTIM1_check_status(error_base) { if (lptim1_status != LPTIM_SUCCESS) { status = error_base + lptim1_status; goto errors; }}
-#define LPTIM1_stack_error() { ERROR_check_status(lptim1_status, LPTIM_SUCCESS, ERROR_BASE_LPTIM1); }
-#define LPTIM1_stack_error_print() { ERROR_check_status_print(lptim1_status, LPTIM_SUCCESS, ERROR_BASE_LPTIM1); }
+/*******************************************************************/
+#define LPTIM1_stack_error(void) { ERROR_stack_error(lptim1_status, LPTIM_SUCCESS, ERROR_BASE_LPTIM1); }
+
+/*******************************************************************/
+#define LPTIM1_print_error(void) { ERROR_print_error(lptim1_status, LPTIM_SUCCESS, ERROR_BASE_LPTIM1); }
 
 #endif /* __LPTIM_H__ */

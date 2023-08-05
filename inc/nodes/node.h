@@ -282,9 +282,9 @@ NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t**
 #define NODE_check_status(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; } }
 
 /*******************************************************************/
-#define NODE_stack_error() { ERROR_stack_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+#define NODE_stack_error(void) { ERROR_stack_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
 
 /*******************************************************************/
-#define NODE_print_error() { ERROR_print_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+#define NODE_print_error(void) { ERROR_print_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
 
 #endif /* __NODE_H__ */

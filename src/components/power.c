@@ -52,8 +52,9 @@ POWER_status_t POWER_enable(POWER_domain_t domain, LPTIM_delay_mode_t delay_mode
 		delay_ms = POWER_ON_DELAY_MS_ANALOG;
 		break;
 	case POWER_DOMAIN_HMI:
-		// Turn HMI on and init driver.
+		// Turn HMI on and init drivers.
 		GPIO_write(&GPIO_HMI_POWER_ENABLE, 1);
+		I2C1_init();
 		HMI_init();
 		delay_ms = POWER_ON_DELAY_MS_HMI;
 		break;
@@ -90,8 +91,9 @@ POWER_status_t POWER_disable(POWER_domain_t domain) {
 		GPIO_write(&GPIO_MNTR_EN, 0);
 		break;
 	case POWER_DOMAIN_HMI:
-		// Turn HMI off and release driver.
+		// Turn HMI off and release drivers.
 		HMI_de_init();
+		I2C1_de_init();
 		GPIO_write(&GPIO_HMI_POWER_ENABLE, 0);
 		break;
 	case POWER_DOMAIN_RS485:

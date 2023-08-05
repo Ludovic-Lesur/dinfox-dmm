@@ -15,7 +15,7 @@
 
 /*** SH1106 macros ***/
 
-#define SH1106_I2C_ADDRESS				0x3C
+#define SH1106_HMI_I2C_ADDRESS			0x3C
 
 #define SH1106_SCREEN_WIDTH_PIXELS		128
 #define SH1106_SCREEN_WIDTH_CHAR		(SH1106_SCREEN_WIDTH_PIXELS / FONT_CHAR_WIDTH_PIXELS)
@@ -24,6 +24,10 @@
 
 /*** SH1106 structures ***/
 
+/*!******************************************************************
+ * \enum SH1106_status_t
+ * \brief SH1106 driver error codes.
+ *******************************************************************/
 typedef enum {
 	SH1106_SUCCESS = 0,
 	SH1106_ERROR_NULL_PARAMETER,
@@ -42,18 +46,30 @@ typedef enum {
 	SH1106_ERROR_BASE_LAST = (SH1106_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } SH1106_status_t;
 
+/*!******************************************************************
+ * \enum SH1106_text_contrast_t
+ * \brief SH1106 text contrast modes.
+ *******************************************************************/
 typedef enum {
 	SH1106_TEXT_CONTRAST_NORMAL = 0,
 	SH1106_TEXT_CONTRAST_INVERTED,
 	SH1106_TEXT_CONTRAST_LAST
 } SH1106_text_contrast_t;
 
+/*!******************************************************************
+ * \enum SH1106_text_vertical_position
+ * \brief SH1106 text vertical position modes.
+ *******************************************************************/
 typedef enum {
 	SH1106_TEXT_VERTICAL_POSITION_TOP = 0,
 	SH1106_TEXT_VERTICAL_POSITION_BOTTOM,
 	SH1106_TEXT_VERTICAL_POSITION_LAST
 } SH1106_text_vertical_position;
 
+/*!******************************************************************
+ * \enum SH1106_text_t
+ * \brief SH1106 text structure.
+ *******************************************************************/
 typedef struct {
 	char_t* str;
 	uint8_t page;
@@ -63,6 +79,10 @@ typedef struct {
 	uint8_t flush_width_pixels;
 } SH1106_text_t;
 
+/*!******************************************************************
+ * \enum SH1106_horizontal_line_t
+ * \brief SH1106 horizontal line structure.
+ *******************************************************************/
 typedef struct {
 	uint8_t line_pixels;
 	uint8_t width_pixels;
@@ -73,16 +93,61 @@ typedef struct {
 
 /*** SH1106 functions ***/
 
-void SH1106_init(void);
-void SH1106_de_init(void);
-SH1106_status_t SH1106_setup();
-SH1106_status_t SH1106_clear(void);
-SH1106_status_t SH1106_print_text(SH1106_text_t* text);
-SH1106_status_t SH1106_print_horizontal_line(SH1106_horizontal_line_t* horizontal_line);
-SH1106_status_t SH1106_print_image(const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS]);
+/*!******************************************************************
+ * \fn SH1106_status_t SH1106_setup(void)
+ * \brief Configure OLED screen.
+ * \param[in]  	i2c_address: I2C address of the screen.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+SH1106_status_t SH1106_setup(uint8_t i2c_address);
 
-#define SH1106_check_status(error_base) { if (sh1106_status != SH1106_SUCCESS) { status = error_base + sh1106_status; goto errors; }}
-#define SH1106_stack_error() { ERROR_stack_error(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
-#define SH1106_print_error() { ERROR_print_error(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
+/*!******************************************************************
+ * \fn SH1106_status_t SH1106_clear(void)
+ * \brief Clear OLED screen.
+ * \param[in]  	i2c_address: I2C address of the screen.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+SH1106_status_t SH1106_clear(uint8_t i2c_address);
+
+/*!******************************************************************
+ * \fn SH1106_status_t SH1106_print_text(SH1106_text_t* text)
+ * \brief Print text on OLED screen.
+ * \param[in]	i2c_address: I2C address of the screen.
+ * \param[in]  	text: Pointer to the text to print.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+SH1106_status_t SH1106_print_text(uint8_t i2c_address, SH1106_text_t* text);
+
+/*!******************************************************************
+ * \fn SH1106_status_t SH1106_print_horizontal_line(SH1106_horizontal_line_t* horizontal_line)
+ * \brief Print a line on OLED screen.
+ * \param[in]	i2c_address: I2C address of the screen.
+ * \param[in]  	text: Pointer to the line to print.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+SH1106_status_t SH1106_print_horizontal_line(uint8_t i2c_address, SH1106_horizontal_line_t* horizontal_line);
+
+/*!******************************************************************
+ * \fn SH1106_status_t SH1106_print_image(const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS])
+ * \brief Print an image on OLED screen.
+ * \param[in]	i2c_address: I2C address of the screen.
+ * \param[in]  	image: Image bitmap to print.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+SH1106_status_t SH1106_print_image(uint8_t i2c_address, const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS]);
+
+/*******************************************************************/
+#define SH1106_check_status(error_base) { if (sh1106_status != SH1106_SUCCESS) { status = error_base + sh1106_status; goto errors; } }
+
+/*******************************************************************/
+#define SH1106_stack_error(void) { ERROR_stack_error(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
+
+/*******************************************************************/
+#define SH1106_print_error(void) { ERROR_print_error(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
 
 #endif /* __SH1106_H__ */

@@ -179,9 +179,9 @@ static HMI_status_t _HMI_print_title(char_t* title) {
 	hmi_ctx.sh1106_line.contrast = SH1106_TEXT_CONTRAST_NORMAL;
 	hmi_ctx.sh1106_line.flush_flag = 1;
 	// Print title.
-	sh1106_status = SH1106_print_text(&sh1106_text);
+	sh1106_status = SH1106_print_text(SH1106_HMI_I2C_ADDRESS, &sh1106_text);
 	SH1106_check_status(HMI_ERROR_BASE_SH1106);
-	sh1106_status = SH1106_print_horizontal_line(&hmi_ctx.sh1106_line);
+	sh1106_status = SH1106_print_horizontal_line(SH1106_HMI_I2C_ADDRESS, &hmi_ctx.sh1106_line);
 	SH1106_check_status(HMI_ERROR_BASE_SH1106);
 errors:
 	return status;
@@ -205,12 +205,12 @@ static HMI_status_t _HMI_print_navigation(void) {
 		// Left.
 		sh1106_text.str = (char_t*) hmi_ctx.navigation_left[idx];
 		sh1106_text.justification = STRING_JUSTIFICATION_LEFT;
-		sh1106_status = SH1106_print_text(&sh1106_text);
+		sh1106_status = SH1106_print_text(SH1106_HMI_I2C_ADDRESS, &sh1106_text);
 		SH1106_check_status(HMI_ERROR_BASE_SH1106);
 		// Right.
 		sh1106_text.str = (char_t*) hmi_ctx.navigation_right[idx];
 		sh1106_text.justification = STRING_JUSTIFICATION_RIGHT;
-		sh1106_status = SH1106_print_text(&sh1106_text);
+		sh1106_status = SH1106_print_text(SH1106_HMI_I2C_ADDRESS, &sh1106_text);
 		SH1106_check_status(HMI_ERROR_BASE_SH1106);
 	}
 errors:
@@ -234,7 +234,7 @@ static HMI_status_t _HMI_print_data(void) {
 		// Set page and string.
 		sh1106_text.page = HMI_DATA_PAGE_ADDRESS[idx];
 		sh1106_text.str = (char_t*) hmi_ctx.data[hmi_ctx.data_offset_index + idx];
-		sh1106_status = SH1106_print_text(&sh1106_text);
+		sh1106_status = SH1106_print_text(SH1106_HMI_I2C_ADDRESS, &sh1106_text);
 		SH1106_check_status(HMI_ERROR_BASE_SH1106);
 	}
 errors:
@@ -848,14 +848,14 @@ static HMI_status_t _HMI_state_machine(void) {
 	switch (hmi_ctx.state) {
 	case HMI_STATE_INIT:
 		// Setup OLED screen.
-		sh1106_status = SH1106_setup();
+		sh1106_status = SH1106_setup(SH1106_HMI_I2C_ADDRESS);
 		SH1106_check_status(HMI_ERROR_BASE_SH1106);
 		// Display DINFox logo.
-		sh1106_status = SH1106_print_image(DINFOX_LOGO);
+		sh1106_status = SH1106_print_image(SH1106_HMI_I2C_ADDRESS, DINFOX_LOGO);
 		SH1106_check_status(HMI_ERROR_BASE_SH1106);
 		lptim1_status = LPTIM1_delay_milliseconds(1000, LPTIM_DELAY_MODE_STOP);
 		LPTIM1_check_status(HMI_ERROR_BASE_LPTIM);
-		SH1106_clear();
+		SH1106_clear(SH1106_HMI_I2C_ADDRESS);
 		// Enable external interrupts.
 		_HMI_enable_irq();
 		// Print nodes list.
@@ -918,8 +918,7 @@ void HMI_init(void) {
 	// Init buffers ending.
 	_HMI_data_flush();
 	_HMI_text_flush();
-	// Init OLED screen driver and auto-power off timer.
-	SH1106_init();
+	// Init auto-power off timer.
 	TIM2_init();
 	// Init buttons.
 	GPIO_configure(&GPIO_BP1, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
@@ -950,9 +949,8 @@ void HMI_de_init(void) {
 	EXTI_release_gpio(&GPIO_CMD_OFF);
 	EXTI_release_gpio(&GPIO_ENC_CHA);
 	EXTI_release_gpio(&GPIO_ENC_CHB);
-	// Release I2C and timer.
+	// Release timer.
 	TIM2_de_init();
-	I2C1_de_init();
 }
 
 /*******************************************************************/

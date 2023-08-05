@@ -13,6 +13,10 @@
 
 /*** LED structures ***/
 
+/*!******************************************************************
+ * \enum LED_status_t
+ * \brief LED driver error codes.
+ *******************************************************************/
 typedef enum {
 	LED_SUCCESS,
 	LED_ERROR_NULL_DURATION,
@@ -20,6 +24,10 @@ typedef enum {
 	LED_ERROR_BASE_LAST = 0x0100
 } LED_status_t;
 
+/*!******************************************************************
+ * \enum LED_color_t
+ * \brief LED colors list.
+ *******************************************************************/
 typedef enum {
 	LED_COLOR_OFF = TIM3_CHANNEL_MASK_OFF,
 	LED_COLOR_RED = TIM3_CHANNEL_MASK_RED,
@@ -34,14 +42,51 @@ typedef enum {
 
 /*** LED functions ***/
 
+/*!******************************************************************
+ * \fn void LED_init(void)
+ * \brief Init LED driver.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void LED_init(void);
-LED_status_t LED_set_color(LED_color_t color);
-LED_status_t LED_start_single_blink(LED_color_t color, uint32_t blink_duration_ms);
+
+/*!******************************************************************
+ * \fn LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t color)
+ * \brief Start single blink.
+ * \param[in]  	blink_duration_ms: Blink duration in ms.
+ * \param[in]	color: LED color.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t color);
+
+/*!******************************************************************
+ * \fn uint8_t LED_is_single_blink_done(void)
+ * \brief Get blink status.
+ * \param[in]  	none
+ * \param[in]	none
+ * \param[out] 	none
+ * \retval		1 of the LED blink is complete, 0 otherwise.
+ *******************************************************************/
 uint8_t LED_is_single_blink_done(void);
+
+/*!******************************************************************
+ * \fn void LED_stop_blink(void)
+ * \brief Stop LED blink.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void LED_stop_blink(void);
 
-#define LED_check_status(error_base) { if (led_status != LED_SUCCESS) { status = error_base + led_status; goto errors; }}
-#define LED_stack_error() { ERROR_stack_error(led_status, LED_SUCCESS, ERROR_BASE_LED); }
-#define LED_print_error() { ERROR_print_error(led_status, LED_SUCCESS, ERROR_BASE_LED); }
+/*******************************************************************/
+#define LED_check_status(error_base) { if (led_status != LED_SUCCESS) { status = error_base + led_status; goto errors; } }
+
+/*******************************************************************/
+#define LED_stack_error(void) { ERROR_stack_error(led_status, LED_SUCCESS, ERROR_BASE_LED); }
+
+/*******************************************************************/
+#define LED_print_error(void) { ERROR_print_error(led_status, LED_SUCCESS, ERROR_BASE_LED); }
 
 #endif /* LED_H */

@@ -29,60 +29,15 @@ static void _LED_off(void) {
 
 /*******************************************************************/
 void LED_init(void) {
-	// Turn LED off.
-	_LED_off();
 	// Init timers.
 	TIM3_init();
 	TIM21_init();
-}
-
-/*******************************************************************/
-LED_status_t LED_set_color(LED_color_t color) {
-	// Local variables.
-	LED_status_t status = LED_SUCCESS;
-	// Turn off by default.
+	// Turn LED off.
 	_LED_off();
-	// Check color.
-	switch (color) {
-	case LED_COLOR_OFF:
-		// Nothing to do.
-		break;
-	case LED_COLOR_RED:
-		GPIO_write(&GPIO_LED_RED, 0);
-		break;
-	case LED_COLOR_GREEN:
-		GPIO_write(&GPIO_LED_GREEN, 0);
-		break;
-	case LED_COLOR_YELLOW:
-		GPIO_write(&GPIO_LED_RED, 0);
-		GPIO_write(&GPIO_LED_GREEN, 0);
-		break;
-	case LED_COLOR_BLUE:
-		GPIO_write(&GPIO_LED_BLUE, 0);
-		break;
-	case LED_COLOR_MAGENTA:
-		GPIO_write(&GPIO_LED_RED, 0);
-		GPIO_write(&GPIO_LED_BLUE, 0);
-		break;
-	case LED_COLOR_CYAN:
-		GPIO_write(&GPIO_LED_GREEN, 0);
-		GPIO_write(&GPIO_LED_BLUE, 0);
-		break;
-	case LED_COLOR_WHITE:
-		GPIO_write(&GPIO_LED_RED, 0);
-		GPIO_write(&GPIO_LED_GREEN, 0);
-		GPIO_write(&GPIO_LED_BLUE, 0);
-		break;
-	default:
-		status = LED_ERROR_COLOR;
-		goto errors;
-	}
-errors:
-	return status;
 }
 
 /*******************************************************************/
-LED_status_t LED_start_single_blink(LED_color_t color, uint32_t blink_duration_ms) {
+LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t color) {
 	// Local variables.
 	LED_status_t status = LED_SUCCESS;
 	// Check parameters.
@@ -94,6 +49,10 @@ LED_status_t LED_start_single_blink(LED_color_t color, uint32_t blink_duration_m
 		status = LED_ERROR_COLOR;
 		goto errors;
 	}
+	// Link GPIOs to timer.
+	GPIO_configure(&GPIO_LED_RED, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LED_GREEN, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LED_BLUE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	// Start blink.
 	TIM3_start(color);
 	TIM21_start(blink_duration_ms);
@@ -112,5 +71,5 @@ void LED_stop_blink(void) {
 	TIM3_stop();
 	TIM21_stop();
 	// Turn LED off.
-	LED_init();
+	_LED_off();
 }

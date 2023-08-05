@@ -29,6 +29,10 @@
 #include "mode.h"
 #include "version.h"
 
+/*** MAIN local macros ***/
+
+#define DMM_POWER_ON_DELAY_MS	2000
+
 /*** MAIN local functions ***/
 
 /*******************************************************************/
@@ -79,8 +83,12 @@ int main(void) {
 	// Init board.
 	_DMM_init_hw();
 	// Local variables.
+	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
+	// Power on delay to wait for slaves node startup.
+	lptim1_status = LPTIM1_delay_milliseconds(DMM_POWER_ON_DELAY_MS, LPTIM_DELAY_MODE_STOP);
+	LPTIM1_stack_error();
 	// Perform first nodes scan.
 	node_status = NODE_scan();
 	NODE_stack_error();

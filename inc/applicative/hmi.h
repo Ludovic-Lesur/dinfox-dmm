@@ -20,6 +20,10 @@
 
 /*** HMI structures ***/
 
+/*!******************************************************************
+ * \enum HMI_status_t
+ * \brief HMI driver error codes.
+ *******************************************************************/
 typedef enum {
 	HMI_SUCCESS = 0,
 	HMI_ERROR_NULL_PARAMETER,
@@ -38,13 +42,49 @@ typedef enum {
 
 /*** HMI functions ***/
 
+/*!******************************************************************
+ * \fn void HMI_init_por(void)
+ * \brief POR intialization of the HMI interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void HMI_init_por(void);
+
+/*!******************************************************************
+ * \fn void HMI_init(void)
+ * \brief Init HMI interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void HMI_init(void);
+
+/*!******************************************************************
+ * \fn void HMI_de_init(void)
+ * \brief Release HMI interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void HMI_de_init(void);
+
+/*!******************************************************************
+ * \fn void HMI_task(void)
+ * \brief Main task of HMI interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
 HMI_status_t HMI_task(void);
 
-#define HMI_check_status(error_base) { if (hmi_status != HMI_SUCCESS) { status = error_base + hmi_status; goto errors; }}
-#define HMI_stack_error() { ERROR_stack_error(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
-#define HMI_print_error() { ERROR_print_error(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
+/*******************************************************************/
+#define HMI_check_status(error_base) { if (hmi_status != HMI_SUCCESS) { status = error_base + hmi_status; goto errors; } }
+
+/*******************************************************************/
+#define HMI_stack_error(void) { ERROR_stack_error(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
+
+/*******************************************************************/
+#define HMI_print_error(void) { ERROR_print_error(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
 
 #endif /* __HMI_H__ */

@@ -144,6 +144,14 @@ void LPUART1_init(NODE_address_t self_address) {
 
 /*******************************************************************/
 void LPUART1_de_init(void) {
+	// Disable LPUART alternate function.
+	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+#ifdef LPUART_USE_NRE
+	GPIO_configure(&GPIO_LPUART1_NRE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_write(&GPIO_LPUART1_NRE, 0);
+#endif
 	// Disable peripheral.
 	LPUART1 -> CR1 &= ~(0b1 << 0); // UE='0'.
 	// Disable peripheral clock.

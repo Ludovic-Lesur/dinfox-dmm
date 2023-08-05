@@ -582,7 +582,6 @@ static void _HMI_reset_navigation(void) {
 /*******************************************************************/
 static void _HMI_enable_irq(void) {
 	// Clear flags.
-	EXTI_clear_all_flags();
 	hmi_ctx.irq_flags = 0;
 	// Enable interrupts.
 	NVIC_enable_interrupt(NVIC_INTERRUPT_EXTI_2_3, NVIC_PRIORITY_EXTI_2_3);

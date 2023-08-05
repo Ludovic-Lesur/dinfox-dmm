@@ -115,13 +115,4 @@ void EXTI_configure_line(EXTI_line_t line, EXTI_trigger_t trigger);
  *******************************************************************/
 void EXTI_clear_flag(EXTI_line_t line);
 
-/*!******************************************************************
- * \fn void EXTI_clear_all_flags(void)
- * \brief Clear all EXTI lines flag.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		none
- *******************************************************************/
-void EXTI_clear_all_flags(void);
-
 #endif /* __EXTI_H__ */

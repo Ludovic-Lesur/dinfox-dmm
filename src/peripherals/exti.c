@@ -105,7 +105,7 @@ void EXTI_init(void) {
 	// Mask all sources by default.
 	EXTI -> IMR = 0;
 	// Clear all flags.
-	EXTI_clear_all_flags();
+	EXTI -> PR |= 0x007BFFFF; // PIFx='1'.
 	// Reset callbacks.
 	for (idx=0 ; idx<GPIO_PINS_PER_PORT ; idx++) {
 		exti_gpio_irq_callbacks[idx] = NULL;
@@ -145,10 +145,4 @@ void EXTI_configure_line(EXTI_line_t line, EXTI_trigger_t trigger) {
 void EXTI_clear_flag(EXTI_line_t line) {
 	// Clear flag.
 	EXTI -> PR |= line; // PIFx='1'.
-}
-
-/*******************************************************************/
-void EXTI_clear_all_flags(void) {
-	// Clear all flags.
-	EXTI -> PR |= 0x007BFFFF; // PIFx='1'.
 }

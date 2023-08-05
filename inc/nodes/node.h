@@ -9,6 +9,7 @@
 #define __NODE_H__
 
 #include "adc.h"
+#include "lbus.h"
 #include "lptim.h"
 #include "lpuart.h"
 #include "node_common.h"
@@ -38,6 +39,10 @@ static const char_t NODE_ERROR_STRING[] =	"ERROR";
 
 /*** NODE structures ***/
 
+/*!******************************************************************
+ * \enum NODE_status_t
+ * \brief NODE driver error codes.
+ *******************************************************************/
 typedef enum {
 	NODE_SUCCESS = 0,
 	NODE_ERROR_NOT_SUPPORTED,
@@ -66,9 +71,14 @@ typedef enum {
 	NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_POWER = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_POWER + POWER_ERROR_BASE_LAST)
+	NODE_ERROR_BASE_LBUS = (NODE_ERROR_BASE_POWER + POWER_ERROR_BASE_LAST),
+	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_LBUS + LBUS_ERROR_BASE_LAST)
 } NODE_status_t;
 
+/*!******************************************************************
+ * \enum NODE_t
+ * \brief Node descriptor.
+ *******************************************************************/
 typedef struct {
 	NODE_address_t address;
 	uint8_t board_id;
@@ -76,11 +86,19 @@ typedef struct {
 	uint8_t radio_transmission_count;
 } NODE_t;
 
+/*!******************************************************************
+ * \enum NODE_list_t
+ * \brief Node list type.
+ *******************************************************************/
 typedef struct {
 	NODE_t list[NODES_LIST_SIZE_MAX];
 	uint8_t count;
 } NODE_list_t;
 
+/*!******************************************************************
+ * \enum NODE_line_data_t
+ * \brief Displayed line data of a node.
+ *******************************************************************/
 typedef struct {
 	char_t* name;
 	char_t* unit;
@@ -90,6 +108,20 @@ typedef struct {
 	uint32_t field_mask;
 } NODE_line_data_t;
 
+/*!******************************************************************
+ * \enum NODE_line_data_write_t
+ * \brief Line data write parameters.
+ *******************************************************************/
+typedef struct {
+	NODE_address_t node_addr;
+	uint8_t line_data_index;
+	uint32_t field_value;
+} NODE_line_data_write_t;
+
+/*!******************************************************************
+ * \enum NODE_line_data_read_t
+ * \brief Line data read parameters.
+ *******************************************************************/
 typedef struct {
 	NODE_address_t node_addr;
 	uint8_t line_data_index;
@@ -97,17 +129,15 @@ typedef struct {
 	char_t* value_ptr;
 } NODE_line_data_read_t;
 
-typedef struct {
-	NODE_address_t node_addr;
-	uint8_t line_data_index;
-	uint32_t field_value;
-} NODE_line_data_write_t;
-
+/*!******************************************************************
+ * \enum NODE_ul_payload_t
+ * \brief Sigfox UL payload structure.
+ *******************************************************************/
 typedef struct {
 	NODE_t* node;
 	uint8_t* ul_payload;
 	uint8_t* size;
-} NODE_ul_payload_update_t;
+} NODE_ul_payload_t;
 
 /*** NODES global variables ***/
 
@@ -115,29 +145,123 @@ NODE_list_t NODES_LIST;
 
 /*** NODE functions ***/
 
+/*!******************************************************************
+ * \fn void NODE_init_por(void)
+ * \brief POR initialization of the node interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
+void NODE_init_por(void);
+
+/*!******************************************************************
+ * \fn void NODE_init(void)
+ * \brief Init node interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void NODE_init(void);
+
+/*!******************************************************************
+ * \fn void NODE_de_init(void)
+ * \brief Release node interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
+void NODE_de_init(void);
+
+/*!******************************************************************
+ * \fn NODE_status_t NODE_scan(void)
+ * \brief Scan all nodes connected to the RS485 bus.
+ * \param[in]  	none
+ * \param[out]	none
+ * \retval		Function execution status.
+ *******************************************************************/
 NODE_status_t NODE_scan(void);
 
-NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t value, NODE_access_status_t* write_status);
-NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status);
-NODE_status_t NODE_read_line_data_all(NODE_t* node);
-
-NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name);
-NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_data_index);
-NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr);
-
+/*!******************************************************************
+ * \fn void NODE_task(void)
+ * \brief Main task of node interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void NODE_task(void);
 
+/*!******************************************************************
+ * \fn NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t value, NODE_access_status_t* write_status)
+ * \brief Write corresponding node register of screen data line.
+ * \param[in]  	node: Pointer to the node.
+ * \param[in]	line_data_index: Index of the data line to write.
+ * \param[in]	field_value: Value to write in corresponding register field.
+ * \param[out] 	write_status: Pointer to the writing operation status.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t field_value, NODE_access_status_t* write_status);
+
+/*!******************************************************************
+ * \fn NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status)
+ * \brief Read corresponding node register of screen data line.
+ * \param[in]  	node: Pointer to the node.
+ * \param[in]	line_data_index: Index of the data line to read.
+ * \param[out] 	read_status: Pointer to the reading operation status.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status);
+
+/*!******************************************************************
+ * \fn NODE_status_t NODE_read_line_data_all(NODE_t* node)
+ * \brief Read corresponding node registers of all screen data lines.
+ * \param[in]  	node: Pointer to the node.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t NODE_read_line_data_all(NODE_t* node);
+
+/*!******************************************************************
+ * \fn NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name)
+ * \brief Get the name of a node.
+ * \param[in]  	node: Pointer to the node.
+ * \param[out] 	board_name: Pointer to string that will contain the board name.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name);
+
+/*!******************************************************************
+ * \fn NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_data_index)
+ * \brief Get the number of data lines.
+ * \param[in]  	node: Pointer to the node.
+ * \param[out] 	last_line_data_index: Pointer to byte that will contain the number of displayed data lines.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_data_index);
+
+/*!******************************************************************
+ * \fn NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr)
+ * \brief Read data line.
+ * \param[in]  	node: Pointer to the node.
+ * \param[in]	line_data_index: Index of the data line to read.
+ * \param[out] 	line_data_name_ptr: Pointer to string that will contain the data name.
+ * \param[out] 	line_data_value_ptr: Pointer to string that will contain the data value.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr);
+
+/*******************************************************************/
 #define NODE_append_name_string(str) { \
 	string_status = STRING_append_string((line_data_read -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
 	STRING_check_status(NODE_ERROR_BASE_STRING); \
 }
 
+/*******************************************************************/
 #define NODE_append_value_string(str) { \
 	string_status = STRING_append_string((line_data_read -> value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
 	STRING_check_status(NODE_ERROR_BASE_STRING); \
 }
 
+/*******************************************************************/
 #define NODE_append_value_int32(value, format, prefix) { \
 	char_t str[NODE_STRING_BUFFER_SIZE]; \
 	string_status = STRING_value_to_string((int32_t) value, format, prefix, str); \
@@ -145,6 +269,7 @@ void NODE_task(void);
 	NODE_append_value_string(str); \
 }
 
+/*******************************************************************/
 #define NODE_flush_string_value(void) { \
 	uint8_t char_idx = 0; \
 	for (char_idx=0 ; char_idx<NODE_STRING_BUFFER_SIZE ; char_idx++) { \
@@ -153,8 +278,13 @@ void NODE_task(void);
 	buffer_size = 0; \
 }
 
-#define NODE_check_status(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; }}
+/*******************************************************************/
+#define NODE_check_status(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; } }
+
+/*******************************************************************/
 #define NODE_stack_error() { ERROR_stack_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+
+/*******************************************************************/
 #define NODE_print_error() { ERROR_print_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
 
 #endif /* __NODE_H__ */

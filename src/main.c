@@ -67,9 +67,9 @@ void _DMM_init_hw(void) {
 	POWER_init();
 	LED_init();
 	// Init nodes layer.
-	NODE_init();
+	NODE_init_por();
 	// Init HMI wake-up control.
-	HMI_init_wakeup();
+	HMI_init_por();
 }
 
 /*** MAIN functions ***/
@@ -82,8 +82,8 @@ int main(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	HMI_status_t hmi_status = HMI_SUCCESS;
 	// Perform first nodes scan.
-//	node_status = NODE_scan();
-//	NODE_stack_error();
+	node_status = NODE_scan();
+	NODE_stack_error();
 	// Main loop.
 	while (1) {
 		// Enter sleep mode.

@@ -38,7 +38,7 @@ typedef enum {
 
 /*** HMI functions ***/
 
-void HMI_init_wakeup(void);
+void HMI_init_por(void);
 void HMI_init(void);
 void HMI_de_init(void);
 HMI_status_t HMI_task(void);

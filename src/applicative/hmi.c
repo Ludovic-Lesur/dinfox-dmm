@@ -890,7 +890,7 @@ errors:
 /*** HMI functions ***/
 
 /*******************************************************************/
-void HMI_init_wakeup(void) {
+void HMI_init_por(void) {
 	// Init encoder switch used as wake-up signal.
 	GPIO_configure(&GPIO_ENC_SW, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	EXTI_configure_gpio(&GPIO_ENC_SW, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_encoder_switch);

@@ -7,7 +7,6 @@
 
 #include "common.h"
 
-#include "at_bus.h"
 #include "common_reg.h"
 #include "dinfox.h"
 #include "node.h"
@@ -24,6 +23,7 @@
 
 /*** COMMON local structures ***/
 
+/*******************************************************************/
 typedef union {
 	uint8_t frame[COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE];
 	struct {
@@ -52,43 +52,20 @@ static const uint8_t COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP[] = {
 	COMMON_REG_ADDR_RESET_FLAGS
 };
 
-/* WRITE COMMON DATA.
- * @param line_data_write:	Pointer to the data write structure.
- * @return status:			Function execution status.
- */
-NODE_status_t COMMON_write_line_data(NODE_line_data_write_t* line_data_write) {
+/*******************************************************************/
+NODE_status_t COMMON_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_parameters_t write_params;
-	NODE_access_status_t write_status;
-	uint8_t reg_addr = 0;
-	uint32_t reg_value = 0;
-	uint32_t reg_mask = 0;
-	uint32_t timeout_ms = 0;
-	// Compute parameters.
-	reg_addr = COMMON_LINE_DATA[(line_data_write -> line_data_index)].reg_addr;
-	DINFOX_write_field(&reg_value, &reg_mask, (line_data_write -> field_value), COMMON_LINE_DATA[(line_data_write -> line_data_index)].field_mask);
-	timeout_ms = COMMON_REG_WRITE_TIMEOUT_MS[reg_addr - COMMON_REG_ADDR_LAST];
-	// Write parameters.
-	write_params.node_addr = (line_data_write -> node_addr);
-	write_params.reg_addr = reg_addr;
-	write_params.reply_params.type = NODE_REPLY_TYPE_OK;
-	write_params.reply_params.timeout_ms = timeout_ms;
-	// Write register.
-	status = AT_BUS_write_register(&write_params, reg_value, reg_mask, &write_status);
+	// Call common function.
+	status = XM_write_line_data(line_data_write, (NODE_line_data_t*) COMMON_LINE_DATA, (uint32_t*) COMMON_REG_WRITE_TIMEOUT_MS, write_status);
 	return status;
 }
 
-/* UPDATE COMMON MEASUREMENTS OF DINFOX NODES.
- * @param line_data_read:	Pointer to the data update structure.
- * @param node_reg:			Pointer to the node registers.
- * @return status:			Function execution status.
- */
-NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_node_registers_t* node_reg) {
+/*******************************************************************/
+NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_node_registers_t* node_reg, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
-	NODE_access_status_t read_status;
 	uint8_t buffer_size = 0;
 	uint8_t str_data_idx = 0;
 	uint8_t reg_addr = 0;
@@ -119,11 +96,12 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 	NODE_flush_string_value();
 	NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 	// Read register.
-	status = XM_read_register((line_data_read -> node_addr), reg_addr, (node_reg -> error)[reg_addr], &reg_value, &read_status);
-	if ((status != NODE_SUCCESS) || (read_status.all != 0)) goto errors;
-	// Update register.
-	NODE_flush_string_value();
+	status = XM_read_register((line_data_read -> node_addr), reg_addr, (node_reg -> error)[reg_addr], &reg_value, read_status);
+	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+	// Update RAM register.
 	(node_reg -> value)[reg_addr] = reg_value;
+	// Reset string.
+	NODE_flush_string_value();
 	// Check index.
 	switch (str_data_idx) {
 	case COMMON_LINE_DATA_INDEX_HW_VERSION:
@@ -178,28 +156,24 @@ errors:
 	return status;
 }
 
-/* BUILD COMMON STARTUP UL PAYLOAD.
- * @param ul_payload_update:	Pointer to the UL payload update structure.
- * @param node_reg:				Pointer to the node registers.
- * @return status:				Function execution status.
- */
-NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_payload_update, XM_node_registers_t* node_reg) {
+/*******************************************************************/
+NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	XM_registers_list_t reg_list;
 	COMMON_sigfox_payload_startup_t sigfox_payload_startup;
 	uint8_t idx = 0;
 	// Check parameters.
-	if (ul_payload_update == NULL) {
+	if (node_ul_payload == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (((ul_payload_update -> ul_payload) == NULL) || ((ul_payload_update -> size) == NULL)) {
+	if (((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Reset payload size.
-	(*(ul_payload_update -> size)) = 0;
+	(*(node_ul_payload -> size)) = 0;
 	// Build registers list.
 	reg_list.addr_list = (uint8_t*) COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP;
 	reg_list.size = sizeof(COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP);
@@ -207,7 +181,7 @@ NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_p
 	status = XM_reset_registers(&reg_list, node_reg);
 	if (status != NODE_SUCCESS) goto errors;
 	// Read related registers.
-	status = XM_read_registers((ul_payload_update -> node -> address), &reg_list, node_reg);
+	status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, node_reg);
 	if (status != NODE_SUCCESS) goto errors;
 	// Build data payload.
 	sigfox_payload_startup.reset_reason = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_RESET_FLAGS], COMMON_REG_RESET_FLAGS_MASK_ALL);
@@ -218,48 +192,44 @@ NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_update_t* ul_p
 	sigfox_payload_startup.dirty_flag = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_DTYF);
 	// Copy payload.
 	for (idx=0 ; idx<COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE ; idx++) {
-		(ul_payload_update -> ul_payload)[idx] = sigfox_payload_startup.frame[idx];
+		(node_ul_payload -> ul_payload)[idx] = sigfox_payload_startup.frame[idx];
 	}
-	(*(ul_payload_update -> size)) = COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE;
+	(*(node_ul_payload -> size)) = COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE;
 errors:
 	return status;
 }
 
-/* BUILD COMMON ERROR STACK UL PAYLOAD.
- * @param ul_payload_update:	Pointer to the UL payload update structure.
- * @param node_reg:				Pointer to the node registers.
- * @return status:				Function execution status.
- */
-NODE_status_t COMMON_build_sigfox_payload_error_stack(NODE_ul_payload_update_t* ul_payload_update, XM_node_registers_t* node_reg) {
+/*******************************************************************/
+NODE_status_t COMMON_build_sigfox_payload_error_stack(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t read_status;
 	uint32_t reg_value = 0;
 	uint8_t idx = 0;
 	// Check parameters.
-	if (ul_payload_update == NULL) {
+	if (node_ul_payload == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (((ul_payload_update -> ul_payload) == NULL) || ((ul_payload_update -> size) == NULL)) {
+	if (((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
 	// Reset payload size.
-	(*(ul_payload_update -> size)) = 0;
+	(*(node_ul_payload -> size)) = 0;
 	// Read error stack register.
 	for (idx=0 ; idx<(COMMON_SIGFOX_PAYLOAD_ERROR_STACK_SIZE / 2) ; idx++) {
 		// Read error stack register.
-		status = XM_read_register((ul_payload_update -> node -> address), COMMON_REG_ADDR_ERROR_STACK, 0x00000000, &reg_value, &read_status);
+		status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_ERROR_STACK, 0x00000000, &reg_value, &read_status);
 		if ((status != NODE_SUCCESS) || ((read_status.all) != 0)) goto errors;
 		// If the first error is zero, the stack is empty, no frame has to be sent.
 		if ((idx == 0) && ((reg_value & COMMON_REG_ERROR_STACK_MASK_ERROR) == 0)) {
 			goto errors;
 		}
-		(ul_payload_update -> ul_payload)[(2 * idx) + 0] = (uint8_t) ((reg_value >> 8) & 0x000000FF);
-		(ul_payload_update -> ul_payload)[(2 * idx) + 1] = (uint8_t) ((reg_value >> 0) & 0x000000FF);
+		(node_ul_payload -> ul_payload)[(2 * idx) + 0] = (uint8_t) ((reg_value >> 8) & 0x000000FF);
+		(node_ul_payload -> ul_payload)[(2 * idx) + 1] = (uint8_t) ((reg_value >> 0) & 0x000000FF);
 	}
-	(*(ul_payload_update -> size)) = COMMON_SIGFOX_PAYLOAD_ERROR_STACK_SIZE;
+	(*(node_ul_payload -> size)) = COMMON_SIGFOX_PAYLOAD_ERROR_STACK_SIZE;
 errors:
 	return status;
 }

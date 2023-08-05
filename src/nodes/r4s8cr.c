@@ -42,6 +42,7 @@
 
 /*** R4S8CR local structures ***/
 
+/*******************************************************************/
 typedef struct {
 	uint8_t command[R4S8CR_BUFFER_SIZE_BYTES];
 	uint8_t command_size;
@@ -49,6 +50,7 @@ typedef struct {
 	volatile uint8_t reply_size;
 } R4S8CR_context_t;
 
+/*******************************************************************/
 typedef union {
 	uint8_t frame[R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE];
 	struct {
@@ -94,10 +96,15 @@ static R4S8CR_context_t r4s8cr_ctx;
 
 /*** R4S8CR local functions ***/
 
-/* FLUSH COMMAND BUFFER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+static void _R4S8CR_fill_rx_buffer(uint8_t rx_byte) {
+	// Store incoming byte.
+	r4s8cr_ctx.reply[r4s8cr_ctx.reply_size] = rx_byte;
+	// Manage index.
+	r4s8cr_ctx.reply_size = (r4s8cr_ctx.reply_size + 1) % R4S8CR_BUFFER_SIZE_BYTES;
+}
+
+/*******************************************************************/
 static void _R4S8CR_flush_buffers(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -110,10 +117,7 @@ static void _R4S8CR_flush_buffers(void) {
 	r4s8cr_ctx.reply_size = 0;
 }
 
-/* CONFIGURE PHYSICAL INTERFACE.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static NODE_status_t _R4S8CR_configure_phy(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -122,18 +126,14 @@ static NODE_status_t _R4S8CR_configure_phy(void) {
 	// Configure physical interface.
 	lpuart_config.baud_rate = R4S8CR_BAUD_RATE;
 	lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
-	lpuart_config.rx_callback = &R4S8CR_fill_rx_buffer;
+	lpuart_config.rx_callback = &_R4S8CR_fill_rx_buffer;
 	lpuart1_status = LPUART1_configure(&lpuart_config);
 	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 errors:
 	return status;
 }
 
-/* WRITE RELAY STATE.
- * @param relay_id:		Relay ID.
- * @param relay_state:	State to apply.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 static NODE_status_t _R4S8CR_write_relay_state(uint8_t relay_id, uint8_t rxst, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -165,13 +165,7 @@ errors:
 	return status;
 }
 
-/* READ RELAYS STATE.
- * @param relay_box_id:	Relay box ID.
- * @param timeout_ms:	Read operation timeout in ms.
- * @param rxst:			Pointer to the relays state.
- * @param read_status:	Pointer to the read operation status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, uint32_t timeout_ms, uint8_t* rxst, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -227,11 +221,7 @@ errors:
 	return status;
 }
 
-/* UPDATE REGISTERS LIST.
- * @param node_addr:	Node address.
- * @param reg_list:		List of register to read.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 static NODE_status_t _R4S8CR_read_registers(NODE_address_t node_addr, XM_registers_list_t* reg_list) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -269,10 +259,7 @@ errors:
 
 /*** R4S8CR functions ***/
 
-/* INIT R4S8CR REGISTERS.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void R4S8CR_init_registers(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -282,11 +269,7 @@ void R4S8CR_init_registers(void) {
 	}
 }
 
-/* WRITE R4S8CR NODE REGISTER.
- * @param write_params:	Pointer to the write operation parameters.
- * @param write_status:	Pointer to the write operation status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -346,12 +329,7 @@ errors:
 	return status;
 }
 
-/* READ R4S8CR NODE REGISTER.
- * @param read_params:	Pointer to the read operation parameters.
- * @param read_data:	Pointer to the read result.
- * @param read_status:	Pointer to the read operation status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -394,12 +372,7 @@ errors:
 	return status;
 }
 
-/* SCAN R4S8CR NODES ON BUS.
- * @param nodes_list:		Node list to fill.
- * @param nodes_list_size:	Maximum size of the list.
- * @param nodes_count:		Pointer to byte that will contain the number of LBUS nodes detected.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -439,11 +412,7 @@ errors:
 	return status;
 }
 
-/* WRITE R4S8CR DATA.
- * @param line_data_write:	Pointer to the data write structure.
- * @param read_status:		Pointer to the writing operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t R4S8CR_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -477,11 +446,7 @@ errors:
 	return status;
 }
 
-/* READ R4S8CR DATA.
- * @param line_data_read:	Pointer to the data read structure.
- * @param read_status:		Pointer to the reading operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t R4S8CR_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -545,11 +510,8 @@ errors:
 	return status;
 }
 
-/* UPDATE R4S8CR NODE SIGFOX UPLINK PAYLOAD.
- * @param ul_payload_update:	Pointer to the UL payload update structure.
- * @return status:				Function execution status.
- */
-NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update) {
+/*******************************************************************/
+NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	XM_node_registers_t node_reg;
@@ -558,11 +520,11 @@ NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payloa
 	uint32_t reg_value = 0;
 	uint8_t idx = 0;
 	// Check parameters.
-	if (ul_payload_update == NULL) {
+	if (node_ul_payload == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (((ul_payload_update -> ul_payload) == NULL) || ((ul_payload_update -> size) == NULL)) {
+	if (((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
@@ -576,7 +538,7 @@ NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payloa
 	status = XM_reset_registers(&reg_list, &node_reg);
 	if (status != NODE_SUCCESS) goto errors;
 	// Read related registers.
-	status = _R4S8CR_read_registers((ul_payload_update -> node -> address), &reg_list);
+	status = _R4S8CR_read_registers((node_ul_payload -> node -> address), &reg_list);
 	if (status != NODE_SUCCESS) goto errors;
 	// Build data payload.
 	sigfox_payload_data.r1st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R1ST);
@@ -589,20 +551,9 @@ NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payloa
 	sigfox_payload_data.r8st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R8ST);
 	// Copy payload.
 	for (idx=0 ; idx<R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
-		(ul_payload_update -> ul_payload)[idx] = sigfox_payload_data.frame[idx];
+		(node_ul_payload -> ul_payload)[idx] = sigfox_payload_data.frame[idx];
 	}
-	(*(ul_payload_update -> size)) = R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE;
+	(*(node_ul_payload -> size)) = R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE;
 errors:
 	return status;
-}
-
-/* FILL R4S8CR BUFFER WITH A NEW BYTE (CALLED BY LPUART INTERRUPT).
- * @param rx_byte:	Incoming byte.
- * @return:			None.
- */
-void R4S8CR_fill_rx_buffer(uint8_t rx_byte) {
-	// Store incoming byte.
-	r4s8cr_ctx.reply[r4s8cr_ctx.reply_size] = rx_byte;
-	// Manage index.
-	r4s8cr_ctx.reply_size = (r4s8cr_ctx.reply_size + 1) % R4S8CR_BUFFER_SIZE_BYTES;
 }

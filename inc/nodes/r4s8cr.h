@@ -35,17 +35,71 @@ static const uint32_t R4S8CR_REG_WRITE_TIMEOUT_MS[R4S8CR_REG_ADDR_LAST] = {
 
 /*** R4S8CR functions ***/
 
+/*!******************************************************************
+ * \fn void R4S8CR_init_registers(void)
+ * \brief Init R4S8CR registers.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
 void R4S8CR_init_registers(void);
 
+/*!******************************************************************
+ * \fn NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status)
+ * \brief Write R4S8CR node register.
+ * \param[in]  	write_params: Pointer to the write operation parameters.
+ * \param[in]	reg_value: Register value to write.
+ * \param[in]	reg_mask: Writing operation mask.
+ * \param[out] 	write_status: Pointer to the writing operation status.
+ * \retval		Function execution status.
+ *******************************************************************/
 NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
+
+/*!******************************************************************
+ * \fn NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status)
+ * \brief Read R4S8CR node register.
+ * \param[in]  	read_params: Pointer to the read operation parameters.
+ * \param[out]	reg_value: Pointer to the read register value.
+ * \param[out] 	read_status: Pointer to the read operation status.
+ * \retval		Function execution status.
+ *******************************************************************/
 NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status);
 
+/*!******************************************************************
+ * \fn NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count)
+ * \brief Scan all R4S8CR nodes connected to the RS485 bus.
+ * \param[in]  	nodes_list_size: Maximum size of the node list.
+ * \param[out]	nodes_list: Pointer to the list where to store the nodes.
+ * \param[out] 	nodes_count: Pointer to the number of nodes detected.
+ * \retval		Function execution status.
+ *******************************************************************/
 NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count);
 
+/*!******************************************************************
+ * \fn NODE_status_t R4S8CR_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status)
+ * \brief Write corresponding node register of screen data line.
+ * \param[in]  	line_data_write: Pointer to the writing operation parameters.
+ * \param[out] 	write_status: Pointer to the writing operation status.
+ * \retval		Function execution status.
+ *******************************************************************/
 NODE_status_t R4S8CR_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status);
-NODE_status_t R4S8CR_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status);
-NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update);
 
-void R4S8CR_fill_rx_buffer(uint8_t rx_byte);
+/*!******************************************************************
+ * \fn NODE_status_t R4S8CR_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status)
+ * \brief Read corresponding node register of screen data line.
+ * \param[in]  	line_data_read: Pointer to the reading operation parameters.
+ * \param[out] 	read_status: Pointer to the reading operation status.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t R4S8CR_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status);
+
+/*!******************************************************************
+ * \fn NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload)
+ * \brief Build node Sigfox uplink payload.
+ * \param[in]  	none
+ * \param[out] 	node_ul_payload: Pointer to the Sigfox uplink payload.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload);
 
 #endif /* __R4S8CR_H__ */

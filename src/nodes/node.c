@@ -27,6 +27,7 @@
 #include "r4s8cr.h"
 #include "r4s8cr_reg.h"
 #include "rtc.h"
+#include "sigfox_types.h"
 #include "sm.h"
 #include "sm_reg.h"
 #include "uhfm.h"
@@ -45,6 +46,7 @@
 
 /*** NODE local structures ***/
 
+/*******************************************************************/
 typedef enum {
 	NODE_DOWNLINK_OP_CODE_NOP = 0,
 	NODE_DOWNLINK_OP_CODE_SINGLE_FULL_WRITE,
@@ -59,20 +61,23 @@ typedef enum {
 	NODE_DOWNLINK_OP_CODE_LAST
 } NODE_downlink_operation_code_t;
 
+/*******************************************************************/
 typedef NODE_status_t (*NODE_write_register_t)(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
 typedef NODE_status_t (*NODE_read_register_t)(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status);
 typedef NODE_status_t (*NODE_write_line_data_t)(NODE_line_data_write_t* line_write, NODE_access_status_t* write_status);
 typedef NODE_status_t (*NODE_read_line_data_t)(NODE_line_data_read_t* line_read, NODE_access_status_t* read_status);
-typedef NODE_status_t (*NODE_get_sigfox_payload_t)(NODE_ul_payload_update_t* ul_payload_update);
+typedef NODE_status_t (*NODE_build_sigfox_ul_payload_t)(NODE_ul_payload_t* node_ul_payload);
 
+/*******************************************************************/
 typedef struct {
 	NODE_write_register_t write_register;
 	NODE_read_register_t read_register;
 	NODE_write_line_data_t write_line_data;
 	NODE_read_line_data_t read_line_data;
-	NODE_get_sigfox_payload_t get_sigfox_ul_payload;
+	NODE_build_sigfox_ul_payload_t build_sigfox_ul_payload;
 } NODE_functions_t;
 
+/*******************************************************************/
 typedef struct {
 	char_t* name;
 	NODE_protocol_t protocol;
@@ -82,8 +87,9 @@ typedef struct {
 	NODE_functions_t functions;
 } NODE_descriptor_t;
 
+/*******************************************************************/
 typedef union {
-	uint8_t frame[UHFM_SIGFOX_UL_PAYLOAD_SIZE_MAX];
+	uint8_t frame[SIGFOX_UL_PAYLOAD_MAX_SIZE_BYTES];
 	struct {
 		unsigned node_addr : 8;
 		unsigned board_id : 8;
@@ -91,8 +97,9 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } NODE_sigfox_ul_payload_t;
 
+/*******************************************************************/
 typedef union {
-	uint8_t frame[UHFM_SIGFOX_DL_PAYLOAD_SIZE];
+	uint8_t frame[SIGFOX_DL_PAYLOAD_SIZE_BYTES];
 	struct {
 		unsigned op_code : 8;
 		union {
@@ -154,6 +161,7 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } NODE_sigfox_dl_payload_t;
 
+/*******************************************************************/
 typedef struct {
 	NODE_t* node;
 	uint8_t reg_addr;
@@ -162,11 +170,13 @@ typedef struct {
 	uint32_t timestamp_seconds;
 } NODE_action_t;
 
+/*******************************************************************/
 typedef struct {
 	char_t line_data_name[NODE_LINE_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
 	char_t line_data_value[NODE_LINE_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
 } NODE_data_t;
 
+/*******************************************************************/
 typedef struct {
 	NODE_data_t data;
 	NODE_address_t uhfm_address;
@@ -229,10 +239,7 @@ static NODE_context_t node_ctx;
 
 /*** NODE local functions ***/
 
-/* CHECK NODE POINTER AND BOARD ID.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 #define _NODE_check_node_and_board_id(void) { \
 	if (node == NULL) { \
 		status = NODE_ERROR_NULL_PARAMETER; \
@@ -244,10 +251,7 @@ static NODE_context_t node_ctx;
 	} \
 }
 
-/* CHECK FUNCTION POINTER.
- * @param function_name:	Function to check.
- * @return:					None.
- */
+/*******************************************************************/
 #define _NODE_check_function_pointer(function_name) { \
 	if ((NODES[node -> board_id].functions.function_name) == NULL) { \
 		status = NODE_ERROR_NOT_SUPPORTED; \
@@ -255,10 +259,7 @@ static NODE_context_t node_ctx;
 	} \
 }
 
-/* FLUSH ONE LINE OF THE MEASURERMENTS VALUE BUFFER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _NODE_flush_line_data_value(uint8_t line_data_index) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -269,10 +270,7 @@ static void _NODE_flush_line_data_value(uint8_t line_data_index) {
 	}
 }
 
-/* FLUSH WHOLE DATAS VALUE BUFFER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void _NODE_flush_all_data_value(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -280,10 +278,7 @@ void _NODE_flush_all_data_value(void) {
 	for (idx=0 ; idx<NODE_LINE_DATA_INDEX_MAX ; idx++) _NODE_flush_line_data_value(idx);
 }
 
-/* FLUSH NODES LIST.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void _NODE_flush_list(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -297,13 +292,7 @@ void _NODE_flush_list(void) {
 	NODES_LIST.count = 0;
 }
 
-/* WRITE NODE DATA.
- * @param node:				Node to write.
- * @param reg_addr:	Register address.
- * @param value:			Value to write in corresponding register.
- * @param write_status:		Pointer to the writing operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -349,13 +338,7 @@ errors:
 	return status;
 }
 
-/* READ NODE DATA.
- * @param node:				Node to read.
- * @param reg_addr:	Register address.
- * @param value:			Pointer that will contain the read value.
- * @param write_status:		Pointer to the writing operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -401,35 +384,31 @@ errors:
 	return status;
 }
 
-/* SEND NODE DATA THROUGH RADIO.
- * @param node:					Node to monitor by radio.
- * @param bidirectional_flag:	Downlink request flag.
- * @return status:				Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t node_data_size = 0;
-	NODE_ul_payload_update_t ul_payload_update;
+	NODE_ul_payload_t node_ul_payload;
 	UHFM_sigfox_message_t sigfox_message;
 	NODE_access_status_t send_status;
 	uint8_t idx = 0;
 	// Check board ID.
 	_NODE_check_node_and_board_id();
-	_NODE_check_function_pointer(get_sigfox_ul_payload);
+	_NODE_check_function_pointer(build_sigfox_ul_payload);
 	// Reset payload.
 	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_ul_payload.frame[idx] = 0x00;
 	node_ctx.sigfox_ul_payload_size = 0;
 	// Build update structure.
-	ul_payload_update.node = node;
-	ul_payload_update.ul_payload = node_ctx.sigfox_ul_payload.node_data;
-	ul_payload_update.size = &node_data_size;
+	node_ul_payload.node = node;
+	node_ul_payload.ul_payload = node_ctx.sigfox_ul_payload.node_data;
+	node_ul_payload.size = &node_data_size;
 	// Add board ID and node address.
 	node_ctx.sigfox_ul_payload.board_id = (node -> board_id);
 	node_ctx.sigfox_ul_payload.node_addr = (node -> address);
 	node_ctx.sigfox_ul_payload_size = 2;
 	// Execute function of the corresponding board ID.
-	status = NODES[node -> board_id].functions.get_sigfox_ul_payload(&ul_payload_update);
+	status = NODES[node -> board_id].functions.build_sigfox_ul_payload(&node_ul_payload);
 	if (status != NODE_SUCCESS) goto errors;
 	// Update frame size.
 	node_ctx.sigfox_ul_payload_size += node_data_size;
@@ -454,10 +433,7 @@ errors:
 	return status;
 }
 
-/* READ NODE COMMAND FROM RADIO.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_radio_read(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -470,11 +446,8 @@ NODE_status_t _NODE_radio_read(void) {
 	return status;
 }
 
-/* REMOVE ACTION IN LIST.
- * @param action_index:	Action to remove.
- * @return status:		Function execution status.
- */
-	NODE_status_t _NODE_remove_action(uint8_t action_index) {
+/*******************************************************************/
+NODE_status_t _NODE_remove_action(uint8_t action_index) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check parameter.
@@ -491,10 +464,7 @@ errors:
 	return status;
 }
 
-/* RECORD NEW ACTION IN LIST.
- * @param action:	Pointer to the action to store.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_record_action(NODE_action_t* action) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -514,11 +484,7 @@ errors:
 	return status;
 }
 
-/* SEARCH A NODE IN THE CURRENT LIST.
- * @param node_addr:	Searched address.
- * @param node_ptr:		Pointer to the node if found, NULL otherwise.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_search(NODE_address_t node_addr, NODE_t* node_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -545,10 +511,7 @@ errors:
 	return status;
 }
 
-/* PARSE SIGFOX DL PAYLOAD.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_execute_downlink(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -719,10 +682,7 @@ errors:
 	return status;
 }
 
-/* CHECK AND EXECUTE NODE ACTIONS.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_execute_actions(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -748,10 +708,7 @@ errors:
 	return status;
 }
 
-/* MAIN RADIO TASK OF NODE LAYER.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_radio_task(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -819,10 +776,7 @@ errors:
 }
 
 #ifdef BMS
-/* MAIN BMS TASK OF NODE LAYER.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _NODE_bms_task(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -870,11 +824,8 @@ errors:
 
 /*** NODE functions ***/
 
-/* INIT NODE LAYER.
- * @param:	None.
- * @return:	None.
- */
-void NODE_init(void) {
+/*******************************************************************/
+void NODE_init_por(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Reset node list.
@@ -889,17 +840,26 @@ void NODE_init(void) {
 	node_ctx.bms_node_ptr = NULL;
 	node_ctx.bms_monitoring_next_time_seconds = 0;
 #endif
-	// Init interface layers.
-	AT_BUS_init();
 	// Init registers.
 	DMM_init_registers();
 	R4S8CR_init_registers();
 }
 
-/* SCAN ALL NODE ON BUS.
- * @param:			None.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
+void NODE_init(void) {
+	// Init common LPUART interface.
+	LPUART1_init(DINFOX_NODE_ADDRESS_DMM);
+	// Init interface layers.
+	AT_BUS_init();
+}
+
+/*******************************************************************/
+void NODE_de_init(void) {
+	// Release common LPUART interface.
+	LPUART1_de_init();
+}
+
+/*******************************************************************/
 NODE_status_t NODE_scan(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -951,14 +911,29 @@ errors:
 	return status;
 }
 
-/* WRITE NODE DATA.
- * @param node:				Node to write.
- * @param line_data_index:	Node line data index.
- * @param value:			Value to write in corresponding register.
- * @param write_status:		Pointer to the writing operation status.
- * @return status:			Function execution status.
- */
-NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t value, NODE_access_status_t* write_status) {
+/*******************************************************************/
+void NODE_task(void) {
+	// Local variables.
+	NODE_status_t node_status = NODE_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
+	// Radio task.
+	node_status = _NODE_radio_task();
+	NODE_stack_error();
+	// Execute node actions.
+	node_status = _NODE_execute_actions();
+	NODE_stack_error();
+#ifdef BMS
+	// BMS task.
+	node_status = _NODE_bms_task();
+	NODE_stack_error();
+#endif
+	// Turn bus interface off.
+	power_status = POWER_disable(POWER_DOMAIN_RS485);
+	POWER_stack_error();
+}
+
+/*******************************************************************/
+NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t field_value, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_line_data_write_t line_data_write;
@@ -968,19 +943,14 @@ NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32
 	// Build structure.
 	line_data_write.node_addr = (node -> address);
 	line_data_write.line_data_index = line_data_index;
-	line_data_write.field_value = value;
+	line_data_write.field_value = field_value;
 	// Execute function of the corresponding board ID.
 	status = NODES[node -> board_id].functions.write_line_data(&line_data_write, write_status);
 errors:
 	return status;
 }
 
-/* PERFORM A SINGLE NODE MEASUREMENT.
- * @param node:				Node to update.
- * @param line_data_index:	Node string data index.
- * @param read_status:		Pointer to the reading operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -1001,10 +971,7 @@ errors:
 	return status;
 }
 
-/* PERFORM ALL NODE MEASUREMENTS.
- * @param node:		Node to update.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 NODE_status_t NODE_read_line_data_all(NODE_t* node) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -1034,11 +1001,7 @@ errors:
 	return status;
 }
 
-/* GET NODE BOARD NAME.
- * @param node:				Node to get name of.
- * @param board_name_ptr:	Pointer to string that will contain board name.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t NODE_get_name(NODE_t* node, char_t** board_name_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -1050,11 +1013,7 @@ errors:
 	return status;
 }
 
-/* GET NODE LAST STRING INDEX.
- * @param node:						Node to get name of.
- * @param last_line_data_index:	Pointer to byte that will contain last string index.
- * @return status:					Function execution status.
- */
+/*******************************************************************/
 NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_data_index) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -1066,13 +1025,7 @@ errors:
 	return status;
 }
 
-/* UNSTACK NODE DATA FORMATTED AS STRING.
- * @param node:						Node to read.
- * @param line_data_index:		Node string data index.
- * @param line_data_name_ptr:		Pointer to string that will contain next measurement name.
- * @param line_data_value_ptr:	Pointer to string that will contain next measurement value.
- * @return status:					Function execution status.
- */
+/*******************************************************************/
 NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -1092,28 +1045,4 @@ NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t**
 	(*line_data_value_ptr) = (char_t*) node_ctx.data.line_data_value[line_data_index];
 errors:
 	return status;
-}
-
-/* MAIN TASK OF NODE LAYER.
- * @param:	None.
- * @return:	None.
- */
-void NODE_task(void) {
-	// Local variables.
-	NODE_status_t node_status = NODE_SUCCESS;
-	POWER_status_t power_status = POWER_SUCCESS;
-	// Radio task.
-	node_status = _NODE_radio_task();
-	NODE_stack_error();
-	// Execute node actions.
-	node_status = _NODE_execute_actions();
-	NODE_stack_error();
-#ifdef BMS
-	// BMS task.
-	node_status = _NODE_bms_task();
-	NODE_stack_error();
-#endif
-	// Turn bus interface off.
-	power_status = POWER_disable(POWER_DOMAIN_RS485);
-	POWER_stack_error();
 }

@@ -53,7 +53,7 @@ typedef enum {
 /*******************************************************************/
 typedef struct {
 	ADC_channel_t channel;
-	ADC_conversion_t gain_type;
+	ADC_conversion_t type;
 	uint32_t gain;
 } ADC_input_t;
 
@@ -101,7 +101,7 @@ static ADC_status_t _ADC1_single_conversion(ADC_channel_t adc_channel, uint32_t*
 		// Wait end of conversion ('EOC='1') or timeout.
 		loop_count++;
 		if (loop_count > ADC_TIMEOUT_COUNT) {
-			status = ADC_ERROR_TIMEOUT;
+			status = ADC_ERROR_CONVERSION_TIMEOUT;
 			goto errors;
 		}
 	}
@@ -173,7 +173,7 @@ static ADC_status_t _ADC1_compute_all_channels(void) {
 			adc_ctx.vrefint_12bits = voltage_12bits;
 		}
 		// Convert to mV using VREFINT.
-		switch (ADC_INPUTS[idx].gain_type) {
+		switch (ADC_INPUTS[idx].type) {
 		case ADC_CONVERSION_TYPE_VMCU:
 			// Retrieve supply voltage from bandgap result.
 			adc_ctx.data[idx] = (VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (adc_ctx.vrefint_12bits);
@@ -241,7 +241,7 @@ ADC_status_t ADC1_init(void) {
 		// Wait for ADC to be ready (ADRDY='1') or timeout.
 		loop_count++;
 		if (loop_count > ADC_TIMEOUT_COUNT) {
-			status = ADC_ERROR_TIMEOUT;
+			status = ADC_ERROR_READY_TIMEOUT;
 			goto errors;
 		}
 	}
@@ -260,6 +260,8 @@ void ADC1_de_init(void) {
 	ADC1 -> CCR &= ~(0b11 << 22); // TSEN='0' and VREFEF='0'.
 	// Disable ADC peripheral.
 	ADC1 -> CR |= (0b1 << 1); // ADDIS='1'.
+	// Disable ADC voltage regulator.
+	ADC1 -> CR &= ~(0b1 << 28);
 	// Disable peripheral clock.
 	RCC -> APB2ENR &= ~(0b1 << 9); // ADCEN='0'.
 }

@@ -8,11 +8,11 @@
 #include "power.h"
 
 #include "adc.h"
-#include "at_bus.h"
 #include "gpio.h"
 #include "hmi.h"
 #include "lptim.h"
 #include "mapping.h"
+#include "node.h"
 #include "types.h"
 
 /*** POWER local global variables ***/
@@ -58,9 +58,9 @@ POWER_status_t POWER_enable(POWER_domain_t domain, LPTIM_delay_mode_t delay_mode
 		delay_ms = POWER_ON_DELAY_MS_HMI;
 		break;
 	case POWER_DOMAIN_RS485:
-		// Turn RS485 transceiver on and init AT BUS interface.
+		// Turn RS485 transceiver on and init nodes interface.
 		GPIO_write(&GPIO_TRX_POWER_ENABLE, 1);
-		AT_BUS_init();
+		NODE_init();
 		delay_ms = POWER_ON_DELAY_MS_RS485;
 		break;
 	default:
@@ -95,8 +95,8 @@ POWER_status_t POWER_disable(POWER_domain_t domain) {
 		GPIO_write(&GPIO_HMI_POWER_ENABLE, 0);
 		break;
 	case POWER_DOMAIN_RS485:
-		// Turn transceiver off and release AT BUS interface.
-		AT_BUS_de_init();
+		// Turn RS485 transceiver off and release nodes interface.
+		NODE_de_init();
 		GPIO_write(&GPIO_TRX_POWER_ENABLE, 0);
 		break;
 	default:

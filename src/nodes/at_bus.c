@@ -15,9 +15,9 @@
 #include "lptim.h"
 #include "lpuart.h"
 #include "mapping.h"
+#include "node.h"
 #include "node_common.h"
 #include "parser.h"
-#include "node.h"
 #include "string.h"
 
 /*** AT local macros ***/
@@ -40,6 +40,7 @@
 
 /*** AT local structures ***/
 
+/*******************************************************************/
 typedef struct {
 	volatile char_t buffer[AT_BUS_BUFFER_SIZE_BYTES];
 	volatile uint8_t size;
@@ -47,6 +48,7 @@ typedef struct {
 	PARSER_context_t parser;
 } AT_BUS_reply_buffer_t;
 
+/*******************************************************************/
 typedef struct {
 	// Command buffer.
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES];
@@ -63,10 +65,30 @@ static AT_BUS_context_t at_bus_ctx;
 
 /*** AT local functions ***/
 
-/* FLUSH COMMAND BUFFER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+static void _AT_BUS_fill_rx_buffer(uint8_t rx_byte) {
+	// Read current index.
+	uint8_t idx = at_bus_ctx.reply[at_bus_ctx.reply_write_idx].size;
+	// Check ending characters.
+	if (rx_byte == AT_BUS_FRAME_END) {
+		// Set flag on current buffer.
+		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].buffer[idx] = STRING_CHAR_NULL;
+		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].line_end_flag = 1;
+		// Switch buffer.
+		at_bus_ctx.reply_write_idx = (at_bus_ctx.reply_write_idx + 1) % AT_BUS_REPLY_BUFFER_DEPTH;
+		// Reset LBUS layer.
+		LBUS_reset();
+	}
+	else {
+		// Store incoming byte.
+		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].buffer[idx] = rx_byte;
+		// Manage index.
+		idx = (idx + 1) % AT_BUS_BUFFER_SIZE_BYTES;
+		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].size = idx;
+	}
+}
+
+/*******************************************************************/
 static void _AT_BUS_flush_command(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -75,10 +97,7 @@ static void _AT_BUS_flush_command(void) {
 	at_bus_ctx.command_size = 0;
 }
 
-/* FLUSH AT REPLY BUFFER.
- * @param reply_index:	Reply index to reset.
- * @return:				None.
- */
+/*******************************************************************/
 static void _AT_BUS_flush_reply(uint8_t reply_index) {
 	// Flush buffer.
 	at_bus_ctx.reply[reply_index].size = 0;
@@ -91,10 +110,7 @@ static void _AT_BUS_flush_reply(uint8_t reply_index) {
 	at_bus_ctx.reply[reply_index].parser.start_idx = 0;
 }
 
-/* FLUSH ALL AT REPLY BUFFERS.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_BUS_flush_replies(void) {
 	// Local variabless.
 	uint8_t rep_idx = 0;
@@ -107,12 +123,7 @@ static void _AT_BUS_flush_replies(void) {
 	at_bus_ctx.reply_read_idx = 0;
 }
 
-/* WAIT FOR RECEIVING A VALUE.
- * @param reply_params:	Pointer to the reply parameters.
- * @param reg_value:	Pointer to the register value in case of value reply type.
- * @param reply_status:	Pointer to the reply waiting operation status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, uint32_t* reg_value, NODE_access_status_t* reply_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -208,34 +219,20 @@ errors:
 
 /*** AT functions ***/
 
-/* INIT AT BUS INTERFACE.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void AT_BUS_init(void) {
 	// Init context.
 	_AT_BUS_flush_command();
 	_AT_BUS_flush_replies();
 	// Init LBUS layer.
-	LBUS_init(DINFOX_NODE_ADDRESS_DMM);
+	LBUS_init(&_AT_BUS_fill_rx_buffer);
 }
 
-/* DE INIT AT BUS INTERFACE.
- * @param:	None.
- * @return:	None.
- */
-void AT_BUS_de_init(void) {
-	// Release LBUS layer.
-	LBUS_de_init();
-}
-
-/* SEND AT BUS COMMAND.
- * @param command_params:	Pointer to the command parameters.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	LBUS_status_t lbus_status = LBUS_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
 	// Flush buffer.
 	_AT_BUS_flush_command();
@@ -249,20 +246,15 @@ NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params) {
 	// Disable receiver.
 	LPUART1_disable_rx();
 	// Send command.
-	status = LBUS_send((command_params -> node_addr), (uint8_t*) at_bus_ctx.command, at_bus_ctx.command_size);
-	if (status != NODE_SUCCESS) goto errors;
+	lbus_status = LBUS_send((command_params -> node_addr), (uint8_t*) at_bus_ctx.command, at_bus_ctx.command_size);
+	LBUS_check_status(NODE_ERROR_BASE_LBUS);
+	// Enable receiver.
 	LPUART1_enable_rx();
 errors:
 	return status;
 }
 
-/* WRITE AT BUS NODE REGISTER.
- * @param write_params:	Pointer to the write operation parameters.
- * @param reg_value:	Register value to write.
- * @param reg_mask:		Register writing mask.
- * @param write_status:	Pointer to the write operation status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -312,12 +304,7 @@ errors:
 	return status;
 }
 
-/* READ AT BUS NODE REGISTER.
- * @param read_params:	Pointer to the read operation parameters.
- * @param reg_value:	Pointer to the register value.
- * @param read_status:	Pointer to the read operation status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -343,12 +330,7 @@ errors:
 	return status;
 }
 
-/* SCAN AT BUS NODES.
- * @param nodes_list:		Node list to fill.
- * @param nodes_list_size:	Maximum size of the list.
- * @param nodes_count:		Pointer to byte that will contain the number of AT nodes detected.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -393,30 +375,3 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 errors:
 	return status;
 }
-
-/* FILL AT BUFFER WITH A NEW BYTE (CALLED BY LBUS INTERRUPT).
- * @param rx_byte:	Incoming byte.
- * @return:			None.
- */
-void AT_BUS_fill_rx_buffer(uint8_t rx_byte) {
-	// Read current index.
-	uint8_t idx = at_bus_ctx.reply[at_bus_ctx.reply_write_idx].size;
-	// Check ending characters.
-	if (rx_byte == AT_BUS_FRAME_END) {
-		// Set flag on current buffer.
-		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].buffer[idx] = STRING_CHAR_NULL;
-		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].line_end_flag = 1;
-		// Switch buffer.
-		at_bus_ctx.reply_write_idx = (at_bus_ctx.reply_write_idx + 1) % AT_BUS_REPLY_BUFFER_DEPTH;
-		// Reset LBUS layer.
-		LBUS_reset();
-	}
-	else {
-		// Store incoming byte.
-		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].buffer[idx] = rx_byte;
-		// Manage index.
-		idx = (idx + 1) % AT_BUS_BUFFER_SIZE_BYTES;
-		at_bus_ctx.reply[at_bus_ctx.reply_write_idx].size = idx;
-	}
-}
-

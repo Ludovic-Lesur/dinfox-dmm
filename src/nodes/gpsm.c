@@ -7,7 +7,6 @@
 
 #include "gpsm.h"
 
-#include "at_bus.h"
 #include "gpsm_reg.h"
 #include "common.h"
 #include "dinfox.h"
@@ -23,6 +22,7 @@
 
 /*** GPSM local structures ***/
 
+/*******************************************************************/
 typedef enum {
 	GPSM_SIGFOX_PAYLOAD_TYPE_STARTUP = 0,
 	GPSM_SIGFOX_PAYLOAD_TYPE_MONITORING,
@@ -30,6 +30,7 @@ typedef enum {
 	GPSM_SIGFOX_PAYLOAD_TYPE_LAST
 } GPSM_sigfox_payload_type_t;
 
+/*******************************************************************/
 typedef union {
 	uint8_t frame[GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE];
 	struct {
@@ -87,24 +88,25 @@ static const GPSM_sigfox_payload_type_t GPSM_SIGFOX_PAYLOAD_PATTERN[] = {
 
 /*** GPSM functions ***/
 
-/* WRITE GPSM DATA.
- * @param line_data_write:	Pointer to the data write structure.
- * @param read_status:		Pointer to the writing operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t GPSM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	// Call common function with local data.
-	status = XM_write_line_data(line_data_write, (NODE_line_data_t*) GPSM_LINE_DATA, (uint32_t*) GPSM_REG_WRITE_TIMEOUT_MS, write_status);
+	// Check common range.
+	if ((line_data_write -> line_data_index) < COMMON_LINE_DATA_INDEX_LAST) {
+		// Call common function.
+		status = COMMON_write_line_data(line_data_write, write_status);
+	}
+	else {
+		// Remove offset.
+		(line_data_write -> line_data_index) -= COMMON_LINE_DATA_INDEX_LAST;
+		// Call common function.
+		status = XM_write_line_data(line_data_write, (NODE_line_data_t*) GPSM_LINE_DATA, (uint32_t*) GPSM_REG_WRITE_TIMEOUT_MS, write_status);
+	}
 	return status;
 }
 
-/* READ GPSM DATA.
- * @param line_data_read:	Pointer to the data read structure.
- * @param read_status:		Pointer to the reading operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t GPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -135,7 +137,7 @@ NODE_status_t GPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 	// Check common range.
 	if ((line_data_read -> line_data_index) < COMMON_LINE_DATA_INDEX_LAST) {
 		// Call common function.
-		status = COMMON_read_line_data(line_data_read, &node_reg);
+		status = COMMON_read_line_data(line_data_read, &node_reg, read_status);
 		if (status != NODE_SUCCESS) goto errors;
 	}
 	else {
@@ -179,11 +181,8 @@ errors:
 	return status;
 }
 
-/* UPDATE GPSM NODE SIGFOX UPLINK PAYLOAD.
- * @param ul_payload_update:	Pointer to the UL payload update structure.
- * @return status:				Function execution status.
- */
-NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update) {
+/*******************************************************************/
+NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t write_status;
@@ -193,11 +192,11 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 	uint8_t idx = 0;
 	uint32_t loop_count = 0;
 	// Check parameters.
-	if (ul_payload_update == NULL) {
+	if (node_ul_payload == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (((ul_payload_update -> ul_payload) == NULL) || ((ul_payload_update -> size) == NULL)) {
+	if (((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
@@ -205,24 +204,24 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 	node_reg.value = (uint32_t*) GPSM_REGISTERS;
 	node_reg.error = (uint32_t*) GPSM_REG_ERROR_VALUE;
 	// Reset payload size.
-	(*(ul_payload_update -> size)) = 0;
+	(*(node_ul_payload -> size)) = 0;
 	// Main loop.
 	do {
 		// Check payload type.
-		switch (GPSM_SIGFOX_PAYLOAD_PATTERN[ul_payload_update -> node -> radio_transmission_count]) {
+		switch (GPSM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
 		case GPSM_SIGFOX_PAYLOAD_TYPE_STARTUP:
 			// Check flag.
-			if ((ul_payload_update -> node -> startup_data_sent) == 0) {
+			if ((node_ul_payload -> node -> startup_data_sent) == 0) {
 				// Use common format.
-				status = COMMON_build_sigfox_payload_startup(ul_payload_update, &node_reg);
+				status = COMMON_build_sigfox_payload_startup(node_ul_payload, &node_reg);
 				if (status != NODE_SUCCESS) goto errors;
 				// Update flag.
-				(ul_payload_update -> node -> startup_data_sent) = 1;
+				(node_ul_payload -> node -> startup_data_sent) = 1;
 			}
 			break;
 		case GPSM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK:
 			// Use common format.
-			status = COMMON_build_sigfox_payload_error_stack(ul_payload_update, &node_reg);
+			status = COMMON_build_sigfox_payload_error_stack(node_ul_payload, &node_reg);
 			if (status != NODE_SUCCESS) goto errors;
 			break;
 		case GPSM_SIGFOX_PAYLOAD_TYPE_MONITORING:
@@ -233,12 +232,12 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 			status = XM_reset_registers(&reg_list, &node_reg);
 			if (status != NODE_SUCCESS) goto errors;
 			// Perform measurements.
-			status = XM_perform_measurements((ul_payload_update -> node -> address), &write_status);
+			status = XM_perform_measurements((node_ul_payload -> node -> address), &write_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Check write status.
 			if (write_status.all == 0) {
 				// Read related registers.
-				status = XM_read_registers((ul_payload_update -> node -> address), &reg_list, &node_reg);
+				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
 				if (status != NODE_SUCCESS) goto errors;
 			}
 			// Build monitoring payload.
@@ -248,16 +247,16 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 			sigfox_payload_monitoring.vant = DINFOX_read_field(GPSM_REGISTERS[GPSM_REG_ADDR_ANALOG_DATA_1], GPSM_REG_ANALOG_DATA_1_MASK_VANT);
 			// Copy payload.
 			for (idx=0 ; idx<GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-				(ul_payload_update -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
+				(node_ul_payload -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
 			}
-			(*(ul_payload_update -> size)) = GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+			(*(node_ul_payload -> size)) = GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE;
 			break;
 		default:
 			status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
 			goto errors;
 		}
 		// Increment transmission count.
-		(ul_payload_update -> node -> radio_transmission_count) = ((ul_payload_update -> node -> radio_transmission_count) + 1) % (sizeof(GPSM_SIGFOX_PAYLOAD_PATTERN));
+		(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(GPSM_SIGFOX_PAYLOAD_PATTERN));
 		// Exit in case of loop error.
 		loop_count++;
 		if (loop_count > GPSM_SIGFOX_PAYLOAD_LOOP_MAX) {
@@ -265,7 +264,7 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 			goto errors;
 		}
 	}
-	while ((*(ul_payload_update -> size)) == 0);
+	while ((*(node_ul_payload -> size)) == 0);
 errors:
 	return status;
 }

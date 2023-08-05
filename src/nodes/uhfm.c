@@ -7,7 +7,6 @@
 
 #include "uhfm.h"
 
-#include "at_bus.h"
 #include "uhfm_reg.h"
 #include "common.h"
 #include "dinfox.h"
@@ -20,11 +19,11 @@
 /*** UHFM local macros ***/
 
 #define UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE		7
-
 #define UHFM_SIGFOX_PAYLOAD_LOOP_MAX			10
 
 /*** UHFM local structures ***/
 
+/*******************************************************************/
 typedef enum {
 	UHFM_SIGFOX_PAYLOAD_TYPE_STARTUP = 0,
 	UHFM_SIGFOX_PAYLOAD_TYPE_MONITORING,
@@ -32,6 +31,7 @@ typedef enum {
 	UHFM_SIGFOX_PAYLOAD_TYPE_LAST
 } UHFM_sigfox_payload_type_t;
 
+/*******************************************************************/
 typedef union {
 	uint8_t frame[UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE];
 	struct {
@@ -101,24 +101,25 @@ static uint8_t uhfm_ep_configuration_done = 0;
 
 /*** UHFM functions ***/
 
-/* WRITE UHFM DATA.
- * @param line_data_write:	Pointer to the data write structure.
- * @param read_status:		Pointer to the writing operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t UHFM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	// Call common function with local data.
-	status = XM_write_line_data(line_data_write, (NODE_line_data_t*) UHFM_LINE_DATA, (uint32_t*) UHFM_REG_WRITE_TIMEOUT_MS, write_status);
+	// Check common range.
+	if ((line_data_write -> line_data_index) < COMMON_LINE_DATA_INDEX_LAST) {
+		// Call common function.
+		status = COMMON_write_line_data(line_data_write, write_status);
+	}
+	else {
+		// Remove offset.
+		(line_data_write -> line_data_index) -= COMMON_LINE_DATA_INDEX_LAST;
+		// Call common function.
+		status = XM_write_line_data(line_data_write, (NODE_line_data_t*) UHFM_LINE_DATA, (uint32_t*) UHFM_REG_WRITE_TIMEOUT_MS, write_status);
+	}
 	return status;
 }
 
-/* READ UHFM DATA.
- * @param line_data_read:	Pointer to the data read structure.
- * @param read_status:		Pointer to the reading operation status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t UHFM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -150,7 +151,7 @@ NODE_status_t UHFM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 	// Check common range.
 	if ((line_data_read -> line_data_index) < COMMON_LINE_DATA_INDEX_LAST) {
 		// Call common function.
-		status = COMMON_read_line_data(line_data_read, &node_reg);
+		status = COMMON_read_line_data(line_data_read, &node_reg, read_status);
 		if (status != NODE_SUCCESS) goto errors;
 	}
 	else {
@@ -200,11 +201,8 @@ errors:
 	return status;
 }
 
-/* UPDATE UHFM NODE SIGFOX UPLINK PAYLOAD.
- * @param ul_payload_update:	Pointer to the UL payload update structure.
- * @return status:				Function execution status.
- */
-NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_update) {
+/*******************************************************************/
+NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t write_status;
@@ -214,11 +212,11 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 	uint8_t idx = 0;
 	uint32_t loop_count = 0;
 	// Check parameters.
-	if (ul_payload_update == NULL) {
+	if (node_ul_payload == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (((ul_payload_update -> ul_payload) == NULL) || ((ul_payload_update -> size) == NULL)) {
+	if (((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
@@ -226,24 +224,24 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 	node_reg.value = (uint32_t*) UHFM_REGISTERS;
 	node_reg.error = (uint32_t*) UHFM_REG_ERROR_VALUE;
 	// Reset payload size.
-	(*(ul_payload_update -> size)) = 0;
+	(*(node_ul_payload -> size)) = 0;
 	// Main loop.
 	do {
 		// Check payload type.
-		switch (UHFM_SIGFOX_PAYLOAD_PATTERN[ul_payload_update -> node -> radio_transmission_count]) {
+		switch (UHFM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
 		case UHFM_SIGFOX_PAYLOAD_TYPE_STARTUP:
 			// Check flag.
-			if ((ul_payload_update -> node -> startup_data_sent) == 0) {
+			if ((node_ul_payload -> node -> startup_data_sent) == 0) {
 				// Use common format.
-				status = COMMON_build_sigfox_payload_startup(ul_payload_update, &node_reg);
+				status = COMMON_build_sigfox_payload_startup(node_ul_payload, &node_reg);
 				if (status != NODE_SUCCESS) goto errors;
 				// Update flag.
-				(ul_payload_update -> node -> startup_data_sent) = 1;
+				(node_ul_payload -> node -> startup_data_sent) = 1;
 			}
 			break;
 		case UHFM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK:
 			// Use common format.
-			status = COMMON_build_sigfox_payload_error_stack(ul_payload_update, &node_reg);
+			status = COMMON_build_sigfox_payload_error_stack(node_ul_payload, &node_reg);
 			if (status != NODE_SUCCESS) goto errors;
 			break;
 		case UHFM_SIGFOX_PAYLOAD_TYPE_MONITORING:
@@ -254,12 +252,12 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 			status = XM_reset_registers(&reg_list, &node_reg);
 			if (status != NODE_SUCCESS) goto errors;
 			// Perform measurements.
-			status = XM_perform_measurements((ul_payload_update -> node -> address), &write_status);
+			status = XM_perform_measurements((node_ul_payload -> node -> address), &write_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Check write status.
 			if (write_status.all == 0) {
 				// Read related registers.
-				status = XM_read_registers((ul_payload_update -> node -> address), &reg_list, &node_reg);
+				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
 				if (status != NODE_SUCCESS) goto errors;
 			}
 			// Build monitoring payload.
@@ -269,16 +267,16 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 			sigfox_payload_monitoring.vrf_rx = DINFOX_read_field(UHFM_REGISTERS[UHFM_REG_ADDR_ANALOG_DATA_1], UHFM_REG_ANALOG_DATA_1_MASK_VRF_RX);
 			// Copy payload.
 			for (idx=0 ; idx<UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-				(ul_payload_update -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
+				(node_ul_payload -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
 			}
-			(*(ul_payload_update -> size)) = UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+			(*(node_ul_payload -> size)) = UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE;
 			break;
 		default:
 			status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
 			goto errors;
 		}
 		// Increment transmission count.
-		(ul_payload_update -> node -> radio_transmission_count) = ((ul_payload_update -> node -> radio_transmission_count) + 1) % (sizeof(UHFM_SIGFOX_PAYLOAD_PATTERN));
+		(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(UHFM_SIGFOX_PAYLOAD_PATTERN));
 		// Exit in case of loop error.
 		loop_count++;
 		if (loop_count > UHFM_SIGFOX_PAYLOAD_LOOP_MAX) {
@@ -286,17 +284,12 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_update_t* ul_payload_
 			goto errors;
 		}
 	}
-	while ((*(ul_payload_update -> size)) == 0);
+	while ((*(node_ul_payload -> size)) == 0);
 errors:
 	return status;
 }
 
-/* SEND SIGFOX MESSAGE WITH UHFM MODULE.
- * @param node_address:		Address of the UHFM node to use.
- * @param sigfox_message:	Pointer to the Sigfox message structure.
- * @param send_status:		Pointer to the sending status.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -358,12 +351,7 @@ errors:
 	return status;
 }
 
-/* READ DOWNLINK PAYLOAD.
- * @param node_address:	Address of the UHFM node to use.
- * @param dl_payload:	Byte array that will contain the DL payload.
- * @param send_status:	Pointer to the read status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -385,7 +373,7 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	// Check DL flag.
 	if (message_status.field.dl_frame == 0) goto errors;
 	// Byte loop.
-	for (idx=0 ; idx<UHFM_SIGFOX_DL_PAYLOAD_SIZE ; idx++) {
+	for (idx=0 ; idx<SIGFOX_DL_PAYLOAD_SIZE_BYTES ; idx++) {
 		// Check index.
 		if ((idx % 4) == 0) {
 			// Read register.

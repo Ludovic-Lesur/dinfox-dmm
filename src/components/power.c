@@ -83,12 +83,14 @@ errors:
 POWER_status_t POWER_disable(POWER_domain_t domain) {
 	// Local variables.
 	POWER_status_t status = POWER_SUCCESS;
+	ADC_status_t adc1_status = ADC_SUCCESS;
 	// Check domain.
 	switch (domain) {
 	case POWER_DOMAIN_ANALOG:
 		// Disable voltage dividers and release ADC.
-		ADC1_de_init();
+		adc1_status = ADC1_de_init();
 		GPIO_write(&GPIO_MNTR_EN, 0);
+		ADC1_check_status(POWER_ERROR_BASE_ADC);
 		break;
 	case POWER_DOMAIN_HMI:
 		// Turn HMI off and release drivers.

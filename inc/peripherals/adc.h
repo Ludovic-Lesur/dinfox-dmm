@@ -21,6 +21,7 @@
 typedef enum {
 	ADC_SUCCESS = 0,
 	ADC_ERROR_NULL_PARAMETER,
+	ADC_ERROR_DISABLE_TIMEOUT,
 	ADC_ERROR_CALIBRATION,
 	ADC_ERROR_READY_TIMEOUT,
 	ADC_ERROR_CHANNEL,
@@ -60,9 +61,9 @@ ADC_status_t ADC1_init(void);
  * \brief Release ADC peripheral.
  * \param[in]  	none
  * \param[out] 	none
- * \retval		none
+ * \retval		Function execution status.
  *******************************************************************/
-void ADC1_de_init(void);
+ADC_status_t ADC1_de_init(void);
 
 /*!******************************************************************
  * \fn ADC_status_t ADC1_perform_measurements(void)

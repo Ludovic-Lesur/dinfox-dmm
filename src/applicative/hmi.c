@@ -599,8 +599,6 @@ static void _HMI_disable_irq(void) {
 static HMI_status_t _HMI_update(HMI_screen_t screen, uint8_t update_all_data, uint8_t update_navigation) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	// Disable interrupts during update.
-	_HMI_disable_irq();
 	// Check if screen has changed.
 	if (hmi_ctx.screen != screen) {
 		_HMI_reset_navigation();
@@ -624,7 +622,6 @@ static HMI_status_t _HMI_update(HMI_screen_t screen, uint8_t update_all_data, ui
 	// Update context.
 	hmi_ctx.screen = screen;
 errors:
-	_HMI_enable_irq();
 	return status;
 }
 

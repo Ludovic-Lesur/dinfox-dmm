@@ -39,22 +39,13 @@ typedef void (*LBUS_rx_irq_cb)(uint8_t data);
 /*** LBUS functions ***/
 
 /*!******************************************************************
- * \fn LBUS_status_t LBUS_init(NODE_address_t self_address)
+ * \fn void LBUS_init(LBUS_rx_irq_cb irq_callback)
  * \brief Init LBUS interface.
  * \param[in]  	irq_callback: Function to call on frame reception interrupt.
  * \param[out] 	none
  * \retval		none
  *******************************************************************/
 void LBUS_init(LBUS_rx_irq_cb irq_callback);
-
-/*!******************************************************************
- * \fn void LBUS_de_init(void)
- * \brief Release LBUS interface.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		none
- *******************************************************************/
-void LBUS_de_init(void);
 
 /*!******************************************************************
  * \fn LBUS_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint32_t data_size_bytes)

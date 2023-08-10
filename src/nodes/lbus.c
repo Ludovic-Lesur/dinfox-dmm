@@ -42,7 +42,7 @@ static LBUS_context_t lbus_ctx;
 /*** LBUS local functions ***/
 
 /*******************************************************************/
-void _LBUS_fill_rx_buffer(uint8_t rx_byte) {
+static void _LBUS_fill_rx_buffer(uint8_t rx_byte) {
 	// Check field index.
 	switch (lbus_ctx.rx_byte_count) {
 	case LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS:
@@ -64,7 +64,7 @@ void _LBUS_fill_rx_buffer(uint8_t rx_byte) {
 }
 
 /*******************************************************************/
-LBUS_status_t _LBUS_configure_phy(void) {
+static LBUS_status_t _LBUS_configure_phy(void) {
 	// Local variables.
 	LBUS_status_t status = LBUS_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;

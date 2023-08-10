@@ -160,8 +160,11 @@ void LPUART1_de_init(void) {
 
 /*******************************************************************/
 void LPUART1_enable_rx(void) {
-	// Mute mode request.
-	LPUART1 -> RQR |= (0b1 << 2); // MMRQ='1'.
+	// Check mode.
+	if (((LPUART1 -> CR1) & (0b1 << 13)) != 0) {
+		// Mute mode request.
+		LPUART1 -> RQR |= (0b1 << 2); // MMRQ='1'.
+	}
 	// Clear flag and enable interrupt.
 	LPUART1 -> RQR |= (0b1 << 3);
 	NVIC_enable_interrupt(NVIC_INTERRUPT_LPUART1, NVIC_PRIORITY_LPUART1);

@@ -19,15 +19,13 @@
 #include "types.h"
 // Components.
 #include "led.h"
-// Applicative.
-#include "hmi.h"
+#include "power.h"
 // Nodes.
 #include "node.h"
-#include "dinfox.h"
+// Applicative.
 #include "error.h"
 #include "hmi.h"
 #include "mode.h"
-#include "version.h"
 
 /*** MAIN local macros ***/
 
@@ -36,7 +34,7 @@
 /*** MAIN local functions ***/
 
 /*******************************************************************/
-void _DMM_init_hw(void) {
+static void _DMM_init_hw(void) {
 	// Local variables.
 	RCC_status_t rcc_status = RCC_SUCCESS;
 	RTC_status_t rtc_status = RTC_SUCCESS;
@@ -95,8 +93,8 @@ int main(void) {
 	// Main loop.
 	while (1) {
 		// Enter sleep mode.
+		IWDG_reload();
 		PWR_enter_stop_mode();
-		// Wake-up.
 		IWDG_reload();
 		// Process HMI.
 		hmi_status = HMI_task();

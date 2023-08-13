@@ -77,7 +77,7 @@ RTC_status_t RTC_init(void) {
 	RCC -> CSR |= (0b01 << 16); // RTCSEL='01'.
 	// Enable RTC and register access.
 	RCC -> CSR |= (0b1 << 18); // RTCEN='1'.
-	// Switch to LSI if RTC failed to enter initialization mode.
+	// Enter initialization mode.
 	status = _RTC_enter_initialization_mode();
 	if (status != RTC_SUCCESS) goto errors;
 	// Poll WUTWF flag before accessing reload register.

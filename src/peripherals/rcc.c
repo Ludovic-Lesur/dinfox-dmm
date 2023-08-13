@@ -17,11 +17,6 @@
 
 #define RCC_TIMEOUT_COUNT	1000000
 
-/*** RCC local global variables ***/
-
-static const uint32_t msi_range_frequency_khz[RCC_MSI_RANGE_LAST] = {65, 131, 262, 524, 1048, 2097, 4194};
-static uint32_t rcc_sysclk_khz = msi_range_frequency_khz[RCC_MSI_RANGE_5_2MHZ];
-
 /*** RCC local functions ***/
 
 /*******************************************************************/
@@ -108,8 +103,6 @@ RCC_status_t RCC_switch_to_hsi(void) {
 	}
 	// Disable MSI.
 	RCC -> CR &= ~(0b1 << 8); // MSION='0'.
-	// Update frequency.
-	rcc_sysclk_khz = RCC_HSI_FREQUENCY_KHZ;
 errors:
 	return status;
 }
@@ -155,13 +148,6 @@ RCC_status_t RCC_switch_to_msi(RCC_msi_range_t msi_range) {
 	FLASH_check_status(RCC_ERROR_BASE_FLASH);
 	// Disable HSI.
 	RCC -> CR &= ~(0b1 << 0); // HSI16ON='0'.
-	// Update frequency.
-	rcc_sysclk_khz = msi_range_frequency_khz[msi_range];
 errors:
 	return status;
-}
-
-/*******************************************************************/
-uint32_t RCC_get_sysclk_khz(void) {
-	return rcc_sysclk_khz;
 }

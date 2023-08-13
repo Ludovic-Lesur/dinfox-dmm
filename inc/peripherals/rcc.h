@@ -79,15 +79,6 @@ RCC_status_t RCC_switch_to_hsi(void);
  *******************************************************************/
 RCC_status_t RCC_switch_to_msi(RCC_msi_range_t msi_range);
 
-/*!******************************************************************
- * \fn uint32_t RCC_get_sysclk_khz(void)
- * \brief Get the current system clock frequency.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		System clock frequency in kHz.
- *******************************************************************/
-uint32_t RCC_get_sysclk_khz(void);
-
 /*******************************************************************/
 #define RCC_check_status(error_base) { if (rcc_status != RCC_SUCCESS) { status = error_base + rcc_status; goto errors; } }
 

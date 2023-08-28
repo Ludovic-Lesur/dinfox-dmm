@@ -76,7 +76,7 @@ RCC_status_t RCC_switch_to_hsi(void) {
 	uint32_t loop_count = 0;
 	// Set flash latency.
 	flash_status = FLASH_set_latency(1);
-	FLASH_check_status(RCC_ERROR_BASE_FLASH);
+	FLASH_exit_error(RCC_ERROR_BASE_FLASH);
 	// Enable HSI.
 	RCC -> CR |= (0b1 << 0); // Enable HSI (HSI16ON='1').
 	// Wait for HSI to be stable.
@@ -145,7 +145,7 @@ RCC_status_t RCC_switch_to_msi(RCC_msi_range_t msi_range) {
 	}
 	// Set flash latency.
 	flash_status = FLASH_set_latency(0);
-	FLASH_check_status(RCC_ERROR_BASE_FLASH);
+	FLASH_exit_error(RCC_ERROR_BASE_FLASH);
 	// Disable HSI.
 	RCC -> CR &= ~(0b1 << 0); // HSI16ON='0'.
 errors:

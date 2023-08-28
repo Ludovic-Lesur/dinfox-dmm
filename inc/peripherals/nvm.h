@@ -17,12 +17,14 @@
  * \brief NVM driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	NVM_SUCCESS = 0,
 	NVM_ERROR_NULL_PARAMETER,
 	NVM_ERROR_ADDRESS,
 	NVM_ERROR_UNLOCK,
 	NVM_ERROR_LOCK,
 	NVM_ERROR_WRITE,
+	// Last base value.
 	NVM_ERROR_BASE_LAST = 0x0100
 } NVM_status_t;
 
@@ -56,12 +58,9 @@ NVM_status_t NVM_read_byte(NVM_address_t address, uint8_t* data);
 NVM_status_t NVM_write_byte(NVM_address_t address, uint8_t data);
 
 /*******************************************************************/
-#define NVM_check_status(error_base) { if (nvm_status != NVM_SUCCESS) { status = error_base + nvm_status; goto errors; } }
+#define NVM_exit_error(error_base) { if (nvm_status != NVM_SUCCESS) { status = (error_base + nvm_status); goto errors; } }
 
 /*******************************************************************/
-#define NVM_stack_error(void) { ERROR_stack_error(nvm_status, NVM_SUCCESS, ERROR_BASE_NVM); }
-
-/*******************************************************************/
-#define NVM_print_error(void) { ERROR_print_error(nvm_status, NVM_SUCCESS, ERROR_BASE_NVM); }
+#define NVM_stack_error(void) { if (nvm_status != NVM_SUCCESS) { ERROR_stack_add(ERROR_BASE_NVM + nvm_status); } }
 
 #endif /* __NVM_H__ */

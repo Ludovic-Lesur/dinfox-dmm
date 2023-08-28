@@ -133,7 +133,7 @@ static ADC_status_t _ADC1_filtered_conversion(ADC_channel_t adc_channel, uint32_
 	}
 	// Apply median filter.
 	math_status = MATH_median_filter_u32(adc_sample_buf, ADC_MEDIAN_FILTER_LENGTH, ADC_CENTER_AVERAGE_LENGTH, adc_result_12bits);
-	MATH_check_status(ADC_ERROR_BASE_MATH);
+	MATH_exit_error(ADC_ERROR_BASE_MATH);
 errors:
 	return status;
 }
@@ -238,7 +238,7 @@ ADC_status_t ADC1_init(void) {
 	// Enable ADC voltage regulator.
 	ADC1 -> CR |= (0b1 << 28);
 	lptim1_status = LPTIM1_delay_milliseconds(ADC_INIT_DELAY_MS_REGULATOR, LPTIM_DELAY_MODE_ACTIVE);
-	LPTIM1_check_status(ADC_ERROR_BASE_LPTIM);
+	LPTIM1_exit_error(ADC_ERROR_BASE_LPTIM);
 	// ADC configuration.
 	ADC1 -> CFGR2 |= (0b01 << 30); // Use (PCLK2/2) as ADCCLK = SYSCLK/2.
 	ADC1 -> SMPR |= (0b111 << 0); // Maximum sampling time.
@@ -266,7 +266,7 @@ ADC_status_t ADC1_init(void) {
 	ADC1 -> CCR |= (0b11 << 22); // TSEN='1' and VREFEN='1'.
 	// Wait for startup.
 	lptim1_status = LPTIM1_delay_milliseconds(ADC_INIT_DELAY_MS_VREF_TS, LPTIM_DELAY_MODE_ACTIVE);
-	LPTIM1_check_status(ADC_ERROR_BASE_LPTIM);
+	LPTIM1_exit_error(ADC_ERROR_BASE_LPTIM);
 errors:
 	return status;
 }

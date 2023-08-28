@@ -51,8 +51,8 @@ void __attribute__((optimize("-O0"))) LPTIM1_IRQHandler(void) {
 
 /*******************************************************************/
 void LPTIM1_init(void) {
-	// Configure clock source.
-	RCC -> CCIPR |= (0b11 << 18); // LPTIMSEL='01' (LSE clock selected).
+	// Select clock source.
+	RCC -> CCIPR |= (0b11 << 18); // LPTIMSEL='11' (LSE clock selected).
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 31); // LPTIM1EN='1'.
 	// Configure peripheral.

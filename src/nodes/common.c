@@ -136,7 +136,7 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 		field_value = DINFOX_read_field(reg_value, COMMON_LINE_DATA[str_data_idx].field_mask);
 		// Convert to 5 digits string.
 		string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-		STRING_check_status(NODE_ERROR_BASE_STRING);
+		STRING_exit_error(NODE_ERROR_BASE_STRING);
 		// Add string.
 		NODE_append_value_string(field_str);
 		break;

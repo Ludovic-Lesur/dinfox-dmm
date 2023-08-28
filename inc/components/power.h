@@ -25,11 +25,14 @@
  * \brief POWER driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	POWER_SUCCESS,
 	POWER_ERROR_NULL_PARAMETER,
 	POWER_ERROR_DOMAIN,
+	// Low level drivers errors.
 	POWER_ERROR_BASE_ADC = 0x0100,
 	POWER_ERROR_BASE_LPTIM = (POWER_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
+	// Last base value.
 	POWER_ERROR_BASE_LAST = (POWER_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST)
 } POWER_status_t;
 
@@ -84,12 +87,9 @@ POWER_status_t POWER_disable(POWER_domain_t domain);
 POWER_status_t POWER_get_state(POWER_domain_t domain, uint8_t* state);
 
 /*******************************************************************/
-#define POWER_check_status(error_base) { if (power_status != POWER_SUCCESS) { status = error_base + power_status; goto errors; } }
+#define POWER_exit_error(error_base) { if (power_status != POWER_SUCCESS) { status = (error_base + power_status); goto errors; } }
 
 /*******************************************************************/
-#define POWER_stack_error(void) { ERROR_stack_error(power_status, POWER_SUCCESS, ERROR_BASE_POWER); }
-
-/*******************************************************************/
-#define POWER_print_error(void) { ERROR_print_error(power_status, POWER_SUCCESS, ERROR_BASE_POWER); }
+#define POWER_stack_error(void) { if (power_status != POWER_SUCCESS) { ERROR_stack_add(ERROR_BASE_POWER + power_status); } }
 
 #endif /* __POWER_H__ */

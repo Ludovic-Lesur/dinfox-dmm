@@ -79,12 +79,9 @@ void HMI_de_init(void);
 HMI_status_t HMI_task(void);
 
 /*******************************************************************/
-#define HMI_check_status(error_base) { if (hmi_status != HMI_SUCCESS) { status = error_base + hmi_status; goto errors; } }
+#define HMI_exit_error(error_base) { if (hmi_status != HMI_SUCCESS) { status = (error_base + hmi_status); goto errors; } }
 
 /*******************************************************************/
-#define HMI_stack_error(void) { ERROR_stack_error(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
-
-/*******************************************************************/
-#define HMI_print_error(void) { ERROR_print_error(hmi_status, HMI_SUCCESS, ERROR_BASE_HMI); }
+#define HMI_stack_error(void) { if (hmi_status != HMI_SUCCESS) { ERROR_stack_add(ERROR_BASE_HMI + hmi_status); } }
 
 #endif /* __HMI_H__ */

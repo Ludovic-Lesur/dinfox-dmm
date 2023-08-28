@@ -121,7 +121,7 @@ PARSER_status_t PARSER_get_parameter(PARSER_context_t* parser_ctx, STRING_format
 	}
 	// Convert string.
 	string_status = STRING_string_to_value(&((parser_ctx -> buffer)[parser_ctx -> start_idx]), format, param_length_char, parameter);
-	STRING_check_status(PARSER_ERROR_BASE_STRING);
+	STRING_exit_error(PARSER_ERROR_BASE_STRING);
 	// Update start index after decoding parameter.
 	if ((parser_ctx -> separator_idx) > 0) {
 		(parser_ctx -> start_idx) = (parser_ctx -> separator_idx) + 1;
@@ -162,7 +162,7 @@ PARSER_status_t PARSER_get_byte_array(PARSER_context_t* parser_ctx, char_t separ
 	}
 	// Convert string.
 	string_status = STRING_hexadecimal_string_to_byte_array(&((parser_ctx -> buffer)[parser_ctx -> start_idx]), separator, parameter, extracted_length);
-	STRING_check_status(PARSER_ERROR_BASE_STRING);
+	STRING_exit_error(PARSER_ERROR_BASE_STRING);
 	// Update start index after decoding parameter.
 	if ((parser_ctx -> separator_idx) > 0) {
 		(parser_ctx -> start_idx) = (parser_ctx -> separator_idx) + 1;

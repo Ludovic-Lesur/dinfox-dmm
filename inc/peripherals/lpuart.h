@@ -18,12 +18,14 @@
  * \brief LPUART driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	LPUART_SUCCESS = 0,
 	LPUART_ERROR_NULL_PARAMETER,
 	LPUART_ERROR_BAUD_RATE,
 	LPUART_ERROR_RX_MODE,
 	LPUART_ERROR_TX_TIMEOUT,
 	LPUART_ERROR_TC_TIMEOUT,
+	// Last base value.
 	LPUART_ERROR_BASE_LAST = 0x0100
 } LPUART_status_t;
 
@@ -111,12 +113,9 @@ void LPUART1_disable_rx(void);
 LPUART_status_t LPUART1_write(uint8_t* data, uint32_t data_size_bytes);
 
 /*******************************************************************/
-#define LPUART1_check_status(error_base) { if (lpuart1_status != LPUART_SUCCESS) { status = error_base + lpuart1_status; goto errors; } }
+#define LPUART1_exit_error(error_base) { if (lpuart1_status != LPUART_SUCCESS) { status = (error_base + lpuart1_status); goto errors; } }
 
 /*******************************************************************/
-#define LPUART1_stack_error(void) { ERROR_stack_error(lpuart1_status, LPUART_SUCCESS, ERROR_BASE_LPUART1); }
-
-/*******************************************************************/
-#define LPUART1_print_error(void) { ERROR_print_error(lpuart1_status, LPUART_SUCCESS, ERROR_BASE_LPUART1); }
+#define LPUART1_stack_error(void) { if (lpuart1_status != LPUART_SUCCESS) { ERROR_stack_add(ERROR_BASE_LPUART1 + lpuart1_status); } }
 
 #endif /* __LPUART_H__ */

@@ -29,6 +29,7 @@
  * \brief SH1106 driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	SH1106_SUCCESS = 0,
 	SH1106_ERROR_NULL_PARAMETER,
 	SH1106_ERROR_DATA_TYPE,
@@ -41,8 +42,10 @@ typedef enum {
 	SH1106_ERROR_FLUSH_WIDTH_OVERFLOW,
 	SH1106_ERROR_TEXT_WIDTH_OVERFLOW,
 	SH1106_ERROR_HORIZONTAL_LINE_WIDTH,
+	// Low level drivers errors.
 	SH1106_ERROR_BASE_I2C = 0x0100,
 	SH1106_ERROR_BASE_STRING = (SH1106_ERROR_BASE_I2C + I2C_ERROR_BASE_LAST),
+	// Last base value.
 	SH1106_ERROR_BASE_LAST = (SH1106_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } SH1106_status_t;
 
@@ -142,12 +145,9 @@ SH1106_status_t SH1106_print_horizontal_line(uint8_t i2c_address, SH1106_horizon
 SH1106_status_t SH1106_print_image(uint8_t i2c_address, const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS]);
 
 /*******************************************************************/
-#define SH1106_check_status(error_base) { if (sh1106_status != SH1106_SUCCESS) { status = error_base + sh1106_status; goto errors; } }
+#define SH1106_exit_error(error_base) { if (sh1106_status != SH1106_SUCCESS) { status = (error_base + sh1106_status); goto errors; } }
 
 /*******************************************************************/
-#define SH1106_stack_error(void) { ERROR_stack_error(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
-
-/*******************************************************************/
-#define SH1106_print_error(void) { ERROR_print_error(sh1106_status, SH1106_SUCCESS, ERROR_BASE_SH1106); }
+#define SH1106_stack_error(void) { if (sh1106_status != SH1106_SUCCESS) { ERROR_stack_add(ERROR_BASE_SH1106 + sh1106_status); } }
 
 #endif /* __SH1106_H__ */

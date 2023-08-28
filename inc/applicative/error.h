@@ -32,8 +32,8 @@
 #include "hmi.h"
 
 /*!******************************************************************
- * \enum ERROR_t
- * \brief Board error codes.
+ * \enum ERROR_base_t
+ * \brief Board error bases.
  *******************************************************************/
 typedef enum {
 	SUCCESS = 0,
@@ -62,7 +62,13 @@ typedef enum {
 	ERROR_BASE_HMI = (ERROR_BASE_NODE + NODE_ERROR_BASE_LAST),
 	// Last index.
 	ERROR_BASE_LAST = (ERROR_BASE_HMI + HMI_ERROR_BASE_LAST)
-} ERROR_t;
+} ERROR_base_t;
+
+/*!******************************************************************
+ * \enum ERROR_code_t
+ * \brief Board error code type.
+ *******************************************************************/
+typedef uint16_t ERROR_code_t;
 
 /*** ERROR functions ***/
 
@@ -76,22 +82,22 @@ typedef enum {
 void ERROR_stack_init(void);
 
 /*!******************************************************************
- * \fn void ERROR_stack_add(ERROR_t code)
+ * \fn void ERROR_stack_add(ERROR_code_t code)
  * \brief Add error to stack.
  * \param[in]  	code: Error to stack.
  * \param[out] 	none
  * \retval		none
  *******************************************************************/
-void ERROR_stack_add(ERROR_t code);
+void ERROR_stack_add(ERROR_code_t code);
 
 /*!******************************************************************
- * \fn ERROR_t ERROR_stack_read(void)
+ * \fn ERROR_code_t ERROR_stack_read(void)
  * \brief Read error stack.
  * \param[in]  	none
  * \param[out] 	none
  * \retval		Last error code stored.
  *******************************************************************/
-ERROR_t ERROR_stack_read(void);
+ERROR_code_t ERROR_stack_read(void);
 
 /*!******************************************************************
  * \fn uint8_t ERROR_stack_is_empty(void)
@@ -101,20 +107,5 @@ ERROR_t ERROR_stack_read(void);
  * \retval		1 if the error stack is empty, 0 otherwise.
  *******************************************************************/
 uint8_t ERROR_stack_is_empty(void);
-
-/*******************************************************************/
-#define ERROR_stack_error(status, success, error_base) { \
-	if (status != success) { \
-		ERROR_stack_add(error_base + status); \
-	} \
-}
-
-/*******************************************************************/
-#define ERROR_print_error(status, success, error_base) { \
-	if (status != success) { \
-		_AT_BUS_print_error(error_base + status); \
-		goto errors; \
-	} \
-}
 
 #endif /* __ERROR_H__ */

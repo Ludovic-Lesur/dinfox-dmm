@@ -19,6 +19,7 @@
  * \brief ADC driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	ADC_SUCCESS = 0,
 	ADC_ERROR_NULL_PARAMETER,
 	ADC_ERROR_DISABLE_TIMEOUT,
@@ -28,8 +29,10 @@ typedef enum {
 	ADC_ERROR_CONVERSION_TYPE,
 	ADC_ERROR_CONVERSION_TIMEOUT,
 	ADC_ERROR_DATA_INDEX,
+	// Low level drivers errors.
 	ADC_ERROR_BASE_LPTIM = 0x0100,
 	ADC_ERROR_BASE_MATH = (ADC_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
+	// Last base value.
 	ADC_ERROR_BASE_LAST = (ADC_ERROR_BASE_MATH + MATH_ERROR_BASE_LAST)
 } ADC_status_t;
 
@@ -93,12 +96,9 @@ ADC_status_t ADC1_get_data(ADC_data_index_t data_idx, uint32_t* data);
 ADC_status_t ADC1_get_tmcu(int8_t* tmcu_degrees);
 
 /*******************************************************************/
-#define ADC1_check_status(error_base) { if (adc1_status != ADC_SUCCESS) { status = error_base + adc1_status; goto errors; } }
+#define ADC1_exit_error(error_base) { if (adc1_status != ADC_SUCCESS) { status = (error_base + adc1_status); goto errors; } }
 
 /*******************************************************************/
-#define ADC1_stack_error(void) { ERROR_stack_error(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1); }
-
-/*******************************************************************/
-#define ADC1_print_error(void) { ERROR_print_error(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1); }
+#define ADC1_stack_error(void) { if (adc1_status != ADC_SUCCESS) { ERROR_stack_add(ERROR_BASE_ADC1 + adc1_status); } }
 
 #endif /* __ADC_H__ */

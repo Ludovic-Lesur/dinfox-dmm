@@ -18,6 +18,7 @@
  * \brief I2C driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	I2C_SUCCESS = 0,
 	I2C_ERROR_NULL_PARAMETER,
 	I2C_ERROR_TIMEOUT,
@@ -27,8 +28,9 @@ typedef enum {
 	I2C_ERROR_RX_TIMEOUT,
 	I2C_ERROR_TRANSFER_COMPLETE,
 	I2C_ERROR_STOP_DETECTION_FLAG,
-	I2C_ERROR_LAST,
+	// Low level drivers errors.
 	I2C_ERROR_BASE_LPTIM = 0x0100,
+	// Last base value.
 	I2C_ERROR_BASE_LAST = (I2C_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST)
 } I2C_status_t;
 
@@ -76,12 +78,9 @@ I2C_status_t I2C1_write(uint8_t slave_address, uint8_t* data, uint8_t data_size_
 I2C_status_t I2C1_read(uint8_t slave_address, uint8_t* data, uint8_t data_size_bytes);
 
 /*******************************************************************/
-#define I2C1_check_status(error_base) { if (i2c1_status != I2C_SUCCESS) { status = error_base + i2c1_status; goto errors; } }
+#define I2C1_exit_error(error_base) { if (i2c1_status != I2C_SUCCESS) { status = (error_base + i2c1_status); goto errors; } }
 
 /*******************************************************************/
-#define I2C1_stack_error(void) { ERROR_stack_error(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
-
-/*******************************************************************/
-#define I2C1_print_error(void) { ERROR_print_error(i2c1_status, I2C_SUCCESS, ERROR_BASE_I2C1); }
+#define I2C1_stack_error(void) { if (i2c1_status != I2C_SUCCESS) { ERROR_stack_add(ERROR_BASE_I2C + i2c1_status); } }
 
 #endif /* __I2C_H__ */

@@ -299,7 +299,7 @@ TIM_status_t TIM2_wait_completion(TIM2_channel_t channel, TIM_waiting_mode_t wai
 	case TIM_WAITING_MODE_LOW_POWER_SLEEP:
 		// Switch to MSI.
 		rcc_status = RCC_switch_to_msi(RCC_MSI_RANGE_1_131KHZ);
-		RCC_check_status(TIM_ERROR_BASE_RCC);
+		RCC_exit_error(TIM_ERROR_BASE_RCC);
 		// Enter low power sleep mode.
 		while (tim2_channel_running[channel] != 0) {
 			PWR_enter_low_power_sleep_mode();
@@ -307,7 +307,7 @@ TIM_status_t TIM2_wait_completion(TIM2_channel_t channel, TIM_waiting_mode_t wai
 		}
 		// Go back to HSI.
 		rcc_status = RCC_switch_to_hsi();
-		RCC_check_status(TIM_ERROR_BASE_RCC);
+		RCC_exit_error(TIM_ERROR_BASE_RCC);
 		break;
 	default:
 		status = TIM_ERROR_WAITING_MODE;

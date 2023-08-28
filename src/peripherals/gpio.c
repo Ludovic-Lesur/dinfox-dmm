@@ -9,7 +9,6 @@
 
 #include "gpio_reg.h"
 #include "mapping.h"
-#include "mode.h"
 #include "rcc_reg.h"
 #include "types.h"
 
@@ -98,7 +97,7 @@ static void _GPIO_set_output_speed(const GPIO_pin_t* gpio, GPIO_output_speed_t o
 		break;
 	case GPIO_SPEED_VERY_HIGH:
 		// OSPEEDRy = '11'.
-		reg_value |= (0b11 << (2 * (gpio -> pin)));
+		reg_value |= (0b11 << ((gpio -> pin) << 1));
 		break;
 	default:
 		break;
@@ -126,7 +125,7 @@ static void _GPIO_set_pull_resistor(const GPIO_pin_t* gpio, GPIO_pull_resistor_t
 		break;
 	case GPIO_PULL_DOWN:
 		// PUPDRy = '10'.
-		reg_value |= (0b1 << (((gpio -> pin) + 1) << 1));
+		reg_value |= (0b1 << (((gpio -> pin) << 1) + 1));
 		break;
 	default:
 		break;

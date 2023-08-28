@@ -181,10 +181,10 @@ STRING_status_t STRING_append_value(char_t* str, uint8_t str_size_max, int32_t v
 STRING_status_t STRING_value_to_5_digits_string(int32_t value, char_t* str);
 
 /*******************************************************************/
-#define STRING_check_status(error_base) { if (string_status != STRING_SUCCESS) { status = error_base + string_status; goto errors; } }
+#define STRING_exit_error(error_base) { if (string_status != STRING_SUCCESS) { status = error_base + string_status; goto errors; } }
 
 /*******************************************************************/
-#define STRING_stack_error(void) { ERROR_stack_error(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }
+#define STRING_stack_error(void) { ERROR_stack_add(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }
 
 /*******************************************************************/
 #define STRING_print_error(void) { ERROR_print_error(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }

@@ -24,6 +24,7 @@
  * \brief RCC driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	RCC_SUCCESS = 0,
 	RCC_ERROR_NULL_PARAMETER,
 	RCC_ERROR_HSI_READY,
@@ -31,7 +32,9 @@ typedef enum {
 	RCC_ERROR_MSI_RANGE,
 	RCC_ERROR_MSI_READY,
 	RCC_ERROR_MSI_SWITCH,
+	// Low level drivers errors.
 	RCC_ERROR_BASE_FLASH = 0x0100,
+	// Last base value.
 	RCC_ERROR_BASE_LAST = (RCC_ERROR_BASE_FLASH + FLASH_ERROR_BASE_LAST)
 } RCC_status_t;
 
@@ -80,12 +83,9 @@ RCC_status_t RCC_switch_to_hsi(void);
 RCC_status_t RCC_switch_to_msi(RCC_msi_range_t msi_range);
 
 /*******************************************************************/
-#define RCC_check_status(error_base) { if (rcc_status != RCC_SUCCESS) { status = error_base + rcc_status; goto errors; } }
+#define RCC_exit_error(error_base) { if (rcc_status != RCC_SUCCESS) { status = (error_base + rcc_status); goto errors; } }
 
 /*******************************************************************/
-#define RCC_stack_error(void) { ERROR_stack_error(rcc_status, RCC_SUCCESS, ERROR_BASE_RCC); }
-
-/*******************************************************************/
-#define RCC_print_error(void) { ERROR_print_error(rcc_status, RCC_SUCCESS, ERROR_BASE_RCC); }
+#define RCC_stack_error(void) { if (rcc_status != RCC_SUCCESS) { ERROR_stack_add(ERROR_BASE_RCC + rcc_status); } }
 
 #endif /* __RCC_H__ */

@@ -44,6 +44,7 @@ static const char_t NODE_ERROR_STRING[] =	"ERROR";
  * \brief NODE driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	NODE_SUCCESS = 0,
 	NODE_ERROR_NOT_SUPPORTED,
 	NODE_ERROR_NULL_PARAMETER,
@@ -66,12 +67,14 @@ typedef enum {
 	NODE_ERROR_DOWNLINK_OPERATION_CODE,
 	NODE_ERROR_ACTION_INDEX,
 	NODE_ERROR_RELAY_ID,
+	// Low level drivers errors.
 	NODE_ERROR_BASE_ADC = 0x0100,
 	NODE_ERROR_BASE_LPUART = (NODE_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_POWER = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LBUS = (NODE_ERROR_BASE_POWER + POWER_ERROR_BASE_LAST),
+	// Last base value.
 	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_LBUS + LBUS_ERROR_BASE_LAST)
 } NODE_status_t;
 
@@ -252,20 +255,20 @@ NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t**
 /*******************************************************************/
 #define NODE_append_name_string(str) { \
 	string_status = STRING_append_string((line_data_read -> name_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
-	STRING_check_status(NODE_ERROR_BASE_STRING); \
+	STRING_exit_error(NODE_ERROR_BASE_STRING); \
 }
 
 /*******************************************************************/
 #define NODE_append_value_string(str) { \
 	string_status = STRING_append_string((line_data_read -> value_ptr), NODE_STRING_BUFFER_SIZE, str, &buffer_size); \
-	STRING_check_status(NODE_ERROR_BASE_STRING); \
+	STRING_exit_error(NODE_ERROR_BASE_STRING); \
 }
 
 /*******************************************************************/
 #define NODE_append_value_int32(value, format, prefix) { \
 	char_t str[NODE_STRING_BUFFER_SIZE]; \
 	string_status = STRING_value_to_string((int32_t) value, format, prefix, str); \
-	STRING_check_status(NODE_ERROR_BASE_STRING); \
+	STRING_exit_error(NODE_ERROR_BASE_STRING); \
 	NODE_append_value_string(str); \
 }
 
@@ -279,12 +282,9 @@ NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t**
 }
 
 /*******************************************************************/
-#define NODE_check_status(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; } }
+#define NODE_exit_error(error_base) { if (node_status != NODE_SUCCESS) { status = (error_base + node_status); goto errors; } }
 
 /*******************************************************************/
-#define NODE_stack_error(void) { ERROR_stack_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
-
-/*******************************************************************/
-#define NODE_print_error(void) { ERROR_print_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+#define NODE_stack_error(void) { if (node_status != NODE_SUCCESS) { ERROR_stack_add(ERROR_BASE_NODE + node_status); } }
 
 #endif /* __NODE_H__ */

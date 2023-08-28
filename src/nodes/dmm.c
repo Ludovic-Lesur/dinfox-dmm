@@ -203,41 +203,41 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 		if (hmi_on == 0) {
 			// Turn HMI on.
 			power_status = POWER_enable(POWER_DOMAIN_HMI, LPTIM_DELAY_MODE_STOP);
-			POWER_check_status(NODE_ERROR_BASE_POWER);
+			POWER_exit_error(NODE_ERROR_BASE_POWER);
 		}
 		// Init ADC.
 		power_status = POWER_enable(POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
-		POWER_check_status(NODE_ERROR_BASE_POWER);
+		POWER_exit_error(NODE_ERROR_BASE_POWER);
 		// Perform analog measurements.
 		adc1_status = ADC1_perform_measurements();
 		// Release ADC.
 		power_status = POWER_disable(POWER_DOMAIN_ANALOG);
-		POWER_check_status(NODE_ERROR_BASE_POWER);
+		POWER_exit_error(NODE_ERROR_BASE_POWER);
 		// Disable HMI power supply.
 		if (hmi_on == 0) {
 			power_status = POWER_disable(POWER_DOMAIN_HMI);
-			POWER_check_status(NODE_ERROR_BASE_POWER);
+			POWER_exit_error(NODE_ERROR_BASE_POWER);
 		}
-		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		ADC1_exit_error(NODE_ERROR_BASE_ADC);
 		// VMCU.
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VMCU_MV, &adc_data);
-		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		ADC1_exit_error(NODE_ERROR_BASE_ADC);
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), &unused_mask, DINFOX_convert_mv(adc_data), COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
 		// TMCU.
 		adc1_status = ADC1_get_tmcu(&tmcu_degrees);
-		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		ADC1_exit_error(NODE_ERROR_BASE_ADC);
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), &unused_mask, DINFOX_convert_degrees(tmcu_degrees), COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
 		// VRS.
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &adc_data);
-		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		ADC1_exit_error(NODE_ERROR_BASE_ADC);
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VRS);
 		// VHMI.
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VHMI_MV, &adc_data);
-		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		ADC1_exit_error(NODE_ERROR_BASE_ADC);
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VHMI);
 		// VHMI.
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &adc_data);
-		ADC1_check_status(NODE_ERROR_BASE_ADC);
+		ADC1_exit_error(NODE_ERROR_BASE_ADC);
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_2_MASK_VUSB);
 	}
 errors:
@@ -356,7 +356,7 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 				// Convert to 5 digits string.
 				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-				STRING_check_status(NODE_ERROR_BASE_STRING);
+				STRING_exit_error(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
 				NODE_append_value_string(field_str);

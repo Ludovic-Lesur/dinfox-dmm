@@ -128,7 +128,7 @@ static NODE_status_t _R4S8CR_configure_phy(void) {
 	lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
 	lpuart_config.rx_callback = &_R4S8CR_fill_rx_buffer;
 	lpuart1_status = LPUART1_configure(&lpuart_config);
-	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
+	LPUART1_exit_error(NODE_ERROR_BASE_LPUART);
 errors:
 	return status;
 }
@@ -158,7 +158,7 @@ static NODE_status_t _R4S8CR_write_relay_state(uint8_t relay_id, uint8_t rxst, N
 	LPUART1_disable_rx();
 	// Send command.
 	lpuart1_status = LPUART1_write(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
-	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
+	LPUART1_exit_error(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();
 errors:
@@ -188,14 +188,14 @@ static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, uint32_t ti
 	LPUART1_disable_rx();
 	// Send command.
 	lpuart1_status = LPUART1_write(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
-	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
+	LPUART1_exit_error(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();
 	// Wait reply.
 	while (1) {
 		// Delay.
 		lptim1_status = LPTIM1_delay_milliseconds(R4S8CR_REPLY_PARSING_DELAY_MS, LPTIM_DELAY_MODE_STOP);
-		LPTIM1_check_status(NODE_ERROR_BASE_LPTIM);
+		LPTIM1_exit_error(NODE_ERROR_BASE_LPTIM);
 		reply_time_ms += R4S8CR_REPLY_PARSING_DELAY_MS;
 		// Check number of received bytes.
 		if (r4s8cr_ctx.reply_size >= R4S8CR_REPLY_SIZE_BYTES) {

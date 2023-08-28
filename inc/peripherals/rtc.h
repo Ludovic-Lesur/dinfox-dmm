@@ -22,10 +22,12 @@
  * \brief RTC driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	RTC_SUCCESS = 0,
 	RTC_ERROR_NULL_PARAMETER,
 	RTC_ERROR_INITIALIZATION_MODE,
 	RTC_ERROR_WAKEUP_TIMER_REGISTER_ACCESS,
+	// Last base value.
 	RTC_ERROR_BASE_LAST = 0x0100
 } RTC_status_t;
 
@@ -68,12 +70,9 @@ void RTC_clear_wakeup_timer_flag(void);
 uint32_t RTC_get_time_seconds(void);
 
 /*******************************************************************/
-#define RTC_check_status(error_base) { if (rtc_status != RTC_SUCCESS) { status = error_base + rtc_status; goto errors; } }
+#define RTC_exit_error(error_base) { if (rtc_status != RTC_SUCCESS) { status = (error_base + rtc_status); goto errors; } }
 
 /*******************************************************************/
-#define RTC_stack_error(void) { ERROR_stack_error(rtc_status, RTC_SUCCESS, ERROR_BASE_RTC); }
-
-/*******************************************************************/
-#define RTC_print_error(void) { ERROR_stack_error(rtc_status, RTC_SUCCESS, ERROR_BASE_RTC); }
+#define RTC_stack_error(void) { if (rtc_status != RTC_SUCCESS) { ERROR_stack_add(ERROR_BASE_RTC + rtc_status); } }
 
 #endif /* __RTC_H__ */

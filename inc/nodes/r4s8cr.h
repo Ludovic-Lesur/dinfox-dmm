@@ -17,6 +17,10 @@
 
 /*** R4S8CR structures ***/
 
+/*!******************************************************************
+ * \enum R4S8CR_line_data_index_t
+ * \brief R4S8CR screen data lines index.
+ *******************************************************************/
 typedef enum {
 	R4S8CR_LINE_DATA_INDEX_R1ST = 0,
 	R4S8CR_LINE_DATA_INDEX_R2ST,

@@ -18,13 +18,16 @@
  * \brief TIM driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	TIM_SUCCESS = 0,
 	TIM_ERROR_NULL_PARAMETER,
 	TIM_ERROR_CHANNEL,
 	TIM_ERROR_DURATION_UNDERFLOW,
 	TIM_ERROR_DURATION_OVERFLOW,
 	TIM_ERROR_WAITING_MODE,
+	// Low level drivers errors.
 	TIM_ERROR_BASE_RCC = 0x0100,
+	// Last base value.
 	TIM_ERROR_BASE_LAST = (TIM_ERROR_BASE_RCC + RCC_ERROR_BASE_LAST)
 } TIM_status_t;
 
@@ -199,12 +202,9 @@ void TIM21_stop(void);
 uint8_t TIM21_is_single_blink_done(void);
 
 /*******************************************************************/
-#define TIM2_check_status(error_base) { if (tim2_status != TIM_SUCCESS) { status = error_base + tim2_status; goto errors; } }
+#define TIM2_exit_error(error_base) { if (tim2_status != TIM_SUCCESS) { status = (error_base + tim2_status); goto errors; } }
 
 /*******************************************************************/
-#define TIM2_stack_error(void) { ERROR_stack_error(tim2_status, TIM_SUCCESS, ERROR_BASE_TIM2); }
-
-/*******************************************************************/
-#define TIM2_print_error(void) { ERROR_print_error(tim2_status, TIM_SUCCESS, ERROR_BASE_TIM2); }
+#define TIM2_stack_error(void) { if (tim2_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM2 + tim2_status); } }
 
 #endif /* __TIM_H__ */

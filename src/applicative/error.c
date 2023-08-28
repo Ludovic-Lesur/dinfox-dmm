@@ -17,7 +17,7 @@
 
 /*******************************************************************/
 typedef struct {
-	ERROR_t stack[ERROR_STACK_DEPTH];
+	ERROR_code_t stack[ERROR_STACK_DEPTH];
 	uint8_t stack_idx;
 } ERROR_context_t;
 
@@ -35,7 +35,7 @@ void ERROR_stack_init(void) {
 }
 
 /*******************************************************************/
-void ERROR_stack_add(ERROR_t code) {
+void ERROR_stack_add(ERROR_code_t code) {
 	// Add error code.
 	error_ctx.stack[error_ctx.stack_idx] = code;
 	// Increment index.
@@ -46,10 +46,10 @@ void ERROR_stack_add(ERROR_t code) {
 }
 
 /*******************************************************************/
-ERROR_t ERROR_stack_read(void) {
+ERROR_code_t ERROR_stack_read(void) {
 	// Read last error.
 	error_ctx.stack_idx = (error_ctx.stack_idx == 0) ? (ERROR_STACK_DEPTH - 1) : (error_ctx.stack_idx - 1);
-	ERROR_t last_error = error_ctx.stack[error_ctx.stack_idx];
+	ERROR_code_t last_error = error_ctx.stack[error_ctx.stack_idx];
 	// Remove error.
 	error_ctx.stack[error_ctx.stack_idx] = SUCCESS;
 	// Return code.

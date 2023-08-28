@@ -17,11 +17,12 @@
  * \brief LPTIM driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	LPTIM_SUCCESS = 0,
 	LPTIM_ERROR_DELAY_UNDERFLOW,
 	LPTIM_ERROR_DELAY_OVERFLOW,
-	LPTIM_ERROR_WRITE_ARR,
 	LPTIM_ERROR_DELAY_MODE,
+	// Last base value.
 	LPTIM_ERROR_BASE_LAST = 0x0100
 } LPTIM_status_t;
 
@@ -58,12 +59,9 @@ void LPTIM1_init(void);
 LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t delay_mode);
 
 /*******************************************************************/
-#define LPTIM1_check_status(error_base) { if (lptim1_status != LPTIM_SUCCESS) { status = error_base + lptim1_status; goto errors; } }
+#define LPTIM1_exit_error(error_base) { if (lptim1_status != LPTIM_SUCCESS) { status = (error_base + lptim1_status); goto errors; } }
 
 /*******************************************************************/
-#define LPTIM1_stack_error(void) { ERROR_stack_error(lptim1_status, LPTIM_SUCCESS, ERROR_BASE_LPTIM1); }
-
-/*******************************************************************/
-#define LPTIM1_print_error(void) { ERROR_print_error(lptim1_status, LPTIM_SUCCESS, ERROR_BASE_LPTIM1); }
+#define LPTIM1_stack_error(void) { if (lptim1_status != LPTIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_LPTIM1 + lptim1_status); } }
 
 #endif /* __LPTIM_H__ */

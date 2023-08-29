@@ -29,12 +29,14 @@
  * \brief MATH driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	MATH_SUCCESS = 0,
 	MATH_ERROR_NULL_PARAMETER,
 	MATH_ERROR_OVERFLOW,
 	MATH_ERROR_UNDEFINED,
 	MATH_ERROR_SIGN_BIT,
 	MATH_ERROR_MAGNITUDE_OVERFLOW,
+	// Last base value.
 	MATH_ERROR_BASE_LAST = 0x0100
 } MATH_status_t;
 
@@ -212,12 +214,9 @@ MATH_status_t MATH_two_complement_to_int32(uint32_t value, uint8_t sign_bit_posi
 MATH_status_t MATH_int32_to_signed_magnitude(int32_t value, uint8_t sign_bit_position, uint32_t* result);
 
 /*******************************************************************/
-#define MATH_exit_error(error_base) { if (math_status != MATH_SUCCESS) { status = error_base + math_status; goto errors; } }
+#define MATH_exit_error(error_base) { if (math_status != MATH_SUCCESS) { status = (error_base + math_status); goto errors; } }
 
 /*******************************************************************/
-#define MATH_stack_error(void) { ERROR_stack_add(math_status, MATH_SUCCESS, ERROR_BASE_MATH); }
-
-/*******************************************************************/
-#define MATH_print_error(void) { ERROR_print_error(math_status, MATH_SUCCESS, ERROR_BASE_MATH); }
+#define MATH_stack_error(void) { if (math_status != MATH_SUCCESS) { ERROR_stack_add(ERROR_BASE_MATH + math_status); } }
 
 #endif /* __MATH_H__ */

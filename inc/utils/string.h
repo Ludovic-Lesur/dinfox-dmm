@@ -30,6 +30,7 @@
  * \brief STRING driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	STRING_SUCCESS = 0,
 	STRING_ERROR_NULL_PARAMETER,
 	STRING_ERROR_FORMAT,
@@ -44,7 +45,9 @@ typedef enum {
 	STRING_ERROR_COPY_OVERFLOW,
 	STRING_ERROR_APPEND_OVERFLOW,
 	STRING_ERROR_TEXT_JUSTIFICATION,
+	// Low level drivers errors.
 	STRING_ERROR_BASE_MATH = 0x0100,
+	// Last base value.
 	STRING_ERROR_BASE_LAST = (STRING_ERROR_BASE_MATH + MATH_ERROR_BASE_LAST)
 } STRING_status_t;
 
@@ -181,12 +184,9 @@ STRING_status_t STRING_append_value(char_t* str, uint8_t str_size_max, int32_t v
 STRING_status_t STRING_value_to_5_digits_string(int32_t value, char_t* str);
 
 /*******************************************************************/
-#define STRING_exit_error(error_base) { if (string_status != STRING_SUCCESS) { status = error_base + string_status; goto errors; } }
+#define STRING_exit_error(error_base) { if (string_status != STRING_SUCCESS) { status = (error_base + string_status); goto errors; } }
 
 /*******************************************************************/
-#define STRING_stack_error(void) { ERROR_stack_add(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }
-
-/*******************************************************************/
-#define STRING_print_error(void) { ERROR_print_error(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }
+#define STRING_stack_error(void) { if (string_status != STRING_SUCCESS) { ERROR_stack_add(ERROR_BASE_STRING + string_status); } }
 
 #endif /* __STRING_H__ */

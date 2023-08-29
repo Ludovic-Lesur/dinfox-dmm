@@ -342,7 +342,6 @@ static HMI_status_t _HMI_update_data(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
-	NODE_access_status_t read_status;
 	STRING_status_t string_status = STRING_SUCCESS;
 	STRING_copy_t string_copy;
 	char_t* text_ptr_1 = NULL;
@@ -356,9 +355,9 @@ static HMI_status_t _HMI_update_data(void) {
 		status = HMI_ERROR_SCREEN;
 		goto errors;
 	}
-	node_status = NODE_read_line_data(&hmi_ctx.node, hmi_ctx.data_index, &read_status);
+	node_status = NODE_read_line_data(&hmi_ctx.node, hmi_ctx.data_index);
 	// Check status.
-	if ((node_status == NODE_ERROR_NOT_SUPPORTED) || (read_status.all != 0)) {
+	if (node_status == NODE_ERROR_NOT_SUPPORTED) {
 		// Do not update data.
 		goto errors;
 	}
@@ -748,21 +747,17 @@ static HMI_status_t _HMI_process_cmd_on(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
-	NODE_access_status_t write_status;
 	// Execute node register write function.
-	node_status = NODE_write_line_data(&hmi_ctx.node, hmi_ctx.data_index, 1, &write_status);
+	node_status = NODE_write_line_data(&hmi_ctx.node, hmi_ctx.data_index, 1);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_exit_error(HMI_ERROR_BASE_NODE);
 	}
-	// Update display is write operation succedded.
-	if (write_status.all == 0) {
-		// Read written data.
-		status = _HMI_update_data();
-		if (status != HMI_SUCCESS) goto errors;
-		// Update display.
-		status = _HMI_update(hmi_ctx.screen, 0, 0);
-	}
+	// Read written data.
+	status = _HMI_update_data();
+	if (status != HMI_SUCCESS) goto errors;
+	// Update display.
+	status = _HMI_update(hmi_ctx.screen, 0, 0);
 errors:
 	return status;
 }
@@ -772,21 +767,17 @@ static HMI_status_t _HMI_process_cmd_off(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
-	NODE_access_status_t write_status;
 	// Execute node register write function.
-	node_status = NODE_write_line_data(&hmi_ctx.node, hmi_ctx.data_index, 0, &write_status);
+	node_status = NODE_write_line_data(&hmi_ctx.node, hmi_ctx.data_index, 0);
 	// Check status.
 	if (node_status != NODE_ERROR_NOT_SUPPORTED) {
 		NODE_exit_error(HMI_ERROR_BASE_NODE);
 	}
-	// Update display is write operation succedded.
-	if (write_status.all == 0) {
-		// Read written data.
-		status = _HMI_update_data();
-		if (status != HMI_SUCCESS) goto errors;
-		// Update display.
-		status = _HMI_update(hmi_ctx.screen, 0, 0);
-	}
+	// Read written data.
+	status = _HMI_update_data();
+	if (status != HMI_SUCCESS) goto errors;
+	// Update display.
+	status = _HMI_update(hmi_ctx.screen, 0, 0);
 errors:
 	return status;
 }

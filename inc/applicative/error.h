@@ -18,13 +18,14 @@
 #include "rcc.h"
 #include "rtc.h"
 #include "tim.h"
-// Components.
-#include "led.h"
-#include "sh1106.h"
 // Utils.
 #include "math.h"
 #include "parser.h"
 #include "string.h"
+// Components.
+#include "led.h"
+#include "power.h"
+#include "sh1106.h"
 // Nodes.
 #include "lbus.h"
 #include "node.h"

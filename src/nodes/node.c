@@ -240,6 +240,14 @@ static NODE_context_t node_ctx;
 /*** NODE local functions ***/
 
 /*******************************************************************/
+#define NODE_check_access_status(void) { \
+	if ((node_access_status.all) != 0) { \
+		status = (NODE_ERROR_BASE_ACCESS_STATUS + (node_access_status.all)); \
+		goto errors; \
+	} \
+}
+
+/*******************************************************************/
 #define _NODE_check_node_and_board_id(void) { \
 	if (node == NULL) { \
 		status = NODE_ERROR_NULL_PARAMETER; \
@@ -293,18 +301,14 @@ void _NODE_flush_list(void) {
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
+NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t write_input;
+	NODE_access_status_t node_access_status = {.all = 0};
 	// Check node and board ID.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(write_register);
-	// Check write status.
-	if (write_status == NULL) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
 	// Check register address.
 	if (NODES[node -> board_id].last_reg_addr == 0) {
 		status = NODE_ERROR_NOT_SUPPORTED;
@@ -333,24 +337,22 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_
 		status = NODE_ERROR_PROTOCOL;
 		break;
 	}
-	status = NODES[node -> board_id].functions.write_register(&write_input, reg_value, reg_mask, write_status);
+	status = NODES[node -> board_id].functions.write_register(&write_input, reg_value, reg_mask, &node_access_status);
+	if (status != NODE_SUCCESS) goto errors;
+	NODE_check_access_status();
 errors:
 	return status;
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_value, NODE_access_status_t* read_status) {
+NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_value) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t read_input;
+	NODE_access_status_t node_access_status = {.all = 0};
 	// Check node and board ID.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(write_register);
-	// Check write status.
-	if (read_status == NULL) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
 	// Check register address.
 	if (NODES[node -> board_id].last_reg_addr == 0) {
 		status = NODE_ERROR_NOT_SUPPORTED;
@@ -379,7 +381,9 @@ NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_
 		status = NODE_ERROR_PROTOCOL;
 		break;
 	}
-	status = NODES[node -> board_id].functions.read_register(&read_input, reg_value, read_status);
+	status = NODES[node -> board_id].functions.read_register(&read_input, reg_value, &node_access_status);
+	if (status != NODE_SUCCESS) goto errors;
+	NODE_check_access_status();
 errors:
 	return status;
 }
@@ -391,7 +395,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag) {
 	uint8_t node_data_size = 0;
 	NODE_ul_payload_t node_ul_payload;
 	UHFM_sigfox_message_t sigfox_message;
-	NODE_access_status_t send_status;
+	NODE_access_status_t node_access_status = {.all = 0};
 	uint8_t idx = 0;
 	// Check board ID.
 	_NODE_check_node_and_board_id();
@@ -422,13 +426,9 @@ NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag) {
 	sigfox_message.ul_payload_size = node_ctx.sigfox_ul_payload_size;
 	sigfox_message.bidirectional_flag = bidirectional_flag;
 	// Send message.
-	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &send_status);
+	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	// Check send status.
-	if (send_status.all != 0) {
-		status = NODE_ERROR_SIGFOX_SEND;
-		goto errors;
-	}
+	NODE_check_access_status();
 errors:
 	return status;
 }
@@ -437,12 +437,11 @@ errors:
 NODE_status_t _NODE_radio_read(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t read_status;
-	// Reset status and operation code.
-	read_status.all = 0;
+	NODE_access_status_t node_access_status = {.all = 0};
+	// Reset operation code.
 	node_ctx.sigfox_dl_payload.op_code = NODE_DOWNLINK_OP_CODE_NOP;
 	// Read downlink payload.
-	status = UHFM_get_dl_payload(node_ctx.uhfm_address, node_ctx.sigfox_dl_payload.frame, &read_status);
+	status = UHFM_get_dl_payload(node_ctx.uhfm_address, node_ctx.sigfox_dl_payload.frame, &node_access_status);
 	return status;
 }
 
@@ -516,7 +515,6 @@ NODE_status_t _NODE_execute_downlink(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_action_t action;
-	NODE_access_status_t read_status;
 	NODE_t* node_ptr = NULL;
 	uint32_t previous_reg_value = 0;
 	// Check operation code.
@@ -553,8 +551,8 @@ NODE_status_t _NODE_execute_downlink(void) {
 		status = _NODE_search(node_ctx.sigfox_dl_payload.full_write.node_addr, node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Read current register value.
-		status = _NODE_read_register(node_ptr, node_ctx.sigfox_dl_payload.full_write.reg_addr, &previous_reg_value, &read_status);
-		if ((status != NODE_SUCCESS) || ((read_status.all) != 0)) goto errors;
+		status = _NODE_read_register(node_ptr, node_ctx.sigfox_dl_payload.full_write.reg_addr, &previous_reg_value);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register first action.
 		action.node = node_ptr;
 		action.reg_addr = node_ctx.sigfox_dl_payload.full_write.reg_addr;
@@ -572,8 +570,8 @@ NODE_status_t _NODE_execute_downlink(void) {
 		status = _NODE_search(node_ctx.sigfox_dl_payload.masked_write.node_addr, node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Read current register value.
-		status = _NODE_read_register(node_ptr, node_ctx.sigfox_dl_payload.masked_write.reg_addr, &previous_reg_value, &read_status);
-		if ((status != NODE_SUCCESS) || ((read_status.all) != 0)) goto errors;
+		status = _NODE_read_register(node_ptr, node_ctx.sigfox_dl_payload.masked_write.reg_addr, &previous_reg_value);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register first action.
 		action.node = node_ptr;
 		action.reg_addr = node_ctx.sigfox_dl_payload.masked_write.reg_addr;
@@ -687,7 +685,6 @@ NODE_status_t _NODE_execute_actions(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;
-	NODE_access_status_t write_status;
 	uint8_t idx = 0;
 	// Loop on action table.
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) {
@@ -697,7 +694,7 @@ NODE_status_t _NODE_execute_actions(void) {
 			power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
 			POWER_exit_error(NODE_ERROR_BASE_POWER);
 			// Perform write operation.
-			status = _NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].reg_addr, node_ctx.actions[idx].reg_value, node_ctx.actions[idx].reg_mask, &write_status);
+			status = _NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].reg_addr, node_ctx.actions[idx].reg_value, node_ctx.actions[idx].reg_mask);
 			if (status != NODE_SUCCESS) goto errors;
 			// Remove action.
 			status = _NODE_remove_action(idx);
@@ -780,8 +777,8 @@ errors:
 NODE_status_t _NODE_bms_task(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	NODE_access_status_t access_status;
+	NODE_access_status_t node_access_status = {.all = 0};
+	POWER_status_t power_status = POWER_SUCCESS;
 	uint32_t reg_value = 0;
 	uint16_t vbatt_dinfox = 0;
 	uint32_t vbatt_mv = 0;
@@ -792,14 +789,15 @@ NODE_status_t _NODE_bms_task(void) {
 		// Check BMS presence.
 		if (node_ctx.bms_node_ptr == NULL) goto errors;
 		// Turn bus interface on.
-		lpuart1_status = LPUART1_power_on();
-		LPUART1_exit_error(NODE_ERROR_BASE_LPUART);
+		power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+		POWER_exit_error(NODE_ERROR_BASE_POWER);
 		// Perform measurements.
-		status = XM_perform_measurements((node_ctx.bms_node_ptr -> address), &access_status);
-		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		status = XM_perform_measurements((node_ctx.bms_node_ptr -> address), &node_access_status);
+		if (status != NODE_SUCCESS) goto errors;
+		NODE_check_access_status();
 		// Read battery voltage.
-		status = _NODE_read_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_ANALOG_DATA_1, &reg_value, &access_status);
-		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		status = _NODE_read_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_ANALOG_DATA_1, &reg_value);
+		if (status != NODE_SUCCESS) goto errors;
 		// Check error value.
 		vbatt_dinfox = (uint16_t) DINFOX_read_field(reg_value, LVRM_REG_ANALOG_DATA_1_MASK_VCOM);
 		if (vbatt_dinfox == DINFOX_VOLTAGE_ERROR_VALUE) goto errors;
@@ -808,13 +806,13 @@ NODE_status_t _NODE_bms_task(void) {
 		// Check battery voltage.
 		if (vbatt_mv < BMS_VBATT_LOW_THRESHOLD_MV) {
 			// Open relay.
-			status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0x00, LVRM_REG_STATUS_CONTROL_1_MASK_RLST, &access_status);
-			if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+			status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0x00, LVRM_REG_STATUS_CONTROL_1_MASK_RLST);
+			if (status != NODE_SUCCESS) goto errors;
 		}
 		if (vbatt_mv > BMS_VBATT_HIGH_THRESHOLD_MV) {
 			// Close relay.
-			status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0x01, LVRM_REG_STATUS_CONTROL_1_MASK_RLST, &access_status);
-			if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+			status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0x01, LVRM_REG_STATUS_CONTROL_1_MASK_RLST);
+			if (status != NODE_SUCCESS) goto errors;
 		}
 	}
 errors:
@@ -933,10 +931,11 @@ void NODE_task(void) {
 }
 
 /*******************************************************************/
-NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t field_value, NODE_access_status_t* write_status) {
+NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t field_value) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_line_data_write_t line_data_write;
+	NODE_access_status_t node_access_status = {.all = 0};
 	// Check board ID and function.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(write_line_data);
@@ -945,16 +944,19 @@ NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32
 	line_data_write.line_data_index = line_data_index;
 	line_data_write.field_value = field_value;
 	// Execute function of the corresponding board ID.
-	status = NODES[node -> board_id].functions.write_line_data(&line_data_write, write_status);
+	status = NODES[node -> board_id].functions.write_line_data(&line_data_write, &node_access_status);
+	if (status != NODE_SUCCESS) goto errors;
+	NODE_check_access_status();
 errors:
 	return status;
 }
 
 /*******************************************************************/
-NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status) {
+NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_line_data_read_t line_data_read;
+	NODE_access_status_t node_access_status = {.all = 0};
 	// Check board ID and function.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(read_line_data);
@@ -966,7 +968,9 @@ NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_ac
 	line_data_read.name_ptr = (char_t*) &(node_ctx.data.line_data_name[line_data_index]);
 	line_data_read.value_ptr = (char_t*) &(node_ctx.data.line_data_value[line_data_index]);
 	// Execute function of the corresponding board ID.
-	status = NODES[node -> board_id].functions.read_line_data(&line_data_read, read_status);
+	status = NODES[node -> board_id].functions.read_line_data(&line_data_read, &node_access_status);
+	if (status != NODE_SUCCESS) goto errors;
+	NODE_check_access_status();
 errors:
 	return status;
 }
@@ -975,7 +979,7 @@ errors:
 NODE_status_t NODE_read_line_data_all(NODE_t* node) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t access_status;
+	NODE_access_status_t node_access_status = {.all = 0};
 	uint8_t idx = 0;
 	// Check board ID.
 	_NODE_check_node_and_board_id();
@@ -989,12 +993,13 @@ NODE_status_t NODE_read_line_data_all(NODE_t* node) {
 	// Check protocol.
 	if ((NODES[node -> board_id].protocol) == NODE_PROTOCOL_AT_BUS) {
 		// Perform node measurements.
-		status = XM_perform_measurements((node -> address), &access_status);
+		status = XM_perform_measurements((node -> address), &node_access_status);
 		if (status != NODE_SUCCESS) goto errors;
+		NODE_check_access_status();
 	}
 	// String data loop.
 	for (idx=0 ; idx<(NODES[node -> board_id].last_line_data_index) ; idx++) {
-		status = NODE_read_line_data(node, idx, &access_status);
+		status = NODE_read_line_data(node, idx);
 		if (status != NODE_SUCCESS) goto errors;
 	}
 errors:

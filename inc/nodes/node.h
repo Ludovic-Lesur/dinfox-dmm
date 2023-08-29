@@ -60,7 +60,6 @@ typedef enum {
 	NODE_ERROR_NONE_RADIO_MODULE,
 	NODE_ERROR_SIGFOX_PAYLOAD_TYPE,
 	NODE_ERROR_SIGFOX_PAYLOAD_LOOP,
-	NODE_ERROR_SIGFOX_SEND,
 	NODE_ERROR_SIGFOX_UPLINK_PERIOD,
 	NODE_ERROR_SIGFOX_DOWNLINK_PERIOD,
 	NODE_ERROR_DOWNLINK_NODE_ADDRESS,
@@ -68,7 +67,8 @@ typedef enum {
 	NODE_ERROR_ACTION_INDEX,
 	NODE_ERROR_RELAY_ID,
 	// Low level drivers errors.
-	NODE_ERROR_BASE_ADC = 0x0100,
+	NODE_ERROR_BASE_ACCESS_STATUS = 0x0100,
+	NODE_ERROR_BASE_ADC = (NODE_ERROR_BASE_ACCESS_STATUS + 0x0100),
 	NODE_ERROR_BASE_LPUART = (NODE_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
@@ -199,20 +199,18 @@ void NODE_task(void);
  * \param[in]  	node: Pointer to the node.
  * \param[in]	line_data_index: Index of the data line to write.
  * \param[in]	field_value: Value to write in corresponding register field.
- * \param[out] 	write_status: Pointer to the writing operation status.
  * \retval		Function execution status.
  *******************************************************************/
-NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t field_value, NODE_access_status_t* write_status);
+NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t field_value);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status)
  * \brief Read corresponding node register of screen data line.
  * \param[in]  	node: Pointer to the node.
  * \param[in]	line_data_index: Index of the data line to read.
- * \param[out] 	read_status: Pointer to the reading operation status.
  * \retval		Function execution status.
  *******************************************************************/
-NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status);
+NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_read_line_data_all(NODE_t* node)

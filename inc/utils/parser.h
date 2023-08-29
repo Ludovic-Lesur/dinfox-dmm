@@ -18,6 +18,7 @@
  * \brief PARSER driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	PARSER_SUCCESS,
 	PARSER_ERROR_NULL_PARAMETER,
 	PARSER_ERROR_MODE,
@@ -27,7 +28,9 @@ typedef enum {
 	PARSER_ERROR_SEPARATOR_NOT_FOUND,
 	PARSER_ERROR_PARAMETER_NOT_FOUND,
 	PARSER_ERROR_BYTE_ARRAY_SIZE,
+	// Low level drivers errors.
 	PARSER_ERROR_BASE_STRING = 0x0100,
+	// Last base value.
 	PARSER_ERROR_BASE_LAST = (PARSER_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } PARSER_status_t;
 
@@ -90,13 +93,10 @@ PARSER_status_t PARSER_get_parameter(PARSER_context_t* parser_ctx, STRING_format
 PARSER_status_t PARSER_get_byte_array(PARSER_context_t* parser_ctx, char_t separator, uint8_t maximum_length, uint8_t exact_length, uint8_t* parameter, uint8_t* extracted_length);
 
 /*******************************************************************/
-#define PARSER_exit_error(error_base) { if (parser_status != PARSER_SUCCESS) { status = error_base + parser_status; goto errors; } }
+#define PARSER_exit_error(error_base) { if (parser_status != PARSER_SUCCESS) { status = (error_base + parser_status); goto errors; } }
 
 /*******************************************************************/
-#define PARSER_stack_error(void) { ERROR_stack_add(parser_status, PARSER_SUCCESS, ERROR_BASE_PARSER); }
-
-/*******************************************************************/
-#define PARSER_print_error(void) { ERROR_print_error(parser_status, PARSER_SUCCESS, ERROR_BASE_PARSER); }
+#define PARSER_stack_error(void) { if (parser_status != PARSER_SUCCESS) { ERROR_stack_add(ERROR_BASE_PARSER + parser_status); } }
 
 #endif	/* __PARSER_H__ */
 

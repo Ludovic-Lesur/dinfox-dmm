@@ -108,21 +108,21 @@ typedef union {
 				unsigned reg_addr : 8;
 				unsigned reg_value : 32;
 				unsigned duration : 8; // Unused in single.
-			} full_write;
+			} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) full_write;
 			struct {
 				unsigned node_addr : 8;
 				unsigned reg_addr : 8;
 				unsigned reg_mask : 16;
 				unsigned reg_value : 16;
 				unsigned duration : 8; // Unused in single.
-			} masked_write;
+			} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) masked_write;
 			struct {
 				unsigned node_addr : 8;
 				unsigned reg_addr : 8;
 				unsigned reg_value_1 : 16;
 				unsigned reg_value_2 : 16;
 				unsigned duration : 8;
-			} successive_full_write;
+			} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) successive_full_write;
 			struct {
 				unsigned node_addr : 8;
 				unsigned reg_addr : 8;
@@ -131,14 +131,14 @@ typedef union {
 				unsigned reg_value_2 : 8;
 				unsigned duration : 8;
 				unsigned unused : 8;
-			} successive_masked_write;
+			} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) successive_masked_write;
 			struct {
 				unsigned node_addr : 8;
 				unsigned reg_1_addr : 8;
 				unsigned reg_1_value : 16;
 				unsigned reg_2_addr : 8;
 				unsigned reg_2_value : 16;
-			} dual_full_write;
+			} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) dual_full_write;
 			struct {
 				unsigned node_addr : 8;
 				unsigned reg_1_addr : 8;
@@ -147,7 +147,7 @@ typedef union {
 				unsigned reg_2_value : 8;
 				unsigned reg_3_addr : 8;
 				unsigned reg_3_value : 8;
-			} triple_full_write;
+			} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) triple_full_write;
 			struct {
 				unsigned node_1_addr : 8;
 				unsigned reg_1_addr : 8;
@@ -156,7 +156,7 @@ typedef union {
 				unsigned reg_2_addr : 8;
 				unsigned reg_2_value : 8;
 				unsigned unused : 8;
-			} dual_node_write;
+			} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) dual_node_write;
 		};
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } NODE_sigfox_dl_payload_t;
@@ -476,6 +476,7 @@ NODE_status_t _NODE_record_action(NODE_action_t* action) {
 	node_ctx.actions[node_ctx.actions_index].node = (action -> node);
 	node_ctx.actions[node_ctx.actions_index].reg_addr = (action -> reg_addr);
 	node_ctx.actions[node_ctx.actions_index].reg_value = (action -> reg_value);
+	node_ctx.actions[node_ctx.actions_index].reg_mask = (action -> reg_mask);
 	node_ctx.actions[node_ctx.actions_index].timestamp_seconds = (action -> timestamp_seconds);
 	// Increment index.
 	node_ctx.actions_index = (node_ctx.actions_index + 1) % NODE_ACTIONS_DEPTH;
@@ -484,13 +485,13 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_search(NODE_address_t node_addr, NODE_t* node_ptr) {
+NODE_status_t _NODE_search(NODE_address_t node_addr, NODE_t** node_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t address_match = 0;
 	uint8_t idx = 0;
 	// Reset pointer.
-	node_ptr = NULL;
+	(*node_ptr) = NULL;
 	// Search board in nodes list.
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// Compare address
@@ -505,7 +506,7 @@ NODE_status_t _NODE_search(NODE_address_t node_addr, NODE_t* node_ptr) {
 		goto errors;
 	}
 	// Update pointer.
-	node_ptr = &NODES_LIST.list[idx];
+	(*node_ptr) = &NODES_LIST.list[idx];
 errors:
 	return status;
 }
@@ -524,7 +525,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_SINGLE_FULL_WRITE:
 		// Search node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.full_write.node_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.full_write.node_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Register action.
 		action.node = node_ptr;
@@ -536,7 +537,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_SINGLE_MASKED_WRITE:
 		// Search node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.masked_write.node_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.masked_write.node_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Register action.
 		action.node = node_ptr;
@@ -548,7 +549,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_TEMPORARY_FULL_WRITE:
 		// Search node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.full_write.node_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.full_write.node_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Read current register value.
 		status = _NODE_read_register(node_ptr, node_ctx.sigfox_dl_payload.full_write.reg_addr, &previous_reg_value);
@@ -567,7 +568,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_TEMPORARY_MASKED_WRITE:
 		// Search node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.masked_write.node_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.masked_write.node_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Read current register value.
 		status = _NODE_read_register(node_ptr, node_ctx.sigfox_dl_payload.masked_write.reg_addr, &previous_reg_value);
@@ -586,7 +587,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_SUCCESSIVE_FULL_WRITE:
 		// Search node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.successive_full_write.node_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.successive_full_write.node_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Register first action.
 		action.node = node_ptr;
@@ -602,7 +603,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_SUCCESSIVE_MASKED_WRITE:
 		// Search node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.successive_masked_write.node_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.successive_masked_write.node_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Register first action.
 		action.node = node_ptr;
@@ -618,7 +619,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_DUAL_FULL_WRITE:
 		// Search node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_full_write.node_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_full_write.node_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Register first action.
 		action.node = node_ptr;
@@ -634,7 +635,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_TRIPLE_FULL_WRITE:
 		// Search node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.triple_full_write.node_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.triple_full_write.node_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Register first action.
 		action.node = node_ptr;
@@ -654,7 +655,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		break;
 	case NODE_DOWNLINK_OP_CODE_DUAL_NODE_WRITE:
 		// Search first node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_node_write.node_1_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_node_write.node_1_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Register first action.
 		action.node = node_ptr;
@@ -664,7 +665,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.timestamp_seconds = 0;
 		_NODE_record_action(&action);
 		// Search second node.
-		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_node_write.node_2_addr, node_ptr);
+		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_node_write.node_2_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
 		// Register second action.
 		action.node = node_ptr;

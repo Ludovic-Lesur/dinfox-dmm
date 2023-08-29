@@ -369,7 +369,6 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 			if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 			// Go to next register and reset value.
 			reg_offset++;
-			reg_value = 0;
 		}
 		// Convert to byte array.
 		dl_payload[idx] = (uint8_t) ((reg_value >> (8 * (idx % 4))) & 0xFF);

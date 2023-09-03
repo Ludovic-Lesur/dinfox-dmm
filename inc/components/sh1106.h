@@ -150,4 +150,7 @@ SH1106_status_t SH1106_print_image(uint8_t i2c_address, const uint8_t image[SH11
 /*******************************************************************/
 #define SH1106_stack_error(void) { if (sh1106_status != SH1106_SUCCESS) { ERROR_stack_add(ERROR_BASE_SH1106 + sh1106_status); } }
 
+/*******************************************************************/
+#define SH1106_stack_exit_error(error_code) { if (sh1106_status != SH1106_SUCCESS) { ERROR_stack_add(ERROR_BASE_SH1106 + sh1106_status); status = error_code; goto errors; } }
+
 #endif /* __SH1106_H__ */

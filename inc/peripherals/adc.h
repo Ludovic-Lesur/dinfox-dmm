@@ -101,4 +101,7 @@ ADC_status_t ADC1_get_tmcu(int8_t* tmcu_degrees);
 /*******************************************************************/
 #define ADC1_stack_error(void) { if (adc1_status != ADC_SUCCESS) { ERROR_stack_add(ERROR_BASE_ADC1 + adc1_status); } }
 
+/*******************************************************************/
+#define ADC1_stack_exit_error(error_code) { if (adc1_status != ADC_SUCCESS) { ERROR_stack_add(ERROR_BASE_ADC1 + adc1_status); status = error_code; goto errors; } }
+
 #endif /* __ADC_H__ */

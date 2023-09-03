@@ -990,7 +990,18 @@ HMI_status_t HMI_task(void) {
 		tim2_status = TIM2_stop(TIM2_CHANNEL_1);
 		TIM2_exit_error(HMI_ERROR_BASE_TIM);
 	}
+	// Turn HMI off.
+	power_status = POWER_disable(POWER_DOMAIN_HMI);
+	POWER_exit_error(NODE_ERROR_BASE_POWER);
+	// Turn bus interface off.
+	power_status = POWER_disable(POWER_DOMAIN_RS485);
+	POWER_exit_error(NODE_ERROR_BASE_POWER);
+	// Disable interrupts.
+	_HMI_disable_irq();
+	return status;
 errors:
+	// Stop timer.
+	TIM2_stop(TIM2_CHANNEL_1);
 	// Turn HMI off.
 	POWER_disable(POWER_DOMAIN_HMI);
 	// Turn bus interface off.

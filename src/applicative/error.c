@@ -39,10 +39,7 @@ void ERROR_stack_add(ERROR_code_t code) {
 	// Add error code.
 	error_ctx.stack[error_ctx.stack_idx] = code;
 	// Increment index.
-	error_ctx.stack_idx++;
-	if (error_ctx.stack_idx >= ERROR_STACK_DEPTH) {
-		error_ctx.stack_idx = 0;
-	}
+	error_ctx.stack_idx = ((error_ctx.stack_idx + 1) % ERROR_STACK_DEPTH);
 }
 
 /*******************************************************************/

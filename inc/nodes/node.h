@@ -285,4 +285,7 @@ NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t**
 /*******************************************************************/
 #define NODE_stack_error(void) { if (node_status != NODE_SUCCESS) { ERROR_stack_add(ERROR_BASE_NODE + node_status); } }
 
+/*******************************************************************/
+#define NODE_stack_exit_error(error_code) { if (node_status != NODE_SUCCESS) { ERROR_stack_add(ERROR_BASE_NODE + node_status); status = error_code; goto errors; } }
+
 #endif /* __NODE_H__ */

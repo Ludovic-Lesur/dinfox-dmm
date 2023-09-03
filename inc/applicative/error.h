@@ -10,6 +10,7 @@
 
 // Peripherals.
 #include "adc.h"
+#include "flash.h"
 #include "i2c.h"
 #include "iwdg.h"
 #include "lptim.h"
@@ -32,6 +33,8 @@
 // Applicative.
 #include "hmi.h"
 
+/*** ERROR structures ***/
+
 /*!******************************************************************
  * \enum ERROR_base_t
  * \brief Board error bases.
@@ -48,14 +51,13 @@ typedef enum {
 	ERROR_BASE_RCC = (ERROR_BASE_NVM + NVM_ERROR_BASE_LAST),
 	ERROR_BASE_RTC = (ERROR_BASE_RCC + RCC_ERROR_BASE_LAST),
 	ERROR_BASE_TIM21 = (ERROR_BASE_RTC + RTC_ERROR_BASE_LAST),
-	// Components.
-	ERROR_BASE_LED = (ERROR_BASE_TIM21 + TIM_ERROR_BASE_LAST),
 	// Utils.
-	ERROR_BASE_MATH = (ERROR_BASE_LED + LED_ERROR_BASE_LAST),
+	ERROR_BASE_MATH = (ERROR_BASE_TIM21 + TIM_ERROR_BASE_LAST),
 	ERROR_BASE_PARSER = (ERROR_BASE_MATH + MATH_ERROR_BASE_LAST),
 	ERROR_BASE_STRING = (ERROR_BASE_PARSER + PARSER_ERROR_BASE_LAST),
 	// Components.
-	ERROR_BASE_POWER = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
+	ERROR_BASE_LED = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
+	ERROR_BASE_POWER = (ERROR_BASE_LED + LED_ERROR_BASE_LAST),
 	ERROR_BASE_SH1106 = (ERROR_BASE_POWER + POWER_ERROR_BASE_LAST),
 	// Nodes.
 	ERROR_BASE_NODE = (ERROR_BASE_SH1106 + SH1106_ERROR_BASE_LAST),

@@ -48,4 +48,7 @@ void IWDG_reload(void);
 /*******************************************************************/
 #define IWDG_stack_error(void) { if (iwdg_status != IWDG_SUCCESS) { ERROR_stack_add(ERROR_BASE_IWDG + iwdg_status); } }
 
+/*******************************************************************/
+#define IWDG_stack_exit_error(error_code) { if (iwdg_status != IWDG_SUCCESS) { ERROR_stack_add(ERROR_BASE_IWDG + iwdg_status); status = error_code; goto errors; } }
+
 #endif /* __IWDG_H__ */

@@ -88,4 +88,7 @@ RCC_status_t RCC_switch_to_msi(RCC_msi_range_t msi_range);
 /*******************************************************************/
 #define RCC_stack_error(void) { if (rcc_status != RCC_SUCCESS) { ERROR_stack_add(ERROR_BASE_RCC + rcc_status); } }
 
+/*******************************************************************/
+#define RCC_stack_exit_error(error_code) { if (rcc_status != RCC_SUCCESS) { ERROR_stack_add(ERROR_BASE_RCC + rcc_status); status = error_code; goto errors; } }
+
 #endif /* __RCC_H__ */

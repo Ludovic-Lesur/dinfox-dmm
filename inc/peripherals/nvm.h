@@ -63,4 +63,7 @@ NVM_status_t NVM_write_byte(NVM_address_t address, uint8_t data);
 /*******************************************************************/
 #define NVM_stack_error(void) { if (nvm_status != NVM_SUCCESS) { ERROR_stack_add(ERROR_BASE_NVM + nvm_status); } }
 
+/*******************************************************************/
+#define NVM_stack_exit_error(error_code) { if (nvm_status != NVM_SUCCESS) { ERROR_stack_add(ERROR_BASE_NVM + nvm_status); status = error_code; goto errors; } }
+
 #endif /* __NVM_H__ */

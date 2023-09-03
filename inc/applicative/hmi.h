@@ -84,4 +84,7 @@ HMI_status_t HMI_task(void);
 /*******************************************************************/
 #define HMI_stack_error(void) { if (hmi_status != HMI_SUCCESS) { ERROR_stack_add(ERROR_BASE_HMI + hmi_status); } }
 
+/*******************************************************************/
+#define HMI_stack_exit_error(error_code) { if (hmi_status != HMI_SUCCESS) { ERROR_stack_add(ERROR_BASE_HMI + hmi_status); status = error_code; goto errors; } }
+
 #endif /* __HMI_H__ */

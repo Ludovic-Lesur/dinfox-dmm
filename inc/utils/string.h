@@ -189,4 +189,7 @@ STRING_status_t STRING_value_to_5_digits_string(int32_t value, char_t* str);
 /*******************************************************************/
 #define STRING_stack_error(void) { if (string_status != STRING_SUCCESS) { ERROR_stack_add(ERROR_BASE_STRING + string_status); } }
 
+/*******************************************************************/
+#define STRING_stack_exit_error(error_code) { if (string_status != STRING_SUCCESS) { ERROR_stack_add(ERROR_BASE_STRING + string_status); status = error_code; goto errors; } }
+
 #endif /* __STRING_H__ */

@@ -92,4 +92,7 @@ POWER_status_t POWER_get_state(POWER_domain_t domain, uint8_t* state);
 /*******************************************************************/
 #define POWER_stack_error(void) { if (power_status != POWER_SUCCESS) { ERROR_stack_add(ERROR_BASE_POWER + power_status); } }
 
+/*******************************************************************/
+#define POWER_stack_exit_error(error_code) { if (power_status != POWER_SUCCESS) { ERROR_stack_add(ERROR_BASE_POWER + power_status); status = error_code; goto errors; } }
+
 #endif /* __POWER_H__ */

@@ -98,5 +98,8 @@ PARSER_status_t PARSER_get_byte_array(PARSER_context_t* parser_ctx, char_t separ
 /*******************************************************************/
 #define PARSER_stack_error(void) { if (parser_status != PARSER_SUCCESS) { ERROR_stack_add(ERROR_BASE_PARSER + parser_status); } }
 
+/*******************************************************************/
+#define PARSER_stack_exit_error(error_code) { if (parser_status != PARSER_SUCCESS) { ERROR_stack_add(ERROR_BASE_PARSER + parser_status); status = error_code; goto errors; } }
+
 #endif	/* __PARSER_H__ */
 

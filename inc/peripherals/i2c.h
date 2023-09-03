@@ -83,4 +83,7 @@ I2C_status_t I2C1_read(uint8_t slave_address, uint8_t* data, uint8_t data_size_b
 /*******************************************************************/
 #define I2C1_stack_error(void) { if (i2c1_status != I2C_SUCCESS) { ERROR_stack_add(ERROR_BASE_I2C + i2c1_status); } }
 
+/*******************************************************************/
+#define I2C1_stack_exit_error(error_code) { if (i2c1_status != I2C_SUCCESS) { ERROR_stack_add(ERROR_BASE_I2C1 + i2c1_status); status = error_code; goto errors; } }
+
 #endif /* __I2C_H__ */

@@ -207,4 +207,7 @@ uint8_t TIM21_is_single_blink_done(void);
 /*******************************************************************/
 #define TIM2_stack_error(void) { if (tim2_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM2 + tim2_status); } }
 
+/*******************************************************************/
+#define TIM2_stack_exit_error(error_code) { if (tim2_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM2 + tim2_status); status = error_code; goto errors; } }
+
 #endif /* __TIM_H__ */

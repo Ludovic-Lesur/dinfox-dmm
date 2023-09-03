@@ -76,4 +76,7 @@ void LBUS_reset(void);
 /*******************************************************************/
 #define LBUS_stack_error(void) { if (lbus_status != LBUS_SUCCESS) { ERROR_stack_add(ERROR_BASE_LBUS + lbus_status); } }
 
+/*******************************************************************/
+#define LBUS_stack_exit_error(error_code) { if (lbus_status != LBUS_SUCCESS) { ERROR_stack_add(ERROR_BASE_LBUS + lbus_status); status = error_code; goto errors; } }
+
 #endif /* __LBUS_H__ */

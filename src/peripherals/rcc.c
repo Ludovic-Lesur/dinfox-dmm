@@ -31,7 +31,7 @@ void _RCC_enable_lsi(void) {
 	RCC -> CSR |= (0b1 << 0); // LSION='1'.
 	// Enable interrupt.
 	RCC -> CIER |= (0b1 << 0);
-	NVIC_enable_interrupt(NVIC_INTERRUPT_RCC_CRS, NVIC_PRIORTY_RCC_CRS);
+	NVIC_enable_interrupt(NVIC_INTERRUPT_RCC_CRS, NVIC_PRIORITY_RCC_CRS);
 	// Wait for LSI to be stable.
 	while (((RCC -> CSR) & (0b1 << 1)) == 0) {
 		PWR_enter_sleep_mode();
@@ -45,7 +45,7 @@ void _RCC_enable_lse(void) {
 	RCC -> CSR |= (0b1 << 8); // LSEON='1'.
 	// Enable interrupt.
 	RCC -> CIER |= (0b1 << 1);
-	NVIC_enable_interrupt(NVIC_INTERRUPT_RCC_CRS, NVIC_PRIORTY_RCC_CRS);
+	NVIC_enable_interrupt(NVIC_INTERRUPT_RCC_CRS, NVIC_PRIORITY_RCC_CRS);
 	// Wait for LSE to be stable.
 	while (((RCC -> CSR) & (0b1 << 9)) == 0) {
 		PWR_enter_sleep_mode();

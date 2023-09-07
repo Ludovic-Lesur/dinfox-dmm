@@ -15,6 +15,7 @@
 #include "nvic.h"
 #include "rcc.h"
 #include "rcc_reg.h"
+#include "types.h"
 
 /*** LPUART local macros ***/
 

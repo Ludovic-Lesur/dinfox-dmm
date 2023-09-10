@@ -22,8 +22,10 @@
 
 #define ADC_FULL_SCALE_12BITS			4095
 
-#define ADC_VREFINT_VOLTAGE_MV			((VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (ADC_FULL_SCALE_12BITS))
 #define ADC_VMCU_DEFAULT_MV				3000
+
+#define ADC_VREFINT_VOLTAGE_MV			((VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (ADC_FULL_SCALE_12BITS))
+#define ADC_VREFINT_12BITS_DEFAULT_MV	((VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (ADC_VMCU_DEFAULT_MV))
 
 #define ADC_TIMEOUT_COUNT				1000000
 
@@ -46,7 +48,6 @@ typedef enum {
 typedef enum {
 	ADC_CONVERSION_TYPE_VMCU = 0,
 	ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION,
-	ADC_CONVERSION_TYPE_VOLTAGE_AMPLIFICATION,
 	ADC_CONVERSION_TYPE_LAST
 } ADC_conversion_t;
 
@@ -222,9 +223,8 @@ ADC_status_t ADC1_init(void) {
 	uint8_t idx = 0;
 	uint32_t loop_count = 0;
 	// Init context.
-	adc_ctx.vrefint_12bits = 0;
+	adc_ctx.vrefint_12bits = ADC_VREFINT_12BITS_DEFAULT_MV;
 	for (idx=0 ; idx<ADC_DATA_INDEX_LAST ; idx++) adc_ctx.data[idx] = 0;
-	adc_ctx.data[ADC_DATA_INDEX_VMCU_MV] = ADC_VMCU_DEFAULT_MV;
 	adc_ctx.tmcu_degrees = 0;
 	// Init GPIOs.
 	GPIO_configure(&GPIO_ADC1_IN1, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
@@ -254,6 +254,7 @@ ADC_status_t ADC1_init(void) {
 	}
 	// Enable ADC peripheral.
 	ADC1 -> CR |= (0b1 << 0); // ADEN='1'.
+	loop_count = 0;
 	while (((ADC1 -> ISR) & (0b1 << 0)) == 0) {
 		// Wait for ADC to be ready (ADRDY='1') or timeout.
 		loop_count++;

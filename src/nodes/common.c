@@ -100,13 +100,12 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 	// Update RAM register.
 	(node_reg -> value)[reg_addr] = reg_value;
-	// Reset string.
-	NODE_flush_string_value();
 	// Check index.
 	switch (str_data_idx) {
 	case COMMON_LINE_DATA_INDEX_HW_VERSION:
 		// Print HW version.
 		field_value = DINFOX_read_field(reg_value, COMMON_REG_HW_VERSION_MASK_MAJOR);
+		NODE_flush_string_value();
 		NODE_append_value_int32(field_value, COMMON_LINE_DATA[str_data_idx].print_format, COMMON_LINE_DATA[str_data_idx].print_prefix);
 		NODE_append_value_string(".");
 		field_value = DINFOX_read_field(reg_value, COMMON_REG_HW_VERSION_MASK_MINOR);
@@ -115,6 +114,7 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 	case COMMON_LINE_DATA_INDEX_SW_VERSION:
 		// Print SW version.
 		field_value = DINFOX_read_field(reg_value, COMMON_REG_SW_VERSION_0_MASK_MAJOR);
+		NODE_flush_string_value();
 		NODE_append_value_int32(field_value, COMMON_LINE_DATA[str_data_idx].print_format, COMMON_LINE_DATA[str_data_idx].print_prefix);
 		NODE_append_value_string(".");
 		field_value = DINFOX_read_field(reg_value, COMMON_REG_SW_VERSION_0_MASK_MINOR);
@@ -129,29 +129,40 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 	case COMMON_LINE_DATA_INDEX_RESET_REASON:
 		// Print reset reason.
 		field_value = DINFOX_read_field(reg_value, COMMON_LINE_DATA[str_data_idx].field_mask);
+		NODE_flush_string_value();
 		NODE_append_value_int32(field_value, COMMON_LINE_DATA[str_data_idx].print_format, COMMON_LINE_DATA[str_data_idx].print_prefix);
 		break;
 	case COMMON_LINE_DATA_INDEX_VMCU_MV:
 		// Get MCU voltage.
 		field_value = DINFOX_read_field(reg_value, COMMON_LINE_DATA[str_data_idx].field_mask);
-		// Convert to 5 digits string.
-		string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
-		STRING_exit_error(NODE_ERROR_BASE_STRING);
-		// Add string.
-		NODE_append_value_string(field_str);
+		// Check error value.
+		if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
+			// Convert to 5 digits string.
+			string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+			STRING_exit_error(NODE_ERROR_BASE_STRING);
+			// Add string.
+			NODE_flush_string_value();
+			NODE_append_value_string(field_str)
+			NODE_append_value_string(COMMON_LINE_DATA[line_data_read -> line_data_index].unit);
+		}
 		break;
 	case COMMON_LINE_DATA_INDEX_TMCU_DEGREES:
-		// Print MCU temperature.
+		// Get MCU temperature.
 		field_value = DINFOX_read_field(reg_value, COMMON_LINE_DATA[str_data_idx].field_mask);
-		tmcu = (int32_t) DINFOX_get_degrees(field_value);
-		NODE_append_value_int32(tmcu, COMMON_LINE_DATA[str_data_idx].print_format, COMMON_LINE_DATA[str_data_idx].print_prefix);
+		// Check error value.
+		if (field_value != DINFOX_TEMPERATURE_ERROR_VALUE) {
+			// Convert to degrees.
+			tmcu = (int32_t) DINFOX_get_degrees(field_value);
+			// Add string.
+			NODE_flush_string_value();
+			NODE_append_value_int32(tmcu, COMMON_LINE_DATA[str_data_idx].print_format, COMMON_LINE_DATA[str_data_idx].print_prefix);
+			NODE_append_value_string(COMMON_LINE_DATA[line_data_read -> line_data_index].unit);
+		}
 		break;
 	default:
 		status = NODE_ERROR_LINE_DATA_INDEX;
 		goto errors;
 	}
-	// Add unit if no error.
-	NODE_append_value_string(COMMON_LINE_DATA[line_data_read -> line_data_index].unit);
 errors:
 	return status;
 }

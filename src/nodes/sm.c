@@ -251,7 +251,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
+	if (((node_ul_payload -> node) == NULL) || ((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
@@ -346,10 +346,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(SM_SIGFOX_PAYLOAD_PATTERN));
 		// Exit in case of loop error.
 		loop_count++;
-		if (loop_count > BPSM_SIGFOX_PAYLOAD_LOOP_MAX) {
-			status = NODE_ERROR_SIGFOX_PAYLOAD_LOOP;
-			goto errors;
-		}
+		if (loop_count > BPSM_SIGFOX_PAYLOAD_LOOP_MAX) break;
 	}
 	while ((*(node_ul_payload -> size)) == 0);
 errors:

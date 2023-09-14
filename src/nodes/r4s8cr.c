@@ -250,7 +250,7 @@ static NODE_status_t _R4S8CR_read_registers(NODE_address_t node_addr, XM_registe
 	for (idx=0 ; idx<(reg_list -> size) ; idx++) {
 		// Read register.
 		read_params.reg_addr = (reg_list -> addr_list)[idx];
-		// Note: status is not checked is order fill all registers with their error value.
+		// Note: status is not checked in order to fill all registers with their error value.
 		R4S8CR_read_register(&read_params, &(R4S8CR_REGISTERS[reg_addr]), &unused_read_status);
 	}
 errors:
@@ -289,7 +289,7 @@ NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint
 		goto errors;
 	}
 	if (((write_params -> node_addr) < DINFOX_NODE_ADDRESS_R4S8CR_START) || ((write_params -> node_addr) >= (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
-		status = NODE_ERROR_NODE_ADDRESS;
+		status = NODE_ERROR_R4S8CR_ADDRESS;
 		goto errors;
 	}
 	// Check access.
@@ -346,7 +346,7 @@ NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32
 		goto errors;
 	}
 	if (((read_params -> node_addr) < DINFOX_NODE_ADDRESS_R4S8CR_START) || ((read_params -> node_addr) >= (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
-		status = NODE_ERROR_NODE_ADDRESS;
+		status = NODE_ERROR_R4S8CR_ADDRESS;
 		goto errors;
 	}
 	// Reset value.
@@ -517,14 +517,13 @@ NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload)
 	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
 	R4S8CR_sigfox_payload_data_t sigfox_payload_data;
-	uint32_t reg_value = 0;
 	uint8_t idx = 0;
 	// Check parameters.
 	if (node_ul_payload == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
+	if (((node_ul_payload -> node) == NULL) || ((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
@@ -541,14 +540,14 @@ NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload)
 	status = _R4S8CR_read_registers((node_ul_payload -> node -> address), &reg_list);
 	if (status != NODE_SUCCESS) goto errors;
 	// Build data payload.
-	sigfox_payload_data.r1st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R1ST);
-	sigfox_payload_data.r2st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R2ST);
-	sigfox_payload_data.r3st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R3ST);
-	sigfox_payload_data.r4st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R4ST);
-	sigfox_payload_data.r5st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R5ST);
-	sigfox_payload_data.r6st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R6ST);
-	sigfox_payload_data.r7st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R7ST);
-	sigfox_payload_data.r8st = DINFOX_read_field(reg_value, R4S8CR_REG_STATUS_CONTROL_MASK_R8ST);
+	sigfox_payload_data.r1st = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL], R4S8CR_REG_STATUS_CONTROL_MASK_R1ST);
+	sigfox_payload_data.r2st = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL], R4S8CR_REG_STATUS_CONTROL_MASK_R2ST);
+	sigfox_payload_data.r3st = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL], R4S8CR_REG_STATUS_CONTROL_MASK_R3ST);
+	sigfox_payload_data.r4st = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL], R4S8CR_REG_STATUS_CONTROL_MASK_R4ST);
+	sigfox_payload_data.r5st = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL], R4S8CR_REG_STATUS_CONTROL_MASK_R5ST);
+	sigfox_payload_data.r6st = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL], R4S8CR_REG_STATUS_CONTROL_MASK_R6ST);
+	sigfox_payload_data.r7st = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL], R4S8CR_REG_STATUS_CONTROL_MASK_R7ST);
+	sigfox_payload_data.r8st = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS_CONTROL], R4S8CR_REG_STATUS_CONTROL_MASK_R8ST);
 	// Copy payload.
 	for (idx=0 ; idx<R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
 		(node_ul_payload -> ul_payload)[idx] = sigfox_payload_data.frame[idx];

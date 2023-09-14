@@ -25,7 +25,7 @@
 #define ADC_VMCU_DEFAULT_MV				3000
 
 #define ADC_VREFINT_VOLTAGE_MV			((VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (ADC_FULL_SCALE_12BITS))
-#define ADC_VREFINT_12BITS_DEFAULT_MV	((VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (ADC_VMCU_DEFAULT_MV))
+#define ADC_VREFINT_DEFAULT_12BITS		((VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (ADC_VMCU_DEFAULT_MV))
 
 #define ADC_TIMEOUT_COUNT				1000000
 
@@ -223,7 +223,7 @@ ADC_status_t ADC1_init(void) {
 	uint8_t idx = 0;
 	uint32_t loop_count = 0;
 	// Init context.
-	adc_ctx.vrefint_12bits = ADC_VREFINT_12BITS_DEFAULT_MV;
+	adc_ctx.vrefint_12bits = ADC_VREFINT_DEFAULT_12BITS;
 	for (idx=0 ; idx<ADC_DATA_INDEX_LAST ; idx++) adc_ctx.data[idx] = 0;
 	adc_ctx.tmcu_degrees = 0;
 	// Init GPIOs.

@@ -1,8 +1,8 @@
 /*
  * mode.h
  *
- *  Created on: Jan 7, 2023
- *      Author: ludo
+ *  Created on: 07 jan. 2023
+ *      Author: Ludo
  */
 
 #ifndef __MODE_H__

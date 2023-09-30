@@ -8,19 +8,18 @@
 #ifndef __MODE_H__
 #define __MODE_H__
 
-/*** DMM optional features ***/
+/*** DMM options ***/
 
-// Enable battery security with LVRM (macros gives the node address).
-//#define BMS
-#ifdef BMS
-#define BMS_NODE_ADDRESS				0x20
-#define BMS_MONITORING_PERIOD_SECONDS	60
-#define BMS_VBATT_LOW_THRESHOLD_MV		10000
-#define BMS_VBATT_HIGH_THRESHOLD_MV		12000
-#endif
+// Sigfox default periods.
+#define DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	300
+#define DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
 
-/*** Debug mode ***/
+// Battery security system with LVRM.
+#define DMM_BMS_MONITORING_PERIOD_SECONDS		60
+#define DMM_BMS_VBATT_LOW_THRESHOLD_MV			10000
+#define DMM_BMS_VBATT_HIGH_THRESHOLD_MV			12000
 
-//#define DEBUG		// Use programming pins for debug purpose if defined.
+// Debug mode.
+//#define DEBUG
 
 #endif /* __MODE_H__ */

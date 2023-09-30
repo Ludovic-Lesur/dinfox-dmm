@@ -310,7 +310,7 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 		// Write register.
 		status = XM_write_register(node_addr, UHFM_REG_ADDR_SIGFOX_EP_CONFIGURATION_0, ep_config_0, ep_config_0_mask, AT_BUS_DEFAULT_TIMEOUT_MS, send_status);
 		if ((status != NODE_SUCCESS) || ((send_status -> all) != 0)) goto errors;
-		// Resey flag.
+		// Reset flag.
 		uhfm_ep_configuration_done = 1;
 	}
 	// Configuration register 2.

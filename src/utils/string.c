@@ -69,11 +69,7 @@ static STRING_status_t _STRING_is_hexadecimal_char(char_t chr) {
 	return status;
 }
 
-/* CONVERTS THE ASCII CODE OF AN HEXADECIMAL CHARACTER TO THE CORRESPONDING 4-BIT VALUE.
- * @param chr:		Hexadecimal ASCII code to convert.
- * @param value:	Pointer to the corresponding value.
- * @return status:	Function executions status.
- */
+/*******************************************************************/
 static STRING_status_t _STRING_hexadecimal_char_to_value(char_t chr, uint8_t* value) {
 	// Local variables.
 	STRING_status_t status = STRING_ERROR_HEXADECIMAL_INVALID;

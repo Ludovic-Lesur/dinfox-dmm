@@ -13,6 +13,7 @@
 #include "error.h"
 #include "gpio.h"
 #include "mapping.h"
+#include "mode.h"
 #include "node.h"
 #include "power.h"
 #include "pwr.h"
@@ -28,10 +29,7 @@
 #define DMM_SIGFOX_PAYLOAD_LOOP_MAX				10
 
 #define NODE_SIGFOX_UL_PERIOD_SECONDS_MIN		60
-#define NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	300
-
 #define NODE_SIGFOX_DL_PERIOD_SECONDS_MIN		600
-#define NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
 
 /*** DMM local structures ***/
 
@@ -146,8 +144,8 @@ void DMM_init_registers(void) {
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_RESET_FLAGS]), &unused_mask, ((uint32_t) (((RCC -> CSR) >> 24) & 0xFF)), COMMON_REG_RESET_FLAGS_MASK_ALL);
 	// Load default values.
 	_DMM_reset_analog_data();
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(NODE_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(NODE_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD);
 }
 
 /*******************************************************************/

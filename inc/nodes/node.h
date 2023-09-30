@@ -14,6 +14,7 @@
 #include "lpuart.h"
 #include "node_common.h"
 #include "power.h"
+#include "sigfox_types.h"
 #include "string.h"
 #include "types.h"
 
@@ -21,6 +22,8 @@
 
 #define NODES_LIST_SIZE_MAX					32
 #define NODE_STRING_BUFFER_SIZE				32
+
+#define NODE_DINFOX_PAYLOAD_HEADER_SIZE		2
 
 static const char_t NODE_ERROR_STRING[] =	"ERROR";
 #define NODE_ERROR_VALUE_NODE_ADDRESS		0xFF
@@ -134,13 +137,26 @@ typedef struct {
 
 /*!******************************************************************
  * \enum NODE_ul_payload_t
- * \brief Sigfox UL payload structure.
+ * \brief Node UL payload structure.
  *******************************************************************/
 typedef struct {
 	NODE_t* node;
 	uint8_t* ul_payload;
 	uint8_t* size;
 } NODE_ul_payload_t;
+
+/*!******************************************************************
+ * \enum NODE_dinfox_ul_payload_t
+ * \brief Sigfox UL payload structure.
+ *******************************************************************/
+typedef union {
+	uint8_t frame[SIGFOX_UL_PAYLOAD_MAX_SIZE_BYTES];
+	struct {
+		unsigned node_addr : 8;
+		unsigned board_id : 8;
+		uint8_t node_data[SIGFOX_UL_PAYLOAD_MAX_SIZE_BYTES - NODE_DINFOX_PAYLOAD_HEADER_SIZE];
+	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+} NODE_dinfox_ul_payload_t;
 
 /*** NODES global variables ***/
 
@@ -185,13 +201,13 @@ void NODE_de_init(void);
 NODE_status_t NODE_scan(void);
 
 /*!******************************************************************
- * \fn void NODE_task(void)
+ * \fn void NODE_process(void)
  * \brief Main task of node interface.
  * \param[in]  	none
  * \param[out] 	none
  * \retval		none
  *******************************************************************/
-void NODE_task(void);
+void NODE_process(void);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t value, NODE_access_status_t* write_status)
@@ -249,6 +265,14 @@ NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_dat
  * \retval		Function execution status.
  *******************************************************************/
 NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr);
+
+/*******************************************************************/
+#define NODE_check_access_status(void) { \
+	if ((node_access_status.all) != 0) { \
+		status = (NODE_ERROR_BASE_ACCESS_STATUS + (node_access_status.all)); \
+		goto errors; \
+	} \
+}
 
 /*******************************************************************/
 #define NODE_append_name_string(str) { \

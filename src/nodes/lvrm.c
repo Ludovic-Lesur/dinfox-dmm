@@ -10,6 +10,7 @@
 #include "lvrm_reg.h"
 #include "common.h"
 #include "dinfox.h"
+#include "mode.h"
 #include "node.h"
 #include "string.h"
 #include "xm.h"
@@ -318,6 +319,41 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		if (loop_count > LVRM_SIGFOX_PAYLOAD_LOOP_MAX) break;
 	}
 	while ((*(node_ul_payload -> size)) == 0);
+errors:
+	return status;
+}
+
+/*******************************************************************/
+NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t node_access_status = {.all = 0};
+	DINFOX_voltage_representation_t vbatt_dinfox = 0;
+	uint32_t vbatt_mv = 0;
+	uint32_t reg_value = 0;
+	// Perform measurements.
+	status = XM_perform_measurements(lvrm_node_addr, &node_access_status);
+	if (status != NODE_SUCCESS) goto errors;
+	NODE_check_access_status();
+	// Read battery voltage.
+	status = XM_read_register(lvrm_node_addr, LVRM_REG_ADDR_ANALOG_DATA_1, LVRM_REG_ERROR_VALUE[LVRM_REG_ADDR_ANALOG_DATA_1], &reg_value, &node_access_status);
+	if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;
+	// Check error value.
+	vbatt_dinfox = (uint16_t) DINFOX_read_field(reg_value, LVRM_REG_ANALOG_DATA_1_MASK_VCOM);
+	if (vbatt_dinfox == DINFOX_VOLTAGE_ERROR_VALUE) goto errors;
+	// Get battery voltage.
+	vbatt_mv = DINFOX_get_mv(vbatt_dinfox);
+	// Check battery voltage.
+	if (vbatt_mv < DMM_BMS_VBATT_LOW_THRESHOLD_MV) {
+		// Open relay.
+		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0b0, LVRM_REG_STATUS_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &node_access_status);
+		if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;
+	}
+	if (vbatt_mv > DMM_BMS_VBATT_HIGH_THRESHOLD_MV) {
+		// Close relay.
+		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0b1, LVRM_REG_STATUS_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &node_access_status);
+		if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;
+	}
 errors:
 	return status;
 }

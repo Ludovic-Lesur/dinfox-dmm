@@ -97,10 +97,10 @@ int main(void) {
 		PWR_enter_stop_mode();
 		IWDG_reload();
 		// Process HMI.
-		hmi_status = HMI_task();
+		hmi_status = HMI_process();
 		HMI_stack_error();
-		// Process nodes_task.
-		NODE_task();
+		// Process nodes.
+		NODE_process();
 	}
 	return 0;
 }

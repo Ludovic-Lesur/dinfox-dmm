@@ -31,7 +31,7 @@ static NVM_status_t _NVM_unlock(void) {
 			goto errors;
 		}
 	}
-	// Check the NVM is not allready unlocked.
+	// Check the NVM is not already unlocked.
 	if (((FLASH -> PECR) & (0b1 << 0)) != 0) {
 		// Perform unlock sequence.
 		FLASH -> PEKEYR = 0x89ABCDEF;

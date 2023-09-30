@@ -70,13 +70,13 @@ void HMI_init(void);
 void HMI_de_init(void);
 
 /*!******************************************************************
- * \fn void HMI_task(void)
+ * \fn void HMI_process(void)
  * \brief Main task of HMI interface.
  * \param[in]  	none
  * \param[out] 	none
  * \retval		Function execution status.
  *******************************************************************/
-HMI_status_t HMI_task(void);
+HMI_status_t HMI_process(void);
 
 /*******************************************************************/
 #define HMI_exit_error(error_base) { if (hmi_status != HMI_SUCCESS) { status = (error_base + hmi_status); goto errors; } }

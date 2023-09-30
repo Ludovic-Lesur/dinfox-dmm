@@ -66,4 +66,13 @@ NODE_status_t LVRM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
  *******************************************************************/
 NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload);
 
+/*!******************************************************************
+ * \fn NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr)
+ * \brief Process LVRM to perform BMS function.
+ * \param[in]  	lvrm_node_addr: Node address of the LVRM used as BMS.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr);
+
 #endif /* __LVRM_H__ */

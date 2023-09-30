@@ -23,6 +23,7 @@
 #include "lvrm.h"
 #include "lvrm_reg.h"
 #include "mode.h"
+#include "mpmcm.h"
 #include "node_common.h"
 #include "r4s8cr.h"
 #include "r4s8cr_reg.h"
@@ -36,13 +37,10 @@
 
 /*** NODE local macros ***/
 
-#define NODE_LINE_DATA_INDEX_MAX				32
-#define NODE_REGISTER_ADDRESS_MAX				64
+#define NODE_LINE_DATA_INDEX_MAX	32
+#define NODE_REGISTER_ADDRESS_MAX	64
 
-#define NODE_SIGFOX_PAYLOAD_SIZE_MAX			12
-#define NODE_SIGFOX_PAYLOAD_HEADER_SIZE			2
-
-#define NODE_ACTIONS_DEPTH						10
+#define NODE_ACTIONS_DEPTH			10
 
 /*** NODE local structures ***/
 
@@ -86,16 +84,6 @@ typedef struct {
 	uint32_t* register_write_timeout_ms;
 	NODE_functions_t functions;
 } NODE_descriptor_t;
-
-/*******************************************************************/
-typedef union {
-	uint8_t frame[SIGFOX_UL_PAYLOAD_MAX_SIZE_BYTES];
-	struct {
-		unsigned node_addr : 8;
-		unsigned board_id : 8;
-		uint8_t node_data[NODE_SIGFOX_PAYLOAD_SIZE_MAX - NODE_SIGFOX_PAYLOAD_HEADER_SIZE];
-	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} NODE_sigfox_ul_payload_t;
 
 /*******************************************************************/
 typedef union {
@@ -179,10 +167,7 @@ typedef struct {
 /*******************************************************************/
 typedef struct {
 	NODE_data_t data;
-	NODE_address_t uhfm_address;
 	// Uplink.
-	NODE_sigfox_ul_payload_t sigfox_ul_payload;
-	uint8_t sigfox_ul_payload_size;
 	uint32_t sigfox_ul_next_time_seconds;
 	uint8_t sigfox_ul_node_list_index;
 	// Downlink.
@@ -191,10 +176,12 @@ typedef struct {
 	// Write actions list.
 	NODE_action_t actions[NODE_ACTIONS_DEPTH];
 	uint8_t actions_index;
-#ifdef BMS
+	// Specific nodes pointers.
+	NODE_t* uhfm_node_ptr;
 	NODE_t* bms_node_ptr;
+	NODE_t* mpmcm_node_ptr;
+	// BMS.
 	uint32_t bms_monitoring_next_time_seconds;
-#endif
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -228,8 +215,8 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 	{"DMM", NODE_PROTOCOL_AT_BUS, DMM_REG_ADDR_LAST, DMM_LINE_DATA_INDEX_LAST, (uint32_t*) DMM_REG_WRITE_TIMEOUT_MS,
 		{&DMM_write_register, &DMM_read_register, &DMM_write_line_data, &DMM_read_line_data, &DMM_build_sigfox_ul_payload}
 	},
-	{"MPMCM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
-		{NULL, NULL, NULL, NULL}
+	{"MPMCM", NODE_PROTOCOL_AT_BUS, MPMCM_REG_ADDR_LAST, MPMCM_LINE_DATA_INDEX_LAST, (uint32_t*) MPMCM_REG_WRITE_TIMEOUT_MS,
+		{&AT_BUS_write_register, &AT_BUS_read_register, &MPMCM_write_line_data, &MPMCM_read_line_data, &MPMCM_build_sigfox_ul_payload}
 	},
 	{"R4S8CR", NODE_PROTOCOL_R4S8CR, R4S8CR_REG_ADDR_LAST, R4S8CR_LINE_DATA_INDEX_LAST, (uint32_t*) R4S8CR_REG_WRITE_TIMEOUT_MS,
 		{&R4S8CR_write_register, &R4S8CR_read_register, &R4S8CR_write_line_data, &R4S8CR_read_line_data, &R4S8CR_build_sigfox_ul_payload}
@@ -238,14 +225,6 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 static NODE_context_t node_ctx;
 
 /*** NODE local functions ***/
-
-/*******************************************************************/
-#define NODE_check_access_status(void) { \
-	if ((node_access_status.all) != 0) { \
-		status = (NODE_ERROR_BASE_ACCESS_STATUS + (node_access_status.all)); \
-		goto errors; \
-	} \
-}
 
 /*******************************************************************/
 #define _NODE_check_node_and_board_id(void) { \
@@ -389,44 +368,49 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag) {
+NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag, uint8_t* message_sent) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	uint8_t node_data_size = 0;
 	NODE_ul_payload_t node_ul_payload;
+	uint8_t node_ul_payload_size = 0;
+	NODE_dinfox_ul_payload_t dinfox_ul_payload;
 	UHFM_sigfox_message_t sigfox_message;
 	NODE_access_status_t node_access_status = {.all = 0};
 	uint8_t idx = 0;
+	// Reset flag.
+	(*message_sent) = 0;
 	// Check board ID.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(build_sigfox_ul_payload);
-	// Reset payload.
-	for (idx=0 ; idx<NODE_SIGFOX_PAYLOAD_SIZE_MAX ; idx++) node_ctx.sigfox_ul_payload.frame[idx] = 0x00;
-	node_ctx.sigfox_ul_payload_size = 0;
-	// Build update structure.
-	node_ul_payload.node = node;
-	node_ul_payload.ul_payload = node_ctx.sigfox_ul_payload.node_data;
-	node_ul_payload.size = &node_data_size;
-	// Add board ID and node address.
-	node_ctx.sigfox_ul_payload.board_id = (node -> board_id);
-	node_ctx.sigfox_ul_payload.node_addr = (node -> address);
-	node_ctx.sigfox_ul_payload_size = 2;
-	// Execute function of the corresponding board ID.
-	status = NODES[node -> board_id].functions.build_sigfox_ul_payload(&node_ul_payload);
-	if (status != NODE_SUCCESS) goto errors;
-	// Update frame size.
-	node_ctx.sigfox_ul_payload_size += node_data_size;
 	// Check UHFM board availability.
-	if (node_ctx.uhfm_address == DINFOX_NODE_ADDRESS_BROADCAST) {
+	if (node_ctx.uhfm_node_ptr == NULL) {
 		status = NODE_ERROR_NONE_RADIO_MODULE;
 		goto errors;
 	}
+	// Reset payload.
+	for (idx=0 ; idx<SIGFOX_UL_PAYLOAD_MAX_SIZE_BYTES ; idx++) dinfox_ul_payload.frame[idx] = 0x00;
+	// Build update structure.
+	node_ul_payload.node = node;
+	node_ul_payload.ul_payload = (uint8_t*) dinfox_ul_payload.node_data;
+	node_ul_payload.size = &node_ul_payload_size;
+	// Execute function of the corresponding board ID.
+	status = NODES[node -> board_id].functions.build_sigfox_ul_payload(&node_ul_payload);
+	if (status != NODE_SUCCESS) goto errors;
+	// Check size.
+	if (node_ul_payload_size == 0) {
+		// Node has no data to send, exit directly.
+		goto errors;
+	}
+	(*message_sent) = 1;
+	// Add board ID and node address.
+	dinfox_ul_payload.board_id = (node -> board_id);
+	dinfox_ul_payload.node_addr = (node -> address);
 	// Build Sigfox message structure.
-	sigfox_message.ul_payload = (uint8_t*) node_ctx.sigfox_ul_payload.frame;
-	sigfox_message.ul_payload_size = node_ctx.sigfox_ul_payload_size;
+	sigfox_message.ul_payload = (uint8_t*) dinfox_ul_payload.frame;
+	sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + node_ul_payload_size);
 	sigfox_message.bidirectional_flag = bidirectional_flag;
 	// Send message.
-	status = UHFM_send_sigfox_message(node_ctx.uhfm_address, &sigfox_message, &node_access_status);
+	status = UHFM_send_sigfox_message(((node_ctx.uhfm_node_ptr) -> address), &sigfox_message, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
 	NODE_check_access_status();
 errors:
@@ -440,8 +424,14 @@ NODE_status_t _NODE_radio_read(void) {
 	NODE_access_status_t node_access_status = {.all = 0};
 	// Reset operation code.
 	node_ctx.sigfox_dl_payload.op_code = NODE_DOWNLINK_OP_CODE_NOP;
+	// Check UHFM board availability.
+	if (node_ctx.uhfm_node_ptr == NULL) {
+		status = NODE_ERROR_NONE_RADIO_MODULE;
+		goto errors;
+	}
 	// Read downlink payload.
-	status = UHFM_get_dl_payload(node_ctx.uhfm_address, node_ctx.sigfox_dl_payload.frame, &node_access_status);
+	status = UHFM_get_dl_payload(((node_ctx.uhfm_node_ptr) -> address), node_ctx.sigfox_dl_payload.frame, &node_access_status);
+errors:
 	return status;
 }
 
@@ -707,12 +697,13 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_radio_task(void) {
+NODE_status_t _NODE_radio_process(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;
 	NODE_access_parameters_t read_params;
 	NODE_access_status_t unused_read_status;
+	uint8_t message_sent = 0;
 	uint32_t reg_value = 0;
 	uint8_t bidirectional_flag = 0;
 	uint8_t ul_next_time_update_required = 0;
@@ -737,15 +728,24 @@ NODE_status_t _NODE_radio_task(void) {
 		if (dl_next_time_update_required != 0) {
 			node_ctx.sigfox_dl_next_time_seconds = RTC_get_time_seconds();
 		}
-		// Send data through radio.
-		status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), bidirectional_flag);
-		// Switch to next node.
-		node_ctx.sigfox_ul_node_list_index++;
-		if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
-			// Come back to first node.
-			node_ctx.sigfox_ul_node_list_index = 0;
+		// Process MPMCM is needed.
+		if ((node_ctx.mpmcm_node_ptr != NULL) && (node_ctx.uhfm_node_ptr != NULL)) {
+			status = MPMCM_radio_process(((node_ctx.mpmcm_node_ptr) -> address), ((node_ctx.uhfm_node_ptr) -> address));
+			if (status != NODE_SUCCESS) goto errors;
 		}
-		if (status != NODE_SUCCESS) goto errors;
+		// Nominal nodes loop.
+		do {
+			// Send data through radio.
+			status = _NODE_radio_send(&(NODES_LIST.list[node_ctx.sigfox_ul_node_list_index]), bidirectional_flag, &message_sent);
+			// Switch to next node.
+			node_ctx.sigfox_ul_node_list_index++;
+			if (node_ctx.sigfox_ul_node_list_index >= NODES_LIST.count) {
+				// Come back to first node.
+				node_ctx.sigfox_ul_node_list_index = 0;
+			}
+			if (status != NODE_SUCCESS) goto errors;
+		}
+		while (message_sent == 0);
 	}
 	// Execute downlink operation if needed.
 	if (bidirectional_flag != 0) {
@@ -773,54 +773,6 @@ errors:
 	return status;
 }
 
-#ifdef BMS
-/*******************************************************************/
-NODE_status_t _NODE_bms_task(void) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t node_access_status = {.all = 0};
-	POWER_status_t power_status = POWER_SUCCESS;
-	uint32_t reg_value = 0;
-	uint16_t vbatt_dinfox = 0;
-	uint32_t vbatt_mv = 0;
-	// Check monitoring period.
-	if (RTC_get_time_seconds() >= node_ctx.bms_monitoring_next_time_seconds) {
-		// Update next time.
-		node_ctx.bms_monitoring_next_time_seconds = (RTC_get_time_seconds() + BMS_MONITORING_PERIOD_SECONDS);
-		// Check BMS presence.
-		if (node_ctx.bms_node_ptr == NULL) goto errors;
-		// Turn bus interface on.
-		power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
-		POWER_exit_error(NODE_ERROR_BASE_POWER);
-		// Perform measurements.
-		status = XM_perform_measurements((node_ctx.bms_node_ptr -> address), &node_access_status);
-		if (status != NODE_SUCCESS) goto errors;
-		NODE_check_access_status();
-		// Read battery voltage.
-		status = _NODE_read_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_ANALOG_DATA_1, &reg_value);
-		if (status != NODE_SUCCESS) goto errors;
-		// Check error value.
-		vbatt_dinfox = (uint16_t) DINFOX_read_field(reg_value, LVRM_REG_ANALOG_DATA_1_MASK_VCOM);
-		if (vbatt_dinfox == DINFOX_VOLTAGE_ERROR_VALUE) goto errors;
-		// Get battery voltage.
-		vbatt_mv = DINFOX_get_mv(vbatt_dinfox);
-		// Check battery voltage.
-		if (vbatt_mv < BMS_VBATT_LOW_THRESHOLD_MV) {
-			// Open relay.
-			status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0x00, LVRM_REG_STATUS_CONTROL_1_MASK_RLST);
-			if (status != NODE_SUCCESS) goto errors;
-		}
-		if (vbatt_mv > BMS_VBATT_HIGH_THRESHOLD_MV) {
-			// Close relay.
-			status = _NODE_write_register(node_ctx.bms_node_ptr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0x01, LVRM_REG_STATUS_CONTROL_1_MASK_RLST);
-			if (status != NODE_SUCCESS) goto errors;
-		}
-	}
-errors:
-	return status;
-}
-#endif
-
 /*** NODE functions ***/
 
 /*******************************************************************/
@@ -835,10 +787,10 @@ void NODE_init_por(void) {
 	node_ctx.sigfox_dl_next_time_seconds = 0;
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
-#ifdef BMS
+	node_ctx.uhfm_node_ptr = NULL;
 	node_ctx.bms_node_ptr = NULL;
+	node_ctx.mpmcm_node_ptr = NULL;
 	node_ctx.bms_monitoring_next_time_seconds = 0;
-#endif
 	// Init registers.
 	DMM_init_registers();
 	R4S8CR_init_registers();
@@ -867,7 +819,6 @@ NODE_status_t NODE_scan(void) {
 	uint8_t idx = 0;
 	// Reset list.
 	_NODE_flush_list();
-	node_ctx.uhfm_address = DINFOX_NODE_ADDRESS_BROADCAST;
 	// Add master board to the list.
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
 	NODES_LIST.list[0].address = DINFOX_NODE_ADDRESS_DMM;
@@ -880,25 +831,25 @@ NODE_status_t NODE_scan(void) {
 	if (status != NODE_SUCCESS) goto errors;
 	// Update count.
 	NODES_LIST.count += nodes_count;
-	// Search UHFM board in nodes list.
-	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
-		// Check board ID.
-		if (NODES_LIST.list[idx].board_id == DINFOX_BOARD_ID_UHFM) {
-			node_ctx.uhfm_address = NODES_LIST.list[idx].address;
-			break;
-		}
-	}
-#ifdef BMS
-	// Search LVRM board dedicated to BMS function.
+	// Reset pointers.
+	node_ctx.uhfm_node_ptr = NULL;
 	node_ctx.bms_node_ptr = NULL;
+	node_ctx.mpmcm_node_ptr = NULL;
+	// Search specific boards in nodes list.
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
-		// Check board ID.
-		if (NODES_LIST.list[idx].address == BMS_NODE_ADDRESS) {
+		// UHFM.
+		if (NODES_LIST.list[idx].board_id == DINFOX_BOARD_ID_UHFM) {
+			node_ctx.uhfm_node_ptr = &(NODES_LIST.list[idx]);
+		}
+		// LVRM as BMS.
+		if (NODES_LIST.list[idx].address == DINFOX_NODE_ADDRESS_BMS) {
 			node_ctx.bms_node_ptr = &(NODES_LIST.list[idx]);
-			break;
+		}
+		// MPMCM
+		if (NODES_LIST.list[idx].board_id == DINFOX_BOARD_ID_MPMCM) {
+			node_ctx.mpmcm_node_ptr = &(NODES_LIST.list[idx]);
 		}
 	}
-#endif
 	// Scan R4S8CR nodes.
 	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
@@ -911,21 +862,24 @@ errors:
 }
 
 /*******************************************************************/
-void NODE_task(void) {
+void NODE_process(void) {
 	// Local variables.
 	NODE_status_t node_status = NODE_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;
 	// Radio task.
-	node_status = _NODE_radio_task();
+	node_status = _NODE_radio_process();
 	NODE_stack_error();
 	// Execute node actions.
 	node_status = _NODE_execute_actions();
 	NODE_stack_error();
-#ifdef BMS
-	// BMS task.
-	node_status = _NODE_bms_task();
-	NODE_stack_error();
-#endif
+	// Check BMS presence and monitoring period.
+	if ((node_ctx.bms_node_ptr != NULL) && (RTC_get_time_seconds() >= node_ctx.bms_monitoring_next_time_seconds)) {
+		// Update next time.
+		node_ctx.bms_monitoring_next_time_seconds = (RTC_get_time_seconds() + DMM_BMS_MONITORING_PERIOD_SECONDS);
+		// Process BMS.
+		node_status = LVRM_bms_process((node_ctx.bms_node_ptr) -> address);
+		NODE_stack_error();
+	}
 	// Turn bus interface off.
 	power_status = POWER_disable(POWER_DOMAIN_RS485);
 	POWER_stack_error();

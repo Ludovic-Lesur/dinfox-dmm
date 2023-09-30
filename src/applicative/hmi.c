@@ -941,7 +941,7 @@ void HMI_de_init(void) {
 }
 
 /*******************************************************************/
-HMI_status_t HMI_task(void) {
+HMI_status_t HMI_process(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;

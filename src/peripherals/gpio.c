@@ -24,7 +24,7 @@ static void _GPIO_set_mode(const GPIO_pin_t* gpio, GPIO_mode_t mode) {
 	uint32_t reg_value = 0;
 	// Read register.
 	reg_value = ((gpio -> port) -> MODER);
-	// Analog mode by defalt.
+	// Analog mode by default.
 	reg_value |= (0b11 << ((gpio -> pin) << 1)); // MODERy = '11'.
 	// Set required bits.
 	switch(mode) {

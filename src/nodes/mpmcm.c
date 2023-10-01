@@ -372,7 +372,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	sigfox_payload_mains_voltage.vrms_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
 	sigfox_payload_mains_voltage.vrms_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
 	sigfox_payload_mains_voltage.vrms_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
-	sigfox_payload_mains_voltage.freq_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_MAINS_FREQUENCY_1], MPMCM_REG_X_0_MEAN_MASK);
+	sigfox_payload_mains_voltage.freq_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_MAINS_FREQUENCY_0], MPMCM_REG_X_0_MEAN_MASK);
 	// Copy payload.
 	for (idx=0 ; idx<MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE ; idx++) {
 		dinfox_ul_payload.node_data[idx] = sigfox_payload_mains_voltage.frame[idx];

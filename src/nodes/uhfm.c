@@ -176,7 +176,7 @@ NODE_status_t UHFM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		case UHFM_LINE_DATA_INDEX_SIGFOX_EP_ID:
 			NODE_flush_string_value();
 			for (idx=0 ; idx<DINFOX_REG_SIZE_BYTES ; idx++) {
-				NODE_append_value_int32(((field_value >> (8 * (DINFOX_REG_SIZE_BYTES - idx - 1))) & 0xFF), STRING_FORMAT_HEXADECIMAL, ((idx == 0) ? 1 : 0));
+				NODE_append_value_int32(((field_value >> (8 * idx)) & 0xFF), STRING_FORMAT_HEXADECIMAL, ((idx == 0) ? 1 : 0));
 			}
 			break;
 		case UHFM_LINE_DATA_INDEX_VRF_TX:

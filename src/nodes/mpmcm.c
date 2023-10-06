@@ -40,7 +40,8 @@ typedef enum {
 typedef union {
 	uint8_t frame[MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE];
 	struct {
-		unsigned unused : 4;
+		unsigned unused : 3;
+		unsigned mvd : 1;
 		unsigned ch4d : 1;
 		unsigned ch3d : 1;
 		unsigned ch2d : 1;
@@ -90,6 +91,7 @@ typedef union {
 
 static uint32_t MPMCM_REGISTERS[MPMCM_REG_ADDR_LAST];
 static uint8_t mpmcm_por_flag = 1;
+static uint8_t mpmcm_mvd_flag = 0;
 
 static const NODE_line_data_t MPMCM_LINE_DATA[MPMCM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
 	{"VRMS =",  " V",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0,    MPMCM_REG_X_0_RUN_MASK},
@@ -369,6 +371,8 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	// Common sigfox messages parameters.
 	sigfox_message.ul_payload = (uint8_t*) dinfox_ul_payload.frame;
 	sigfox_message.bidirectional_flag = 0;
+	// Reset MVD flag.
+	sigfox_payload_mains_voltage.mvd = 0;
 	// Store accumulated data of all channels (synchronization reset in case of POR).
 	status_control_1 |= MPMCM_REG_STATUS_CONTROL_1_MASK_CH1S;
 	status_control_1 |= MPMCM_REG_STATUS_CONTROL_1_MASK_CH2S;
@@ -392,6 +396,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	}
 	// Build mains voltage frame.
 	sigfox_payload_mains_voltage.unused = 0;
+	sigfox_payload_mains_voltage.mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_MVD);
 	sigfox_payload_mains_voltage.ch4d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_CH4D);
 	sigfox_payload_mains_voltage.ch3d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_CH3D);
 	sigfox_payload_mains_voltage.ch2d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_CH2D);
@@ -410,6 +415,8 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	NODE_check_access_status();
 	// Do not send any other frame if there was an error during first access.
 	if (chxs_access_status.all != 0) goto errors;
+	// Do not send any other frame if mains voltage was not present 2 consecutive times.
+	if ((sigfox_payload_mains_voltage.mvd == 0) && (mpmcm_mvd_flag == 0)) goto errors;
 	// Build registers list for mains frequency.
 	reg_list.addr_list = (uint8_t*) MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_FREQUENCY;
 	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_FREQUENCY);
@@ -493,7 +500,8 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 		NODE_check_access_status();
 	}
 errors:
-	// Clear POR flag.
+	// Clear POR flag and update MVD flag.
 	mpmcm_por_flag = 0;
+	mpmcm_mvd_flag = sigfox_payload_mains_voltage.mvd;
 	return status;
 }

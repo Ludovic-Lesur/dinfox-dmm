@@ -11,6 +11,7 @@
 #include "at_bus.h"
 #include "common.h"
 #include "lvrm_reg.h"
+#include "mode.h"
 #include "node.h"
 #include "string.h"
 #include "types.h"
@@ -66,6 +67,7 @@ NODE_status_t LVRM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
  *******************************************************************/
 NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload);
 
+#ifdef DMM_BMS_ENABLE
 /*!******************************************************************
  * \fn NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr)
  * \brief Process LVRM to perform BMS function.
@@ -74,5 +76,6 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload);
  * \retval		Function execution status.
  *******************************************************************/
 NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr);
+#endif
 
 #endif /* __LVRM_H__ */

@@ -178,10 +178,11 @@ typedef struct {
 	uint8_t actions_index;
 	// Specific nodes pointers.
 	NODE_t* uhfm_node_ptr;
-	NODE_t* bms_node_ptr;
 	NODE_t* mpmcm_node_ptr;
-	// BMS.
+#ifdef DMM_BMS_ENABLE
+	NODE_t* bms_node_ptr;
 	uint32_t bms_monitoring_next_time_seconds;
+#endif
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -788,9 +789,11 @@ void NODE_init_por(void) {
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
 	node_ctx.uhfm_node_ptr = NULL;
-	node_ctx.bms_node_ptr = NULL;
 	node_ctx.mpmcm_node_ptr = NULL;
+#ifdef DMM_BMS_ENABLE
+	node_ctx.bms_node_ptr = NULL;
 	node_ctx.bms_monitoring_next_time_seconds = 0;
+#endif
 	// Init registers.
 	DMM_init_registers();
 	R4S8CR_init_registers();
@@ -833,22 +836,26 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.count += nodes_count;
 	// Reset pointers.
 	node_ctx.uhfm_node_ptr = NULL;
-	node_ctx.bms_node_ptr = NULL;
 	node_ctx.mpmcm_node_ptr = NULL;
+#ifdef DMM_BMS_ENABLE
+	node_ctx.bms_node_ptr = NULL;
+#endif
 	// Search specific boards in nodes list.
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// UHFM.
 		if (NODES_LIST.list[idx].board_id == DINFOX_BOARD_ID_UHFM) {
 			node_ctx.uhfm_node_ptr = &(NODES_LIST.list[idx]);
 		}
-		// LVRM as BMS.
-		if (NODES_LIST.list[idx].address == DINFOX_NODE_ADDRESS_BMS) {
-			node_ctx.bms_node_ptr = &(NODES_LIST.list[idx]);
-		}
 		// MPMCM
 		if (NODES_LIST.list[idx].board_id == DINFOX_BOARD_ID_MPMCM) {
 			node_ctx.mpmcm_node_ptr = &(NODES_LIST.list[idx]);
 		}
+#ifdef DMM_BMS_ENABLE
+		// LVRM as BMS.
+		if (NODES_LIST.list[idx].address == DMM_BMS_NODE_ADDRESS) {
+			node_ctx.bms_node_ptr = &(NODES_LIST.list[idx]);
+		}
+#endif
 	}
 	// Scan R4S8CR nodes.
 	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
@@ -872,6 +879,7 @@ void NODE_process(void) {
 	// Execute node actions.
 	node_status = _NODE_execute_actions();
 	NODE_stack_error();
+#ifdef DMM_BMS_ENABLE
 	// Check BMS presence and monitoring period.
 	if ((node_ctx.bms_node_ptr != NULL) && (RTC_get_time_seconds() >= node_ctx.bms_monitoring_next_time_seconds)) {
 		// Update next time.
@@ -880,6 +888,7 @@ void NODE_process(void) {
 		node_status = LVRM_bms_process((node_ctx.bms_node_ptr) -> address);
 		NODE_stack_error();
 	}
+#endif
 	// Turn bus interface off.
 	power_status = POWER_disable(POWER_DOMAIN_RS485);
 	POWER_stack_error();

@@ -323,6 +323,7 @@ errors:
 	return status;
 }
 
+#ifdef DMM_BMS_ENABLE
 /*******************************************************************/
 NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr) {
 	// Local variables.
@@ -357,3 +358,4 @@ NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr) {
 errors:
 	return status;
 }
+#endif

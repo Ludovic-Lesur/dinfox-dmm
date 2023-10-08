@@ -70,8 +70,9 @@ typedef enum {
 	NODE_ERROR_ACTION_INDEX,
 	NODE_ERROR_RELAY_ID,
 	// Low level drivers errors.
-	NODE_ERROR_BASE_ACCESS_STATUS = 0x0100,
-	NODE_ERROR_BASE_ADC = (NODE_ERROR_BASE_ACCESS_STATUS + 0x0100),
+	NODE_ERROR_BASE_ACCESS_STATUS_CODE = 0x0100,
+	NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS = 0x0200,
+	NODE_ERROR_BASE_ADC = (NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + 0x0100),
 	NODE_ERROR_BASE_LPUART = (NODE_ERROR_BASE_ADC + ADC_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
@@ -267,9 +268,10 @@ NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_dat
 NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr);
 
 /*******************************************************************/
-#define NODE_check_access_status(void) { \
+#define NODE_check_access_status(node_addr) { \
 	if ((node_access_status.all) != 0) { \
-		status = (NODE_ERROR_BASE_ACCESS_STATUS + (node_access_status.all)); \
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + node_access_status.all); \
+		status = (NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node_addr)); \
 		goto errors; \
 	} \
 }

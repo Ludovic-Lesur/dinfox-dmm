@@ -10,6 +10,7 @@
 #include "lvrm_reg.h"
 #include "common.h"
 #include "dinfox.h"
+#include "error.h"
 #include "mode.h"
 #include "node.h"
 #include "string.h"
@@ -335,7 +336,7 @@ NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr) {
 	// Perform measurements.
 	status = XM_perform_measurements(lvrm_node_addr, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status();
+	NODE_check_access_status(lvrm_node_addr);
 	// Read battery voltage.
 	status = XM_read_register(lvrm_node_addr, LVRM_REG_ADDR_ANALOG_DATA_1, LVRM_REG_ERROR_VALUE[LVRM_REG_ADDR_ANALOG_DATA_1], &reg_value, &node_access_status);
 	if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;

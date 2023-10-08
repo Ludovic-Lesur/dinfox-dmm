@@ -319,7 +319,7 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_
 	}
 	status = NODES[node -> board_id].functions.write_register(&write_input, reg_value, reg_mask, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status();
+	NODE_check_access_status(node -> address);
 errors:
 	return status;
 }
@@ -363,7 +363,7 @@ NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_
 	}
 	status = NODES[node -> board_id].functions.read_register(&read_input, reg_value, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status();
+	NODE_check_access_status(node -> address);
 errors:
 	return status;
 }
@@ -413,7 +413,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag, uint8_t
 	// Send message.
 	status = UHFM_send_sigfox_message(((node_ctx.uhfm_node_ptr) -> address), &sigfox_message, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status();
+	NODE_check_access_status((node_ctx.uhfm_node_ptr) -> address);
 errors:
 	return status;
 }
@@ -884,6 +884,9 @@ void NODE_process(void) {
 	if ((node_ctx.bms_node_ptr != NULL) && (RTC_get_time_seconds() >= node_ctx.bms_monitoring_next_time_seconds)) {
 		// Update next time.
 		node_ctx.bms_monitoring_next_time_seconds = (RTC_get_time_seconds() + DMM_BMS_MONITORING_PERIOD_SECONDS);
+		// Turn bus interface on.
+		power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+		POWER_stack_error();
 		// Process BMS.
 		node_status = LVRM_bms_process((node_ctx.bms_node_ptr) -> address);
 		NODE_stack_error();
@@ -910,7 +913,7 @@ NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32
 	// Execute function of the corresponding board ID.
 	status = NODES[node -> board_id].functions.write_line_data(&line_data_write, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status();
+	NODE_check_access_status(node -> address);
 errors:
 	return status;
 }
@@ -934,7 +937,7 @@ NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index) {
 	// Execute function of the corresponding board ID.
 	status = NODES[node -> board_id].functions.read_line_data(&line_data_read, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status();
+	NODE_check_access_status(node -> address);
 errors:
 	return status;
 }
@@ -959,7 +962,7 @@ NODE_status_t NODE_read_line_data_all(NODE_t* node) {
 		// Perform node measurements.
 		status = XM_perform_measurements((node -> address), &node_access_status);
 		if (status != NODE_SUCCESS) goto errors;
-		NODE_check_access_status();
+		NODE_check_access_status(node -> address);
 	}
 	// String data loop.
 	for (idx=0 ; idx<(NODES[node -> board_id].last_line_data_index) ; idx++) {

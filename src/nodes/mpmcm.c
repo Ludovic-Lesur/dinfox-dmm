@@ -10,6 +10,7 @@
 #include "at_bus.h"
 #include "common.h"
 #include "dinfox.h"
+#include "error.h"
 #include "mpmcm_reg.h"
 #include "node.h"
 #include "string.h"
@@ -412,7 +413,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	// Send message.
 	status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status();
+	NODE_check_access_status(uhfm_node_addr);
 	// Do not send any other frame if there was an error during first access.
 	if (chxs_access_status.all != 0) goto errors;
 	// Do not send any other frame if mains voltage was not present 2 consecutive times.
@@ -437,7 +438,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	// Send message.
 	status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status();
+	NODE_check_access_status(uhfm_node_addr);
 
 	// Use dynamic list for channels.
 	reg_list.addr_list = (uint8_t*) addr_list;
@@ -472,7 +473,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 		// Send message.
 		status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 		if (status != NODE_SUCCESS) goto errors;
-		NODE_check_access_status();
+		NODE_check_access_status(uhfm_node_addr);
 		// Build registers list for power factor frame.
 		for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR) ; idx++) {
 			addr_list[idx] = MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR[idx] + reg_offset;
@@ -497,7 +498,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 		// Send message.
 		status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 		if (status != NODE_SUCCESS) goto errors;
-		NODE_check_access_status();
+		NODE_check_access_status(uhfm_node_addr);
 	}
 errors:
 	// Clear POR flag and update MVD flag.

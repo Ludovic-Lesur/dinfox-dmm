@@ -57,16 +57,9 @@ void __attribute__((optimize("-O0"))) LPTIM1_IRQHandler(void) {
 
 /*******************************************************************/
 void __attribute__((optimize("-O0"))) LPTIM1_init(void) {
-	// Force APB clock to access registers.
-	RCC -> CCIPR &= ~(0b11 << 18); // LPTIM1SEL='00'.
 	// Use LSE.
 	lptim_ctx.clock_frequency_hz = (RCC_LSE_FREQUENCY_HZ >> 3);
-	// Enable peripheral clock.
-	RCC -> APB1ENR |= (0b1 << 31); // LPTIM1EN='1'.
-	// Configure peripheral.
-	LPTIM1 -> CFGR |= (0b011 << 9); // Prescaler = 8.
 	// Enable LPTIM EXTI line.
-	LPTIM1 -> IER |= (0b1 << 1); // ARRMIE='1'.
 	EXTI_configure_line(EXTI_LINE_LPTIM1, EXTI_TRIGGER_RISING_EDGE);
 }
 
@@ -87,6 +80,11 @@ LPTIM_status_t __attribute__((optimize("-O0"))) LPTIM1_delay_milliseconds(uint32
 	}
 	// Force APB clock to access registers.
 	RCC -> CCIPR &= ~(0b11 << 18); // LPTIM1SEL='00'.
+	// Enable peripheral clock.
+	RCC -> APB1ENR |= (0b1 << 31); // LPTIM1EN='1'.
+	// Configure peripheral.
+	LPTIM1 -> CFGR |= (0b011 << 9); // Prescaler = 8.
+	LPTIM1 -> IER |= (0b1 << 1); // ARRMIE='1'.
 	// Reset flags.
 	LPTIM1 -> ICR |= (0b1 << 4) | (0b1 << 1);
 	// Enable peripheral.
@@ -142,8 +140,12 @@ LPTIM_status_t __attribute__((optimize("-O0"))) LPTIM1_delay_milliseconds(uint32
 		goto errors;
 	}
 errors:
-	// Disable timer.
-	LPTIM1 -> CR &= ~(0b1 << 0); // Disable LPTIM1 (ENABLE='0').
+	// Reset peripheral.
+	RCC -> APB1RSTR |= (0b1 << 31);
+	for (loop_count=0 ; loop_count<100 ; loop_count++);
+	RCC -> APB1RSTR &= ~(0b1 << 31);
+	// Disable peripheral clock.
+	RCC -> APB1ENR &= ~(0b1 << 31); // LPTIM1EN='0'.
 	// Force APB clock at the end of delay.
 	RCC -> CCIPR &= ~(0b11 << 18); // LPTIM1SEL='00'.
 	return status;

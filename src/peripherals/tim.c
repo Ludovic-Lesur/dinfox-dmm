@@ -12,6 +12,7 @@
 #include "pwr.h"
 #include "rcc.h"
 #include "rcc_reg.h"
+#include "rtc.h"
 #include "tim_reg.h"
 #include "types.h"
 
@@ -20,13 +21,18 @@
 #define TIM_TIMEOUT_COUNT				1000000
 
 #define TIM2_CNT_VALUE_MAX				0xFFFF
-#define TIM2_ETRF_PRESCALER				16
-#define TIM2_ETRF_CLOCK_HZ				(RCC_LSE_FREQUENCY_HZ / TIM2_ETRF_PRESCALER)
+
+#define TIM2_TARGET_TRIGGER_CLOCK_HZ	2048
+
+#define TIM2_PRESCALER_ETRF_LSE			1
+#define TIM2_PRESCALER_PSC_LSE			((RCC_LSE_FREQUENCY_HZ) / (TIM2_TARGET_TRIGGER_CLOCK_HZ * TIM2_PRESCALER_ETRF_LSE))
 
 #define TIM2_CLOCK_SWITCH_LATENCY_MS	2
 
 #define TIM2_TIMER_DURATION_MS_MIN		1
-#define TIM2_TIMER_DURATION_MS_MAX		((TIM2_CNT_VALUE_MAX * 1000) / (TIM2_ETRF_CLOCK_HZ))
+#define TIM2_TIMER_DURATION_MS_MAX		((TIM2_CNT_VALUE_MAX * 1000) / (tim2_ctx.etrf_clock_hz))
+
+#define TIM2_WATCHDOG_PERIOD_SECONDS	((TIM2_TIMER_DURATION_MS_MAX / 1000) + 5)
 
 #define TIM3_NUMBER_OF_CHANNELS			4
 #define TIM3_NUMBER_OF_USED_CHANNELS	3
@@ -39,6 +45,13 @@
 
 /*** TIM local structures ***/
 
+/*******************************************************************/
+typedef struct {
+	uint32_t etrf_clock_hz;
+	volatile uint8_t channel_running[TIM2_CHANNEL_LAST];
+} TIM2_context_t;
+
+/*******************************************************************/
 typedef struct {
 	volatile uint32_t dimming_lut_idx;
 	volatile uint8_t dimming_lut_direction;
@@ -47,7 +60,7 @@ typedef struct {
 
 /*** TIM local global variables ***/
 
-static volatile uint8_t tim2_channel_running[TIM2_CHANNEL_LAST];
+static TIM2_context_t tim2_ctx;
 
 static const uint8_t TIM3_LED_CHANNELS[TIM3_NUMBER_OF_USED_CHANNELS] = {
 	TIM3_CHANNEL_LED_RED,
@@ -81,7 +94,7 @@ void __attribute__((optimize("-O0"))) TIM2_IRQHandler(void) {
 		// Check flag.
 		if (((TIM2 -> SR) & (0b1 << (channel_idx + 1))) != 0) {
 			// Reset flag.
-			tim2_channel_running[channel_idx] = 0;
+			tim2_ctx.channel_running[channel_idx] = 0;
 			// Clear flag.
 			TIM2 -> SR &= ~(0b1 << (channel_idx + 1));
 		}
@@ -125,6 +138,25 @@ void __attribute__((optimize("-O0"))) TIM21_IRQHandler(void) {
 }
 
 /*******************************************************************/
+TIM_status_t _TIM2_internal_watchdog(uint32_t time_start, uint32_t* time_reference) {
+	// Local variables.
+	TIM_status_t status = TIM_SUCCESS;
+	uint32_t time = RTC_get_time_seconds();
+	// If the RTC is correctly clocked, it will be used as internal watchdog and the IWDG can be reloaded.
+	// If the RTC is not running anymore due to a clock failure, the IWDG is not reloaded and will reset the MCU.
+	if (time != (*time_reference)) {
+		// Update time reference and reload IWDG.
+		(*time_reference) = time;
+		IWDG_reload();
+	}
+	// Internal watchdog.
+	if (time > (time_start + TIM2_WATCHDOG_PERIOD_SECONDS)) {
+		status = TIM_ERROR_COMPLETION_WATCHDOG;
+	}
+	return status;
+}
+
+/*******************************************************************/
 void _TIM3_reset_channels(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -147,15 +179,20 @@ void TIM2_init(void) {
 	uint8_t channel_idx = 0;
 	// Init context.
 	for (channel_idx=0 ; channel_idx<TIM2_CHANNEL_LAST ; channel_idx++) {
-		tim2_channel_running[channel_idx] = 0;
+		tim2_ctx.channel_running[channel_idx] = 0;
 	}
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 0); // TIM2EN='1'.
 	RCC -> APB1SMENR |= (0b1 << 0); // TIM2SMEN='1'.
-	// Use LSE/16 = 2048Hz as trigger (external clock mode 2).
-	TIM2 -> PSC = (TIM2_ETRF_PRESCALER - 1);
-	TIM2 -> SMCR |= (0b1 << 14) | (0b111 << 4);
+	// Use LSE as trigger.
+	RCC -> CR &= ~(0b1 << 5); // HSI16OUTEN='0'.
+	TIM2 -> SMCR &= ~(0b11 << 12); // No prescaler on ETRF.
+	TIM2 -> PSC = (TIM2_PRESCALER_PSC_LSE - 1);
 	TIM2 -> OR |= (0b101 << 0);
+	// Update context.
+	tim2_ctx.etrf_clock_hz = ((RCC_LSE_FREQUENCY_HZ) / (TIM2_PRESCALER_ETRF_LSE * TIM2_PRESCALER_PSC_LSE));
+	// Use external clock mode 2.
+	TIM2 -> SMCR |= (0b1 << 14) | (0b111 << 4);
 	// Configure channels 1-4 in output compare mode.
 	TIM2 -> CCMR1 &= 0xFFFF0000;
 	TIM2 -> CCMR2 &= 0xFFFF0000;
@@ -208,10 +245,10 @@ TIM_status_t TIM2_start(TIM2_channel_t channel, uint32_t duration_ms, TIM_waitin
 	if (waiting_mode == TIM_WAITING_MODE_LOW_POWER_SLEEP) {
 		local_duration_ms -= TIM2_CLOCK_SWITCH_LATENCY_MS;
 	}
-	compare_value = ((TIM2 -> CNT) + ((local_duration_ms * TIM2_ETRF_CLOCK_HZ) / (1000))) % TIM2_CNT_VALUE_MAX;
+	compare_value = ((TIM2 -> CNT) + ((local_duration_ms * tim2_ctx.etrf_clock_hz) / (1000))) % TIM2_CNT_VALUE_MAX;
 	TIM2 -> CCRx[channel] = compare_value;
 	// Update flag.
-	tim2_channel_running[channel] = 1;
+	tim2_ctx.channel_running[channel] = 1;
 	// Clear flag.
 	TIM2 -> SR &= ~(0b1 << (channel + 1));
 	// Enable channel.
@@ -240,10 +277,10 @@ TIM_status_t TIM2_stop(TIM2_channel_t channel) {
 	// Clear flag.
 	TIM2 -> SR &= ~(0b1 << (channel + 1));
 	// Update flag.
-	tim2_channel_running[channel] = 0;
+	tim2_ctx.channel_running[channel] = 0;
 	// Disable counter if all channels are stopped.
 	for (channel_idx=0 ; channel_idx<TIM2_CHANNEL_LAST ; channel_idx++) {
-		running_count += tim2_channel_running[channel_idx];
+		running_count += tim2_ctx.channel_running[channel_idx];
 	}
 	if (running_count == 0) {
 		TIM2 -> CR1 &= ~(0b1 << 0);
@@ -266,7 +303,7 @@ TIM_status_t TIM2_get_status(TIM2_channel_t channel, uint8_t* timer_has_elapsed)
 		goto errors;
 	}
 	// Update flag.
-	(*timer_has_elapsed) = (tim2_channel_running[channel] == 0) ? 1 : 0;
+	(*timer_has_elapsed) = (tim2_ctx.channel_running[channel] == 0) ? 1 : 0;
 errors:
 	return status;
 }
@@ -276,6 +313,8 @@ TIM_status_t TIM2_wait_completion(TIM2_channel_t channel, TIM_waiting_mode_t wai
 	// Local variables.
 	TIM_status_t status = TIM_SUCCESS;
 	RCC_status_t rcc_status = RCC_SUCCESS;
+	uint32_t time_start = RTC_get_time_seconds();
+	uint32_t time_reference = 0;
 	// Check parameters.
 	if (channel >= TIM2_CHANNEL_LAST) {
 		status = TIM_ERROR_CHANNEL;
@@ -285,15 +324,19 @@ TIM_status_t TIM2_wait_completion(TIM2_channel_t channel, TIM_waiting_mode_t wai
 	switch (waiting_mode) {
 	case TIM_WAITING_MODE_ACTIVE:
 		// Active loop.
-		while (tim2_channel_running[channel] != 0) {
-			IWDG_reload();
+		while (tim2_ctx.channel_running[channel] != 0) {
+			// Internal watchdog.
+			status = _TIM2_internal_watchdog(time_start, &time_reference);
+			if (status != TIM_SUCCESS) goto errors;
 		}
 		break;
 	case TIM_WAITING_MODE_SLEEP:
 		// Enter sleep mode.
-		while (tim2_channel_running[channel] != 0) {
+		while (tim2_ctx.channel_running[channel] != 0) {
 			PWR_enter_sleep_mode();
-			IWDG_reload();
+			// Internal watchdog.
+			status = _TIM2_internal_watchdog(time_start, &time_reference);
+			if (status != TIM_SUCCESS) goto errors;
 		}
 		break;
 	case TIM_WAITING_MODE_LOW_POWER_SLEEP:
@@ -301,9 +344,11 @@ TIM_status_t TIM2_wait_completion(TIM2_channel_t channel, TIM_waiting_mode_t wai
 		rcc_status = RCC_switch_to_msi(RCC_MSI_RANGE_1_131KHZ);
 		RCC_exit_error(TIM_ERROR_BASE_RCC);
 		// Enter low power sleep mode.
-		while (tim2_channel_running[channel] != 0) {
+		while (tim2_ctx.channel_running[channel] != 0) {
 			PWR_enter_low_power_sleep_mode();
-			IWDG_reload();
+			// Internal watchdog.
+			status = _TIM2_internal_watchdog(time_start, &time_reference);
+			if (status != TIM_SUCCESS) goto errors;
 		}
 		// Go back to HSI.
 		rcc_status = RCC_switch_to_hsi();

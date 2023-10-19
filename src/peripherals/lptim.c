@@ -18,18 +18,24 @@
 
 /*** LPTIM local macros ***/
 
-#define LPTIM_TIMEOUT_COUNT			1000000
+#define LPTIM_TIMEOUT_COUNT		1000000
 
-#define LPTIM_ARR_MAX_VALUE			0xFFFF
+#define LPTIM_ARR_MAX_VALUE		0xFFFF
 
-#define LPTIM_CLOCK_FREQUENCY_HZ	(RCC_LSE_FREQUENCY_HZ >> 3)
+#define LPTIM_DELAY_MS_MIN		2
+#define LPTIM_DELAY_MS_MAX		((LPTIM_ARR_MAX_VALUE * 1000) / (lptim_ctx.clock_frequency_hz))
 
-#define LPTIM_DELAY_MS_MIN			2
-#define LPTIM_DELAY_MS_MAX			((LPTIM_ARR_MAX_VALUE * 1000) / (LPTIM_CLOCK_FREQUENCY_HZ))
+/*** LPTIM local structures ***/
+
+/*******************************************************************/
+typedef struct {
+	uint32_t clock_frequency_hz;
+	volatile uint8_t wake_up;
+} LPTIM_context_t;
 
 /*** LPTIM local global variables ***/
 
-static volatile uint8_t lptim_wake_up = 0;
+static LPTIM_context_t lptim_ctx;
 
 /*** LPTIM local functions ***/
 
@@ -39,7 +45,7 @@ void __attribute__((optimize("-O0"))) LPTIM1_IRQHandler(void) {
 	if (((LPTIM1 -> ISR) & (0b1 << 1)) != 0) {
 		// Set local flag.
 		if (((LPTIM1 -> IER) & (0b1 << 1)) != 0) {
-			lptim_wake_up = 1;
+			lptim_ctx.wake_up = 1;
 		}
 		// Clear flag.
 		LPTIM1 -> ICR |= (0b1 << 1);
@@ -50,9 +56,11 @@ void __attribute__((optimize("-O0"))) LPTIM1_IRQHandler(void) {
 /*** LPTIM functions ***/
 
 /*******************************************************************/
-void LPTIM1_init(void) {
-	// Select clock source.
-	RCC -> CCIPR |= (0b11 << 18); // LPTIMSEL='11' (LSE clock selected).
+void __attribute__((optimize("-O0"))) LPTIM1_init(void) {
+	// Force APB clock to access registers.
+	RCC -> CCIPR &= ~(0b11 << 18); // LPTIM1SEL='00'.
+	// Use LSE.
+	lptim_ctx.clock_frequency_hz = (RCC_LSE_FREQUENCY_HZ >> 3);
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 31); // LPTIM1EN='1'.
 	// Configure peripheral.
@@ -63,12 +71,13 @@ void LPTIM1_init(void) {
 }
 
 /*******************************************************************/
-LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t delay_mode) {
+LPTIM_status_t __attribute__((optimize("-O0"))) LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t delay_mode) {
 	// Local variables.
 	LPTIM_status_t status = LPTIM_SUCCESS;
 	uint32_t arr = 0;
+	uint32_t loop_count = 0;
 	// Check delay.
-	if (delay_ms > LPTIM_DELAY_MS_MAX) {
+	if ((delay_ms > LPTIM_DELAY_MS_MAX) || (delay_ms > (IWDG_FREE_DELAY_SECONDS_MAX * 1000))) {
 		status = LPTIM_ERROR_DELAY_OVERFLOW;
 		goto errors;
 	}
@@ -76,34 +85,44 @@ LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t d
 		status = LPTIM_ERROR_DELAY_UNDERFLOW;
 		goto errors;
 	}
-	// Enable timer.
-	LPTIM1 -> CR |= (0b1 << 0); // Enable LPTIM1 (ENABLE='1').
-	// Reset counter and flags.
-	LPTIM1 -> CNT &= 0xFFFF0000;
-	LPTIM1 -> ICR |= (0b1111111 << 0);
+	// Force APB clock to access registers.
+	RCC -> CCIPR &= ~(0b11 << 18); // LPTIM1SEL='00'.
+	// Reset flags.
+	LPTIM1 -> ICR |= (0b1 << 4) | (0b1 << 1);
+	// Enable peripheral.
+	LPTIM1 -> CR |= (0b1 << 0); // ENABLE='1'.
 	// Compute ARR value.
 	arr = (LPTIM1 -> ARR);
 	arr &= 0xFFFF0000;
-	arr |= ((((delay_ms - 1) * LPTIM_CLOCK_FREQUENCY_HZ) / (1000)) & 0x0000FFFF);
+	arr |= ((((delay_ms - 1) * lptim_ctx.clock_frequency_hz) / (1000)) & 0x0000FFFF);
+	// Write register.
 	LPTIM1 -> ARR = arr;
+	// Wait for ARR write operation to complete.
+	while (((LPTIM1 -> ISR) & (0b1 << 4)) == 0) {
+		loop_count++;
+		if (loop_count > LPTIM_TIMEOUT_COUNT) {
+			status = LPTIM_ERROR_ARR_TIMEOUT;
+			goto errors;
+		}
+	}
+	// Select clock source.
+	RCC -> CCIPR |= (0b11 << 18);
+	// Clear wake-up flag.
+	lptim_ctx.wake_up = 0;
 	// Start timer.
-	lptim_wake_up = 0;
 	LPTIM1 -> CR |= (0b1 << 1); // SNGSTRT='1'.
 	// Perform delay with the selected waiting mode.
 	switch (delay_mode) {
 	case LPTIM_DELAY_MODE_ACTIVE:
 		// Active loop.
-		while (((LPTIM1 -> ISR) & (0b1 << 1)) == 0) {
-			IWDG_reload();
-		}
+		while (((LPTIM1 -> ISR) & (0b1 << 1)) == 0);
 		break;
 	case LPTIM_DELAY_MODE_SLEEP:
 		// Enable interrupt.
 		NVIC_enable_interrupt(NVIC_INTERRUPT_LPTIM1, NVIC_PRIORITY_LPTIM1);
 		// Enter sleep mode.
-		while (lptim_wake_up == 0) {
+		while (lptim_ctx.wake_up == 0) {
 			PWR_enter_sleep_mode();
-			IWDG_reload();
 		}
 		// Disable interrupt.
 		NVIC_disable_interrupt(NVIC_INTERRUPT_LPTIM1);
@@ -112,9 +131,8 @@ LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t d
 		// Enable interrupt.
 		NVIC_enable_interrupt(NVIC_INTERRUPT_LPTIM1, NVIC_PRIORITY_LPTIM1);
 		// Enter stop mode.
-		while (lptim_wake_up == 0) {
+		while (lptim_ctx.wake_up == 0) {
 			PWR_enter_stop_mode();
-			IWDG_reload();
 		}
 		// Disable interrupt.
 		NVIC_disable_interrupt(NVIC_INTERRUPT_LPTIM1);
@@ -124,9 +142,9 @@ LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t d
 		goto errors;
 	}
 errors:
-	// Clear flag.
-	LPTIM1 -> ICR |= (0b1 << 1);
 	// Disable timer.
 	LPTIM1 -> CR &= ~(0b1 << 0); // Disable LPTIM1 (ENABLE='0').
+	// Force APB clock at the end of delay.
+	RCC -> CCIPR &= ~(0b11 << 18); // LPTIM1SEL='00'.
 	return status;
 }

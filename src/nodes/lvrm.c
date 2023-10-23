@@ -50,8 +50,8 @@ typedef union {
 		unsigned vin : 16;
 		unsigned vout : 16;
 		unsigned iout : 16;
-		unsigned unused : 7;
-		unsigned rlst : 1;
+		unsigned unused : 6;
+		unsigned rlst : 2;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } LVRM_sigfox_payload_electrical_t;
 
@@ -63,12 +63,12 @@ static const NODE_line_data_t LVRM_LINE_DATA[LVRM_LINE_DATA_INDEX_LAST - COMMON_
 	{"VCOM =", " V", STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_1, LVRM_REG_ANALOG_DATA_1_MASK_VCOM},
 	{"VOUT =", " V", STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_1, LVRM_REG_ANALOG_DATA_1_MASK_VOUT},
 	{"IOUT =", " mA", STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_2, LVRM_REG_ANALOG_DATA_2_MASK_IOUT},
-	{"RELAY =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, LVRM_REG_ADDR_STATUS_CONTROL_1, LVRM_REG_STATUS_CONTROL_1_MASK_RLST}
+	{"RELAY =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_STATUS_CONTROL_1, LVRM_REG_STATUS_CONTROL_1_MASK_RLST}
 };
 
 static const uint32_t LVRM_REG_ERROR_VALUE[LVRM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
-	0x00000000,
+	(DINFOX_BIT_ERROR << 0),
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0)
 };
@@ -173,7 +173,20 @@ NODE_status_t LVRM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		case LVRM_LINE_DATA_INDEX_RLST:
 			// Specific print for boolean data.
 			NODE_flush_string_value();
-			NODE_append_value_string((field_value == 0) ? "OFF" : "ON");
+			switch (field_value) {
+			case DINFOX_BIT_0:
+				NODE_append_value_string("OFF");
+				break;
+			case DINFOX_BIT_1:
+				NODE_append_value_string("ON");
+				break;
+			case DINFOX_BIT_FORCED_HARDWARE:
+				NODE_append_value_string("HW");
+				break;
+			default:
+				NODE_append_value_string("ERROR");
+				break;
+			}
 			break;
 		case LVRM_LINE_DATA_INDEX_VCOM:
 		case LVRM_LINE_DATA_INDEX_VOUT:

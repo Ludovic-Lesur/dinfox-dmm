@@ -40,11 +40,10 @@ typedef union {
 		unsigned ain1 : 16;
 		unsigned ain2 : 16;
 		unsigned ain3 : 16;
-		unsigned unused : 4;
-		unsigned dio3 : 1;
-		unsigned dio2 : 1;
-		unsigned dio1 : 1;
-		unsigned dio0 : 1;
+		unsigned dio3 : 2;
+		unsigned dio2 : 2;
+		unsigned dio1 : 2;
+		unsigned dio0 : 2;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } SM_sigfox_payload_sensor_1_t;
 
@@ -68,10 +67,10 @@ static const NODE_line_data_t SM_LINE_DATA[SM_LINE_DATA_INDEX_LAST - COMMON_LINE
 	{"AIN1 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_1, SM_REG_ANALOG_DATA_1_MASK_VAIN1},
 	{"AIN2 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_2, SM_REG_ANALOG_DATA_2_MASK_VAIN2},
 	{"AIN3 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_2, SM_REG_ANALOG_DATA_2_MASK_VAIN3},
-	{"DIO0 =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO0},
-	{"DIO1 =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO1},
-	{"DIO2 =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO2},
-	{"DIO3 =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO3},
+	{"DIO0 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO0},
+	{"DIO1 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO1},
+	{"DIO2 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO2},
+	{"DIO3 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO3},
 	{"TAMB =", " |C", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_3, SM_REG_ANALOG_DATA_3_MASK_TAMB},
 	{"HAMB =", " %", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_3, SM_REG_ANALOG_DATA_3_MASK_HAMB}
 };
@@ -81,7 +80,7 @@ static const uint32_t SM_REG_ERROR_VALUE[SM_REG_ADDR_LAST] = {
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	((DINFOX_HUMIDITY_ERROR_VALUE << 8) | (DINFOX_TEMPERATURE_ERROR_VALUE << 0)),
-	0x00000000
+	((DINFOX_BIT_ERROR << 6) | (DINFOX_BIT_ERROR << 4) | (DINFOX_BIT_ERROR << 2) | (DINFOX_BIT_ERROR << 0)),
 };
 
 static const uint8_t SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_1[] = {
@@ -188,7 +187,20 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 		case SM_LINE_DATA_INDEX_DIO3:
 			// Specific print for boolean data.
 			NODE_flush_string_value();
-			NODE_append_value_int32(field_value, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
+			switch (field_value) {
+			case DINFOX_BIT_0:
+				NODE_append_value_string("LOW");
+				break;
+			case DINFOX_BIT_1:
+				NODE_append_value_string("HIGH");
+				break;
+			case DINFOX_BIT_FORCED_HARDWARE:
+				NODE_append_value_string("HW");
+				break;
+			default:
+				NODE_append_value_string("ERROR");
+				break;
+			}
 			break;
 		case SM_LINE_DATA_INDEX_HAMB:
 			// Specific print for humidity.
@@ -300,7 +312,6 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			sigfox_payload_sensor_1.ain1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN1);
 			sigfox_payload_sensor_1.ain2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN2);
 			sigfox_payload_sensor_1.ain3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN3);
-			sigfox_payload_sensor_1.unused = 0;
 			sigfox_payload_sensor_1.dio0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO0);
 			sigfox_payload_sensor_1.dio1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO1);
 			sigfox_payload_sensor_1.dio2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO2);

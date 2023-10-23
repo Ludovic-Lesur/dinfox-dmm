@@ -48,10 +48,10 @@ typedef union {
 		unsigned vsrc : 16;
 		unsigned vstr : 16;
 		unsigned vbkp : 16;
-		unsigned unused : 5;
-		unsigned chst : 1;
-		unsigned chen : 1;
-		unsigned bken : 1;
+		unsigned unused : 2;
+		unsigned chst : 2;
+		unsigned chen : 2;
+		unsigned bken : 2;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } BPSM_sigfox_payload_electrical_t;
 
@@ -63,14 +63,14 @@ static const NODE_line_data_t BPSM_LINE_DATA[BPSM_LINE_DATA_INDEX_LAST - COMMON_
 	{"VSRC =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_1, BPSM_REG_ANALOG_DATA_1_MASK_VSRC},
 	{"VSTR =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_1, BPSM_REG_ANALOG_DATA_1_MASK_VSTR},
 	{"VBKP =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_2, BPSM_REG_ANALOG_DATA_2_MASK_VBKP,},
-	{"CHRG_EN =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_CHEN},
-	{"CHRG_ST =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_CHST},
-	{"BKP_EN =", STRING_NULL, STRING_FORMAT_BOOLEAN, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_BKEN}
+	{"CHRG_EN =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_CHEN},
+	{"CHRG_ST =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_CHST},
+	{"BKP_EN =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_BKEN}
 };
 
 static const uint32_t BPSM_REG_ERROR_VALUE[BPSM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
-	0x00000000,
+	((DINFOX_BIT_ERROR << 4) | (DINFOX_BIT_ERROR << 2) | (DINFOX_BIT_ERROR << 0)),
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0)
 };
@@ -177,7 +177,20 @@ NODE_status_t BPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		case BPSM_LINE_DATA_INDEX_BKEN:
 			// Specific print for boolean data.
 			NODE_flush_string_value();
-			NODE_append_value_string((field_value == 0) ? "OFF" : "ON");
+			switch (field_value) {
+			case DINFOX_BIT_0:
+				NODE_append_value_string("OFF");
+				break;
+			case DINFOX_BIT_1:
+				NODE_append_value_string("ON");
+				break;
+			case DINFOX_BIT_FORCED_HARDWARE:
+				NODE_append_value_string("HW");
+				break;
+			default:
+				NODE_append_value_string("ERROR");
+				break;
+			}
 			break;
 		case BPSM_LINE_DATA_INDEX_VSRC:
 		case BPSM_LINE_DATA_INDEX_VSTR:

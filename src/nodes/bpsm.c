@@ -49,9 +49,9 @@ typedef union {
 		unsigned vstr : 16;
 		unsigned vbkp : 16;
 		unsigned unused : 2;
-		unsigned chst : 2;
-		unsigned chen : 2;
-		unsigned bken : 2;
+		unsigned chrgst : 2;
+		unsigned chenst : 2;
+		unsigned bkenst : 2;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } BPSM_sigfox_payload_electrical_t;
 
@@ -60,16 +60,17 @@ typedef union {
 static uint32_t BPSM_REGISTERS[BPSM_REG_ADDR_LAST];
 
 static const NODE_line_data_t BPSM_LINE_DATA[BPSM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{"VSRC =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_1, BPSM_REG_ANALOG_DATA_1_MASK_VSRC},
-	{"VSTR =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_1, BPSM_REG_ANALOG_DATA_1_MASK_VSTR},
-	{"VBKP =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_2, BPSM_REG_ANALOG_DATA_2_MASK_VBKP,},
-	{"CHRG_EN =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_CHEN},
-	{"CHRG_ST =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_CHST},
-	{"BKP_EN =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS_CONTROL_1, BPSM_REG_STATUS_CONTROL_1_MASK_BKEN}
+	{"VSRC =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_1, BPSM_REG_ANALOG_DATA_1_MASK_VSRC, BPSM_REG_ADDR_ANALOG_DATA_1, DINFOX_REG_MASK_NONE},
+	{"VSTR =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_1, BPSM_REG_ANALOG_DATA_1_MASK_VSTR, BPSM_REG_ADDR_ANALOG_DATA_1, DINFOX_REG_MASK_NONE},
+	{"VBKP =", " V", STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_ANALOG_DATA_2, BPSM_REG_ANALOG_DATA_2_MASK_VBKP, BPSM_REG_ADDR_ANALOG_DATA_2, DINFOX_REG_MASK_NONE},
+	{"CHRG_EN =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS, BPSM_REG_STATUS_MASK_CHENST, BPSM_REG_ADDR_CONTROL_1, BPSM_REG_CONTROL_1_MASK_CHEN},
+	{"CHRG_ST =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS, BPSM_REG_STATUS_MASK_CHRGST, BPSM_REG_ADDR_STATUS,    DINFOX_REG_MASK_NONE},
+	{"BKP_EN =",  STRING_NULL, STRING_FORMAT_DECIMAL, 0, BPSM_REG_ADDR_STATUS, BPSM_REG_STATUS_MASK_BKENST, BPSM_REG_ADDR_CONTROL_1, BPSM_REG_CONTROL_1_MASK_BKEN}
 };
 
 static const uint32_t BPSM_REG_ERROR_VALUE[BPSM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
+	0x00000000,
 	((DINFOX_BIT_ERROR << 4) | (DINFOX_BIT_ERROR << 2) | (DINFOX_BIT_ERROR << 0)),
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0)
@@ -80,7 +81,7 @@ static const uint8_t BPSM_REG_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
 };
 
 static const uint8_t BPSM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL[] = {
-	BPSM_REG_ADDR_STATUS_CONTROL_1,
+	BPSM_REG_ADDR_STATUS,
 	BPSM_REG_ADDR_ANALOG_DATA_1,
 	BPSM_REG_ADDR_ANALOG_DATA_2
 };
@@ -158,7 +159,7 @@ NODE_status_t BPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 	else {
 		// Compute specific string data index and register address.
 		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
-		reg_addr = BPSM_LINE_DATA[str_data_idx].reg_addr;
+		reg_addr = BPSM_LINE_DATA[str_data_idx].read_reg_addr;
 		// Add data name.
 		NODE_append_name_string((char_t*) BPSM_LINE_DATA[str_data_idx].name);
 		buffer_size = 0;
@@ -169,7 +170,7 @@ NODE_status_t BPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, BPSM_REG_ERROR_VALUE[reg_addr], &(BPSM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
-		field_value = DINFOX_read_field(BPSM_REGISTERS[reg_addr], BPSM_LINE_DATA[str_data_idx].field_mask);
+		field_value = DINFOX_read_field(BPSM_REGISTERS[reg_addr], BPSM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
 		switch (line_data_read -> line_data_index) {
 		case BPSM_LINE_DATA_INDEX_CHEN:
@@ -307,9 +308,9 @@ NODE_status_t BPSM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			sigfox_payload_electrical.vstr = DINFOX_read_field(BPSM_REGISTERS[BPSM_REG_ADDR_ANALOG_DATA_1], BPSM_REG_ANALOG_DATA_1_MASK_VSTR);
 			sigfox_payload_electrical.vbkp = DINFOX_read_field(BPSM_REGISTERS[BPSM_REG_ADDR_ANALOG_DATA_2], BPSM_REG_ANALOG_DATA_2_MASK_VBKP);
 			sigfox_payload_electrical.unused = 0;
-			sigfox_payload_electrical.chen = DINFOX_read_field(BPSM_REGISTERS[BPSM_REG_ADDR_STATUS_CONTROL_1], BPSM_REG_STATUS_CONTROL_1_MASK_CHEN);
-			sigfox_payload_electrical.chst = DINFOX_read_field(BPSM_REGISTERS[BPSM_REG_ADDR_STATUS_CONTROL_1], BPSM_REG_STATUS_CONTROL_1_MASK_CHST);
-			sigfox_payload_electrical.bken = DINFOX_read_field(BPSM_REGISTERS[BPSM_REG_ADDR_STATUS_CONTROL_1], BPSM_REG_STATUS_CONTROL_1_MASK_BKEN);
+			sigfox_payload_electrical.chenst = DINFOX_read_field(BPSM_REGISTERS[BPSM_REG_ADDR_STATUS], BPSM_REG_STATUS_MASK_CHENST);
+			sigfox_payload_electrical.chrgst = DINFOX_read_field(BPSM_REGISTERS[BPSM_REG_ADDR_STATUS], BPSM_REG_STATUS_MASK_CHRGST);
+			sigfox_payload_electrical.bkenst = DINFOX_read_field(BPSM_REGISTERS[BPSM_REG_ADDR_STATUS], BPSM_REG_STATUS_MASK_BKENST);
 			// Copy payload.
 			for (idx=0 ; idx<BPSM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
 				(node_ul_payload -> ul_payload)[idx] = sigfox_payload_electrical.frame[idx];

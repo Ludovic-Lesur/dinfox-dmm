@@ -57,24 +57,24 @@ static uint32_t DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_LAST];
 static uint32_t DMM_REGISTERS[DMM_REG_ADDR_LAST];
 
 static const NODE_line_data_t DMM_LINE_DATA[DMM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{"VRS =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VRS},
-	{"VHMI =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VHMI},
-	{"VUSB =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_2, DMM_REG_ANALOG_DATA_2_MASK_VUSB},
-	{"NODES_CNT =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_STATUS_CONTROL_1, DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT},
-	{"UL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_SYSTEM_CONFIGURATION, DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD},
-	{"DL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_SYSTEM_CONFIGURATION, DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD}
+	{"VRS =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VRS,   DMM_REG_ADDR_ANALOG_DATA_1, DINFOX_REG_MASK_NONE},
+	{"VHMI =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VHMI, DMM_REG_ADDR_ANALOG_DATA_1, DINFOX_REG_MASK_NONE},
+	{"VUSB =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_2, DMM_REG_ANALOG_DATA_2_MASK_VUSB, DMM_REG_ADDR_ANALOG_DATA_2, DINFOX_REG_MASK_NONE},
+	{"NODES_CNT =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_STATUS, DMM_REG_STATUS_MASK_NODES_COUNT, DMM_REG_ADDR_STATUS, DINFOX_REG_MASK_NONE},
+	{"UL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONTROL_1, DMM_REG_CONTROL_1_MASK_UL_PERIOD, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"DL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONTROL_1, DMM_REG_CONTROL_1_MASK_DL_PERIOD, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE}
 };
 
 static const uint32_t DMM_REG_ERROR_VALUE[DMM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
+	((DINFOX_TIME_ERROR_VALUE << 8) | (DINFOX_TIME_ERROR_VALUE << 0)),
 	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0),
-	((DINFOX_TIME_ERROR_VALUE << 8) | (DINFOX_TIME_ERROR_VALUE << 0))
 };
 
 static const uint8_t DMM_REG_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
-	DMM_REG_ADDR_STATUS_CONTROL_1,
+	DMM_REG_ADDR_STATUS,
 	DMM_REG_ADDR_ANALOG_DATA_1
 };
 
@@ -144,8 +144,8 @@ void DMM_init_registers(void) {
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_RESET_FLAGS]), &unused_mask, ((uint32_t) (((RCC -> CSR) >> 24) & 0xFF)), COMMON_REG_RESET_FLAGS_MASK_ALL);
 	// Load default values.
 	_DMM_reset_analog_data();
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_SYSTEM_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONTROL_1]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_CONTROL_1_MASK_UL_PERIOD);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONTROL_1]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_CONTROL_1_MASK_DL_PERIOD);
 }
 
 /*******************************************************************/
@@ -184,16 +184,16 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 	// Write register.
 	DMM_INTERNAL_REGISTERS[(write_params -> reg_addr)] = temp;
 	// Check actions.
-	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0], COMMON_REG_STATUS_CONTROL_0_MASK_RTRG) != 0) {
+	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0], COMMON_REG_CONTROL_0_MASK_RTRG) != 0) {
 		// Clear flag.
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0]), &unused_mask, 0, COMMON_REG_STATUS_CONTROL_0_MASK_RTRG);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0]), &unused_mask, 0, COMMON_REG_CONTROL_0_MASK_RTRG);
 		// Reset MCU.
 		PWR_software_reset();
 	}
 	// Measure trigger bit.
-	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0], COMMON_REG_STATUS_CONTROL_0_MASK_MTRG) != 0) {
+	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0], COMMON_REG_CONTROL_0_MASK_MTRG) != 0) {
 		// Clear flag.
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_CONTROL_0]), &unused_mask, 0, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0]), &unused_mask, 0, COMMON_REG_CONTROL_0_MASK_MTRG);
 		// Reset results.
 		_DMM_reset_analog_data();
 		// Check HMI power status.
@@ -265,8 +265,8 @@ NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t*
 		// Unstack error.
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ERROR_STACK]), &unused_mask, (uint32_t) (ERROR_stack_read()), COMMON_REG_ERROR_STACK_MASK_ERROR);
 		break;
-	case DMM_REG_ADDR_STATUS_CONTROL_1:
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_STATUS_CONTROL_1]), &unused_mask, (uint32_t) (NODES_LIST.count), DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT);
+	case DMM_REG_ADDR_STATUS:
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_STATUS]), &unused_mask, (uint32_t) (NODES_LIST.count), DMM_REG_STATUS_MASK_NODES_COUNT);
 		break;
 	default:
 		// Nothing to do on other registers.
@@ -333,7 +333,7 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 	else {
 		// Compute specific string data index and register address.
 		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
-		reg_addr = DMM_LINE_DATA[str_data_idx].reg_addr;
+		reg_addr = DMM_LINE_DATA[str_data_idx].read_reg_addr;
 		// Add data name.
 		NODE_append_name_string((char_t*) DMM_LINE_DATA[str_data_idx].name);
 		buffer_size = 0;
@@ -344,7 +344,7 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, DMM_REG_ERROR_VALUE[reg_addr], &(DMM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
-		field_value = DINFOX_read_field(DMM_REGISTERS[reg_addr], DMM_LINE_DATA[str_data_idx].field_mask);
+		field_value = DINFOX_read_field(DMM_REGISTERS[reg_addr], DMM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
 		switch (line_data_read -> line_data_index) {
 		case DMM_LINE_DATA_INDEX_VRS:
@@ -449,7 +449,7 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			// Build monitoring payload.
 			sigfox_payload_monitoring.vrs = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VRS);
 			sigfox_payload_monitoring.vhmi = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VHMI);
-			sigfox_payload_monitoring.nodes_count = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_STATUS_CONTROL_1], DMM_REG_STATUS_CONTROL_1_MASK_NODES_COUNT);
+			sigfox_payload_monitoring.nodes_count = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_STATUS], DMM_REG_STATUS_MASK_NODES_COUNT);
 			// Copy payload.
 			for (idx=0 ; idx<DMM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
 				(node_ul_payload -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];

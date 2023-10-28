@@ -95,16 +95,16 @@ static uint8_t mpmcm_por_flag = 1;
 static uint8_t mpmcm_mvd_flag = 0;
 
 static const NODE_line_data_t MPMCM_LINE_DATA[MPMCM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{"VRMS =",  " V",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0,    MPMCM_REG_X_0_RUN_MASK},
-	{"FREQ = ", " Hz", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_MAINS_FREQUENCY_0,    MPMCM_REG_X_0_RUN_MASK},
-	{"PACT1 =", " W",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH1_ACTIVE_POWER_0,   MPMCM_REG_X_0_RUN_MASK},
-	{"PAPP1 =", " VA", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH1_APPARENT_POWER_0, MPMCM_REG_X_0_RUN_MASK},
-	{"PACT2 =", " W",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH2_ACTIVE_POWER_0,   MPMCM_REG_X_0_RUN_MASK},
-	{"PAPP2 =", " VA", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH2_APPARENT_POWER_0, MPMCM_REG_X_0_RUN_MASK},
-	{"PACT3 =", " W",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH3_ACTIVE_POWER_0,   MPMCM_REG_X_0_RUN_MASK},
-	{"PAPP3 =", " VA", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH3_APPARENT_POWER_0, MPMCM_REG_X_0_RUN_MASK},
-	{"PACT4 =", " W",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH4_ACTIVE_POWER_0,   MPMCM_REG_X_0_RUN_MASK},
-	{"PAPP4 =", " VA", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH4_APPARENT_POWER_0, MPMCM_REG_X_0_RUN_MASK},
+	{"VRMS =",  " V",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0,    MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0,    DINFOX_REG_MASK_NONE},
+	{"FREQ = ", " Hz", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_MAINS_FREQUENCY_0,    MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_MAINS_FREQUENCY_0,    DINFOX_REG_MASK_NONE},
+	{"PACT1 =", " W",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH1_ACTIVE_POWER_0,   MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH1_ACTIVE_POWER_0,   DINFOX_REG_MASK_NONE},
+	{"PAPP1 =", " VA", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH1_APPARENT_POWER_0, MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH1_APPARENT_POWER_0, DINFOX_REG_MASK_NONE},
+	{"PACT2 =", " W",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH2_ACTIVE_POWER_0,   MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH2_ACTIVE_POWER_0,   DINFOX_REG_MASK_NONE},
+	{"PAPP2 =", " VA", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH2_APPARENT_POWER_0, MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH2_APPARENT_POWER_0, DINFOX_REG_MASK_NONE},
+	{"PACT3 =", " W",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH3_ACTIVE_POWER_0,   MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH3_ACTIVE_POWER_0,   DINFOX_REG_MASK_NONE},
+	{"PAPP3 =", " VA", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH3_APPARENT_POWER_0, MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH3_APPARENT_POWER_0, DINFOX_REG_MASK_NONE},
+	{"PACT4 =", " W",  STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH4_ACTIVE_POWER_0,   MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH4_ACTIVE_POWER_0,   DINFOX_REG_MASK_NONE},
+	{"PAPP4 =", " VA", STRING_FORMAT_DECIMAL, 0, MPMCM_REG_ADDR_CH4_APPARENT_POWER_0, MPMCM_REG_X_0_RUN_MASK, MPMCM_REG_ADDR_CH4_APPARENT_POWER_0, DINFOX_REG_MASK_NONE},
 };
 
 #define MPMCM_REG_ERROR_VALUE_CHx \
@@ -127,6 +127,7 @@ static const NODE_line_data_t MPMCM_LINE_DATA[MPMCM_LINE_DATA_INDEX_LAST - COMMO
 static const uint32_t MPMCM_REG_ERROR_VALUE[MPMCM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
 	0x00000000,
+	0x00000000,
 	((DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 16) | (DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 0)),
 	((DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 16) | (DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 0)),
 	MPMCM_REG_ERROR_VALUE_CHx
@@ -136,7 +137,7 @@ static const uint32_t MPMCM_REG_ERROR_VALUE[MPMCM_REG_ADDR_LAST] = {
 };
 
 static const uint8_t MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_VOLTAGE[] = {
-	MPMCM_REG_ADDR_STATUS_CONTROL_1,
+	MPMCM_REG_ADDR_STATUS,
 	MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0,
 	MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1
 };
@@ -220,7 +221,7 @@ NODE_status_t MPMCM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_a
 	else {
 		// Compute specific string data index and register address.
 		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
-		reg_addr = MPMCM_LINE_DATA[str_data_idx].reg_addr;
+		reg_addr = MPMCM_LINE_DATA[str_data_idx].read_reg_addr;
 		// Add data name.
 		NODE_append_name_string((char_t*) MPMCM_LINE_DATA[str_data_idx].name);
 		buffer_size = 0;
@@ -231,7 +232,7 @@ NODE_status_t MPMCM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_a
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, MPMCM_REG_ERROR_VALUE[reg_addr], &(MPMCM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
-		field_value = DINFOX_read_field(MPMCM_REGISTERS[reg_addr], MPMCM_LINE_DATA[str_data_idx].field_mask);
+		field_value = DINFOX_read_field(MPMCM_REGISTERS[reg_addr], MPMCM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
 		switch (line_data_read -> line_data_index) {
 		case MPMCM_LINE_DATA_INDEX_VRMS:
@@ -359,7 +360,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	NODE_dinfox_ul_payload_t dinfox_ul_payload;
 	UHFM_sigfox_message_t sigfox_message;
 	uint8_t addr_list[4];
-	uint32_t status_control_1 = 0;
+	uint32_t control_1 = 0;
 	uint8_t channel_idx;
 	uint32_t reg_offset = 0;
 	uint8_t idx = 0;
@@ -375,12 +376,12 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	// Reset MVD flag.
 	sigfox_payload_mains_voltage.mvd = 0;
 	// Store accumulated data of all channels (synchronization reset in case of POR).
-	status_control_1 |= MPMCM_REG_STATUS_CONTROL_1_MASK_CH1S;
-	status_control_1 |= MPMCM_REG_STATUS_CONTROL_1_MASK_CH2S;
-	status_control_1 |= MPMCM_REG_STATUS_CONTROL_1_MASK_CH3S;
-	status_control_1 |= MPMCM_REG_STATUS_CONTROL_1_MASK_CH4S;
-	status_control_1 |= MPMCM_REG_STATUS_CONTROL_1_MASK_FRQS;
-	status = XM_write_register(mpmcm_node_addr, MPMCM_REG_ADDR_STATUS_CONTROL_1, status_control_1, status_control_1, AT_BUS_DEFAULT_TIMEOUT_MS, &chxs_access_status);
+	control_1 |= MPMCM_REG_CONTROL_1_MASK_CH1S;
+	control_1 |= MPMCM_REG_CONTROL_1_MASK_CH2S;
+	control_1 |= MPMCM_REG_CONTROL_1_MASK_CH3S;
+	control_1 |= MPMCM_REG_CONTROL_1_MASK_CH4S;
+	control_1 |= MPMCM_REG_CONTROL_1_MASK_FRQS;
+	status = XM_write_register(mpmcm_node_addr, MPMCM_REG_ADDR_CONTROL_1, control_1, control_1, AT_BUS_DEFAULT_TIMEOUT_MS, &chxs_access_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Do not send frames on POR.
 	if (mpmcm_por_flag != 0) goto errors;
@@ -397,11 +398,11 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	}
 	// Build mains voltage frame.
 	sigfox_payload_mains_voltage.unused = 0;
-	sigfox_payload_mains_voltage.mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_MVD);
-	sigfox_payload_mains_voltage.ch4d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_CH4D);
-	sigfox_payload_mains_voltage.ch3d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_CH3D);
-	sigfox_payload_mains_voltage.ch2d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_CH2D);
-	sigfox_payload_mains_voltage.ch1d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1], MPMCM_REG_STATUS_CONTROL_1_MASK_CH1D);
+	sigfox_payload_mains_voltage.mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_MVD);
+	sigfox_payload_mains_voltage.ch4d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_CH4D);
+	sigfox_payload_mains_voltage.ch3d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_CH3D);
+	sigfox_payload_mains_voltage.ch2d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_CH2D);
+	sigfox_payload_mains_voltage.ch1d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_CH1D);
 	sigfox_payload_mains_voltage.vrms_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
 	sigfox_payload_mains_voltage.vrms_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
 	sigfox_payload_mains_voltage.vrms_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
@@ -445,7 +446,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	// Channels loop.
 	for (channel_idx=0 ; channel_idx<MPMCM_NUMBER_OF_ACI_CHANNELS ; channel_idx++) {
 		// Check detect flag.
-		if ((MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_CONTROL_1] & (0b1 << ((channel_idx << 1) + 1))) == 0) continue;
+		if ((MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS] & (0b1 << ((channel_idx << 1) + 1))) == 0) continue;
 		// Compute data registers offset according to selected channel.
 		reg_offset = (channel_idx * MPMCM_NUMBER_OF_REG_PER_DATA);
 		// Build registers list for mains power frame.

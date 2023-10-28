@@ -152,10 +152,10 @@ typedef union {
 /*******************************************************************/
 typedef struct {
 	NODE_t* node;
+	uint32_t timestamp_seconds;
 	uint8_t reg_addr;
 	uint32_t reg_value;
 	uint32_t reg_mask;
-	uint32_t timestamp_seconds;
 } NODE_action_t;
 
 /*******************************************************************/
@@ -677,19 +677,26 @@ NODE_status_t _NODE_execute_actions(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;
+	NODE_action_t node_action;
 	uint8_t idx = 0;
 	// Loop on action table.
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) {
 		// Check NODE pointer and timestamp.
 		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
+			// Copy action locally.
+			node_action.node = node_ctx.actions[idx].node;
+			node_action.timestamp_seconds = node_ctx.actions[idx].timestamp_seconds;
+			node_action.reg_addr = node_ctx.actions[idx].reg_addr;
+			node_action.reg_mask = node_ctx.actions[idx].reg_mask;
+			node_action.reg_value = node_ctx.actions[idx].reg_value;
+			// Remove action before execution.
+			status = _NODE_remove_action(idx);
+			if (status != NODE_SUCCESS) goto errors;
 			// Turn bus interface on.
 			power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
 			POWER_exit_error(NODE_ERROR_BASE_POWER);
 			// Perform write operation.
-			status = _NODE_write_register(node_ctx.actions[idx].node, node_ctx.actions[idx].reg_addr, node_ctx.actions[idx].reg_value, node_ctx.actions[idx].reg_mask);
-			if (status != NODE_SUCCESS) goto errors;
-			// Remove action.
-			status = _NODE_remove_action(idx);
+			status = _NODE_write_register(node_action.node, node_action.reg_addr, node_action.reg_value, node_action.reg_mask);
 			if (status != NODE_SUCCESS) goto errors;
 		}
 	}
@@ -760,16 +767,16 @@ NODE_status_t _NODE_radio_process(void) {
 errors:
 	// Update next radio times.
 	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
-	read_params.reg_addr = DMM_REG_ADDR_SYSTEM_CONFIGURATION;
+	read_params.reg_addr = DMM_REG_ADDR_CONTROL_1;
 	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
 	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	DMM_read_register(&read_params, &reg_value, &unused_read_status);
 	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
 	if (ul_next_time_update_required != 0) {
-		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_SYSTEM_CONFIGURATION_MASK_UL_PERIOD));
+		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_CONTROL_1_MASK_UL_PERIOD));
 	}
 	if (dl_next_time_update_required != 0) {
-		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_SYSTEM_CONFIGURATION_MASK_DL_PERIOD));
+		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_CONTROL_1_MASK_DL_PERIOD));
 	}
 	return status;
 }

@@ -134,8 +134,8 @@ NODE_status_t XM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_l
 	uint32_t reg_mask = 0;
 	uint32_t timeout_ms = 0;
 	// Compute parameters.
-	reg_addr = node_line_data[(line_data_write -> line_data_index)].reg_addr;
-	DINFOX_write_field(&reg_value, &reg_mask, (line_data_write -> field_value), node_line_data[(line_data_write -> line_data_index)].field_mask);
+	reg_addr = node_line_data[(line_data_write -> line_data_index)].write_reg_addr;
+	DINFOX_write_field(&reg_value, &reg_mask, (line_data_write -> field_value), node_line_data[(line_data_write -> line_data_index)].write_field_mask);
 	timeout_ms = node_write_timeout[reg_addr - COMMON_REG_ADDR_LAST];
 	// Write register.
 	status = XM_write_register((line_data_write -> node_addr), reg_addr, reg_value, reg_mask, timeout_ms, write_status);
@@ -149,15 +149,15 @@ NODE_status_t XM_perform_measurements(NODE_address_t node_addr, NODE_access_stat
 	NODE_access_parameters_t write_params;
 	// Build parameters.
 	write_params.node_addr = node_addr;
-	write_params.reg_addr = COMMON_REG_ADDR_STATUS_CONTROL_0;
+	write_params.reg_addr = COMMON_REG_ADDR_CONTROL_0;
 	write_params.reply_params.type = NODE_REPLY_TYPE_OK;
-	write_params.reply_params.timeout_ms = COMMON_REG_WRITE_TIMEOUT_MS[COMMON_REG_ADDR_STATUS_CONTROL_0];
+	write_params.reply_params.timeout_ms = COMMON_REG_WRITE_TIMEOUT_MS[COMMON_REG_ADDR_CONTROL_0];
 	// Write MTRG bit.
 	if (node_addr == DINFOX_NODE_ADDRESS_DMM) {
-		status = DMM_write_register(&write_params, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG, write_status);
+		status = DMM_write_register(&write_params, COMMON_REG_CONTROL_0_MASK_MTRG, COMMON_REG_CONTROL_0_MASK_MTRG, write_status);
 	}
 	else {
-		status = AT_BUS_write_register(&write_params, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG, COMMON_REG_STATUS_CONTROL_0_MASK_MTRG, write_status);
+		status = AT_BUS_write_register(&write_params, COMMON_REG_CONTROL_0_MASK_MTRG, COMMON_REG_CONTROL_0_MASK_MTRG, write_status);
 	}
 	return status;
 }

@@ -48,13 +48,14 @@ typedef union {
 static uint32_t UHFM_REGISTERS[UHFM_REG_ADDR_LAST];
 
 static const NODE_line_data_t UHFM_LINE_DATA[UHFM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{"EP ID", STRING_NULL, STRING_FORMAT_HEXADECIMAL, 1, UHFM_REG_ADDR_SIGFOX_EP_ID, DINFOX_REG_MASK_ALL},
-	{"VRF TX =", " V", STRING_FORMAT_DECIMAL, 0, UHFM_REG_ADDR_ANALOG_DATA_1, UHFM_REG_ANALOG_DATA_1_MASK_VRF_TX},
-	{"VRF RX =", " V", STRING_FORMAT_DECIMAL, 0, UHFM_REG_ADDR_ANALOG_DATA_1, UHFM_REG_ANALOG_DATA_1_MASK_VRF_RX}
+	{"EP ID", STRING_NULL, STRING_FORMAT_HEXADECIMAL, 1, UHFM_REG_ADDR_SIGFOX_EP_ID, DINFOX_REG_MASK_ALL, UHFM_REG_ADDR_SIGFOX_EP_ID, DINFOX_REG_MASK_NONE},
+	{"VRF TX =", " V", STRING_FORMAT_DECIMAL, 0, UHFM_REG_ADDR_ANALOG_DATA_1, UHFM_REG_ANALOG_DATA_1_MASK_VRF_TX, UHFM_REG_ADDR_ANALOG_DATA_1, DINFOX_REG_MASK_NONE},
+	{"VRF RX =", " V", STRING_FORMAT_DECIMAL, 0, UHFM_REG_ADDR_ANALOG_DATA_1, UHFM_REG_ANALOG_DATA_1_MASK_VRF_RX, UHFM_REG_ADDR_ANALOG_DATA_1, DINFOX_REG_MASK_NONE}
 };
 
 static const uint32_t UHFM_REG_ERROR_VALUE[UHFM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
+	0x00000000,
 	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	0x00000000,
@@ -159,7 +160,7 @@ NODE_status_t UHFM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 	else {
 		// Compute specific string data index and register address.
 		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
-		reg_addr = UHFM_LINE_DATA[str_data_idx].reg_addr;
+		reg_addr = UHFM_LINE_DATA[str_data_idx].read_reg_addr;
 		// Add data name.
 		NODE_append_name_string((char_t*) UHFM_LINE_DATA[str_data_idx].name);
 		buffer_size = 0;
@@ -170,7 +171,7 @@ NODE_status_t UHFM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, UHFM_REG_ERROR_VALUE[reg_addr], &(UHFM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
-		field_value = DINFOX_read_field(UHFM_REGISTERS[reg_addr], UHFM_LINE_DATA[str_data_idx].field_mask);
+		field_value = DINFOX_read_field(UHFM_REGISTERS[reg_addr], UHFM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
 		switch (line_data_read -> line_data_index) {
 		case UHFM_LINE_DATA_INDEX_SIGFOX_EP_ID:
@@ -337,7 +338,7 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 	// Set proper timeout.
 	radio_timeout_ms = ((sigfox_message -> bidirectional_flag) == 0) ? 10000 : 60000;
 	// Send message.
-	status = XM_write_register(node_addr, UHFM_REG_ADDR_STATUS_CONTROL_1, UHFM_REG_STATUS_CONTROL_1_MASK_STRG, UHFM_REG_STATUS_CONTROL_1_MASK_STRG, radio_timeout_ms, send_status);
+	status = XM_write_register(node_addr, UHFM_REG_ADDR_CONTROL_1, UHFM_REG_CONTROL_1_MASK_STRG, UHFM_REG_CONTROL_1_MASK_STRG, radio_timeout_ms, send_status);
 errors:
 	return status;
 }
@@ -351,10 +352,10 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	uint8_t reg_offset = 0;
 	uint8_t idx = 0;
 	// Read message status.
-	status = XM_read_register(node_addr, UHFM_REG_ADDR_STATUS_CONTROL_1, 0, &reg_value, read_status);
+	status = XM_read_register(node_addr, UHFM_REG_ADDR_STATUS, 0, &reg_value, read_status);
 	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 	// Compute message status.
-	message_status.all = DINFOX_read_field(reg_value, UHFM_REG_STATUS_CONTROL_1_MASK_MESSAGE_STATUS);
+	message_status.all = DINFOX_read_field(reg_value, UHFM_REG_STATUS_MASK_MESSAGE_STATUS);
 	// Check DL flag.
 	if (message_status.field.dl_frame == 0) goto errors;
 	// Byte loop.

@@ -111,8 +111,10 @@ typedef struct {
 	char_t* unit;
 	STRING_format_t print_format;
 	uint8_t print_prefix;
-	uint8_t reg_addr;
-	uint32_t field_mask;
+	uint8_t read_reg_addr;
+	uint32_t read_field_mask;
+	uint8_t write_reg_addr;
+	uint32_t write_field_mask;
 } NODE_line_data_t;
 
 /*!******************************************************************

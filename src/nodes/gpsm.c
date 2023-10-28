@@ -46,13 +46,14 @@ typedef union {
 static uint32_t GPSM_REGISTERS[GPSM_REG_ADDR_LAST];
 
 static const NODE_line_data_t GPSM_LINE_DATA[GPSM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{"VGPS =", " V", STRING_FORMAT_DECIMAL, 0, GPSM_REG_ADDR_ANALOG_DATA_1, GPSM_REG_ANALOG_DATA_1_MASK_VGPS},
-	{"VANT =", " V", STRING_FORMAT_DECIMAL, 0, GPSM_REG_ADDR_ANALOG_DATA_1, GPSM_REG_ANALOG_DATA_1_MASK_VANT},
+	{"VGPS =", " V", STRING_FORMAT_DECIMAL, 0, GPSM_REG_ADDR_ANALOG_DATA_1, GPSM_REG_ANALOG_DATA_1_MASK_VGPS, GPSM_REG_ADDR_ANALOG_DATA_1, DINFOX_REG_MASK_NONE},
+	{"VANT =", " V", STRING_FORMAT_DECIMAL, 0, GPSM_REG_ADDR_ANALOG_DATA_1, GPSM_REG_ANALOG_DATA_1_MASK_VANT, GPSM_REG_ADDR_ANALOG_DATA_1, DINFOX_REG_MASK_NONE},
 };
 
 static const uint32_t GPSM_REG_ERROR_VALUE[GPSM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
 	0x00000000,
+	(DINFOX_BIT_ERROR << 6),
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	0x00000000,
 	0x00000000,
@@ -143,7 +144,7 @@ NODE_status_t GPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 	else {
 		// Compute specific string data index and register address.
 		str_data_idx = ((line_data_read -> line_data_index) - COMMON_LINE_DATA_INDEX_LAST);
-		reg_addr = GPSM_LINE_DATA[str_data_idx].reg_addr;
+		reg_addr = GPSM_LINE_DATA[str_data_idx].read_reg_addr;
 		// Add data name.
 		NODE_append_name_string((char_t*) GPSM_LINE_DATA[str_data_idx].name);
 		buffer_size = 0;
@@ -154,7 +155,7 @@ NODE_status_t GPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, GPSM_REG_ERROR_VALUE[reg_addr], &(GPSM_REGISTERS[reg_addr]), read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
-		field_value = DINFOX_read_field(GPSM_REGISTERS[reg_addr], GPSM_LINE_DATA[str_data_idx].field_mask);
+		field_value = DINFOX_read_field(GPSM_REGISTERS[reg_addr], GPSM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
 		switch (line_data_read -> line_data_index) {
 		case GPSM_LINE_DATA_INDEX_VGPS:

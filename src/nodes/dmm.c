@@ -15,6 +15,7 @@
 #include "mapping.h"
 #include "mode.h"
 #include "node.h"
+#include "node_common.h"
 #include "power.h"
 #include "pwr.h"
 #include "rcc_reg.h"

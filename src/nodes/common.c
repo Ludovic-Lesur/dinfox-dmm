@@ -10,6 +10,7 @@
 #include "common_reg.h"
 #include "dinfox.h"
 #include "node.h"
+#include "node_common.h"
 #include "rcc_reg.h"
 #include "string.h"
 #include "types.h"

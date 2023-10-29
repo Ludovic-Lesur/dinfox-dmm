@@ -10,6 +10,7 @@
 #include "dinfox.h"
 #include "lpuart.h"
 #include "node.h"
+#include "node_common.h"
 #include "r4s8cr_reg.h"
 #include "xm.h"
 
@@ -55,15 +56,15 @@ typedef struct {
 typedef union {
 	uint8_t frame[R4S8CR_SIGFOX_PAYLOAD_ELECTRICAL_SIZE];
 	struct {
-		unsigned r1stst : 2;
-		unsigned r2stst : 2;
-		unsigned r3stst : 2;
-		unsigned r4stst : 2;
-		unsigned r5stst : 2;
-		unsigned r6stst : 2;
-		unsigned r7stst : 2;
 		unsigned r8stst : 2;
-	} __attribute__((packed));
+		unsigned r7stst : 2;
+		unsigned r6stst : 2;
+		unsigned r5stst : 2;
+		unsigned r4stst : 2;
+		unsigned r3stst : 2;
+		unsigned r2stst : 2;
+		unsigned r1stst : 2;
+	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } R4S8CR_sigfox_payload_data_t;
 
 /*** R4S8CR local global variables ***/

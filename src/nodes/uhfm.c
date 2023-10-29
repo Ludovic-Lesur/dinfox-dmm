@@ -12,6 +12,7 @@
 #include "common.h"
 #include "dinfox.h"
 #include "node.h"
+#include "node_common.h"
 #include "sigfox_ep_api.h"
 #include "sigfox_types.h"
 #include "string.h"

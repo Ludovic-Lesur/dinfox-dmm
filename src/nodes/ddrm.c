@@ -11,6 +11,7 @@
 #include "common.h"
 #include "dinfox.h"
 #include "node.h"
+#include "node_common.h"
 #include "string.h"
 #include "xm.h"
 

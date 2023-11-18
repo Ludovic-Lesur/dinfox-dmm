@@ -172,17 +172,17 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 	temp |= (reg_value & reg_mask);
 	// Write register.
 	DMM_INTERNAL_REGISTERS[(write_params -> reg_addr)] = temp;
-	// Check actions.
+	// RTRG.
 	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0], COMMON_REG_CONTROL_0_MASK_RTRG) != 0) {
 		// Clear flag.
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0]), &unused_mask, 0, COMMON_REG_CONTROL_0_MASK_RTRG);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0]), &unused_mask, 0b0, COMMON_REG_CONTROL_0_MASK_RTRG);
 		// Reset MCU.
 		PWR_software_reset();
 	}
-	// Measure trigger bit.
+	// MTRG.
 	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0], COMMON_REG_CONTROL_0_MASK_MTRG) != 0) {
 		// Clear flag.
-		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0]), &unused_mask, 0, COMMON_REG_CONTROL_0_MASK_MTRG);
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0]), &unused_mask, 0b0, COMMON_REG_CONTROL_0_MASK_MTRG);
 		// Reset results.
 		_DMM_reset_analog_data();
 		// Check HMI power status.
@@ -226,6 +226,13 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 		adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &adc_data);
 		ADC1_exit_error(NODE_ERROR_BASE_ADC);
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_2_MASK_VUSB);
+	}
+	// BFC.
+	if (DINFOX_read_field(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0], COMMON_REG_CONTROL_0_MASK_BFC) != 0) {
+		// Clear boot flag.
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_0]), &unused_mask, 0b0, COMMON_REG_STATUS_0_MASK_BF);
+		// Clear request.
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_CONTROL_0]), &unused_mask, 0b0, COMMON_REG_CONTROL_0_MASK_BFC);
 	}
 errors:
 	return status;

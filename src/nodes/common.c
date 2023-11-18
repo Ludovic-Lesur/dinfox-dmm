@@ -266,7 +266,7 @@ NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payl
 		goto errors;
 	}
 	// Reset payload size.
-	(node_ul_payload -> size) = 0;
+	(*(node_ul_payload -> size)) = 0;
 	// Read status register.
 	status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_STATUS_0, 0, &reg_status_0, &access_status);
 	if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;

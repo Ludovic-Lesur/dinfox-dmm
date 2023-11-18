@@ -276,7 +276,7 @@ NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payl
 		status = _COMMON_build_sigfox_payload_startup(node_ul_payload, node_reg);
 		if (status != NODE_SUCCESS) goto errors;
 		// Clear boot flag.
-		status = XM_write_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_CONTROL_0, 0b1, COMMON_REG_CONTROL_0_MASK_BFC, AT_BUS_DEFAULT_TIMEOUT_MS, &access_status);
+		status = XM_write_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_CONTROL_0, COMMON_REG_CONTROL_0_MASK_BFC, COMMON_REG_CONTROL_0_MASK_BFC, AT_BUS_DEFAULT_TIMEOUT_MS, &access_status);
 		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
 	}
 	else {

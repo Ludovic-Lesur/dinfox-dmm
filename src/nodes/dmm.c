@@ -261,6 +261,10 @@ NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t*
 		// Unstack error.
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ERROR_STACK]), &unused_mask, (uint32_t) (ERROR_stack_read()), COMMON_REG_ERROR_STACK_MASK_ERROR);
 		break;
+	case COMMON_REG_ADDR_STATUS_0:
+		// Check error stack.
+		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_0]), &unused_mask, ((ERROR_stack_is_empty() == 0) ? 0b1 : 0b0), COMMON_REG_STATUS_0_MASK_ESF);
+		break;
 	case DMM_REG_ADDR_STATUS_1:
 		DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_STATUS_1]), &unused_mask, (uint32_t) (NODES_LIST.count), DMM_REG_STATUS_1_MASK_NODES_COUNT);
 		break;

@@ -89,7 +89,6 @@ typedef enum {
 typedef struct {
 	NODE_address_t address;
 	uint8_t board_id;
-	uint8_t startup_data_sent;
 	uint8_t radio_transmission_count;
 } NODE_t;
 

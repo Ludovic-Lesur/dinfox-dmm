@@ -77,21 +77,12 @@ NODE_status_t COMMON_write_line_data(NODE_line_data_write_t* line_data_write, NO
 NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_node_registers_t* node_reg, NODE_access_status_t* read_status);
 
 /*!******************************************************************
- * \fn NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg)
- * \brief Build common startup Sigfox uplink payload.
+ * \fn NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg)
+ * \brief Check common flags and build associated payloads.
  * \param[in]	node_reg: Pointer to the node registers and error values.
  * \param[out] 	node_ul_payload: Pointer to the Sigfox uplink payload.
  * \retval		Function execution status.
  *******************************************************************/
-NODE_status_t COMMON_build_sigfox_payload_startup(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg);
-
-/*!******************************************************************
- * \fn NODE_status_t COMMON_build_sigfox_payload_error_stack(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg)
- * \brief Build common error stack Sigfox uplink payload.
- * \param[in]	node_reg: Pointer to the node registers and error values.
- * \param[out] 	node_ul_payload: Pointer to the Sigfox uplink payload.
- * \retval		Function execution status.
- *******************************************************************/
-NODE_status_t COMMON_build_sigfox_payload_error_stack(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg);
+NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg);
 
 #endif /* __COMMON_H__ */

@@ -32,13 +32,6 @@
 /*** MPMCM local structures ***/
 
 /*******************************************************************/
-typedef enum {
-	MPMCM_SIGFOX_PAYLOAD_TYPE_STARTUP = 0,
-	MPMCM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK,
-	MPMCM_SIGFOX_PAYLOAD_TYPE_LAST
-} MPMCM_sigfox_payload_type_t;
-
-/*******************************************************************/
 typedef union {
 	uint8_t frame[MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE];
 	struct {
@@ -158,11 +151,6 @@ static const uint8_t MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER[] = {
 static const uint8_t MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR[] = {
 	MPMCM_REG_ADDR_CH1_POWER_FACTOR_0,
 	MPMCM_REG_ADDR_CH1_POWER_FACTOR_1,
-};
-
-static const MPMCM_sigfox_payload_type_t MPMCM_SIGFOX_PAYLOAD_PATTERN[] = {
-	MPMCM_SIGFOX_PAYLOAD_TYPE_STARTUP,
-	MPMCM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK
 };
 
 /*** MPMCM functions ***/
@@ -297,7 +285,6 @@ NODE_status_t MPMCM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) 
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	XM_node_registers_t node_reg;
-	uint32_t loop_count = 0;
 	// Check parameters.
 	if (node_ul_payload == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -312,36 +299,9 @@ NODE_status_t MPMCM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) 
 	node_reg.error = (uint32_t*) MPMCM_REG_ERROR_VALUE;
 	// Reset payload size.
 	(*(node_ul_payload -> size)) = 0;
-	// Main loop.
-	do {
-		// Check payload type.
-		switch (MPMCM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
-		case MPMCM_SIGFOX_PAYLOAD_TYPE_STARTUP:
-			// Check flag.
-			if ((node_ul_payload -> node -> startup_data_sent) == 0) {
-				// Use common format.
-				status = COMMON_build_sigfox_payload_startup(node_ul_payload, &node_reg);
-				if (status != NODE_SUCCESS) goto errors;
-				// Update flag.
-				(node_ul_payload -> node -> startup_data_sent) = 1;
-			}
-			break;
-		case MPMCM_SIGFOX_PAYLOAD_TYPE_ERROR_STACK:
-			// Use common format.
-			status = COMMON_build_sigfox_payload_error_stack(node_ul_payload, &node_reg);
-			if (status != NODE_SUCCESS) goto errors;
-			break;
-		default:
-			status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
-			goto errors;
-		}
-		// Increment transmission count.
-		(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(MPMCM_SIGFOX_PAYLOAD_PATTERN));
-		// Exit in case of loop error.
-		loop_count++;
-		if (loop_count > MPMCM_SIGFOX_PAYLOAD_LOOP_MAX) break;
-	}
-	while ((*(node_ul_payload -> size)) == 0);
+	// Check event driven payloads.
+	status = COMMON_check_event_driven_payloads(node_ul_payload, &node_reg);
+	if (status != NODE_SUCCESS) goto errors;
 errors:
 	return status;
 }

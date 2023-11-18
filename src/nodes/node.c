@@ -274,7 +274,6 @@ void _NODE_flush_list(void) {
 	for (idx=0 ; idx<NODES_LIST_SIZE_MAX ; idx++) {
 		NODES_LIST.list[idx].address = 0xFF;
 		NODES_LIST.list[idx].board_id = DINFOX_BOARD_ID_ERROR;
-		NODES_LIST.list[idx].startup_data_sent = 0;
 		NODES_LIST.list[idx].radio_transmission_count = 0;
 	}
 	NODES_LIST.count = 0;
@@ -397,11 +396,8 @@ NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag, uint8_t
 	// Execute function of the corresponding board ID.
 	status = NODES[node -> board_id].functions.build_sigfox_ul_payload(&node_ul_payload);
 	if (status != NODE_SUCCESS) goto errors;
-	// Check size.
-	if (node_ul_payload_size == 0) {
-		// Node has no data to send, exit directly.
-		goto errors;
-	}
+	// Exit directly if node has no data to send.
+	if (node_ul_payload_size == 0) goto errors;
 	(*message_sent) = 1;
 	// Add board ID and node address.
 	dinfox_ul_payload.board_id = (node -> board_id);

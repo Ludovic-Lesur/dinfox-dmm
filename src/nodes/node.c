@@ -524,7 +524,8 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.full_write.reg_value;
 		action.reg_mask = DINFOX_REG_MASK_ALL;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_DOWNLINK_OP_CODE_SINGLE_MASKED_WRITE:
 		// Search node.
@@ -536,7 +537,8 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.masked_write.reg_value;
 		action.reg_mask = (uint32_t) node_ctx.sigfox_dl_payload.masked_write.reg_mask;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_DOWNLINK_OP_CODE_TEMPORARY_FULL_WRITE:
 		// Search node.
@@ -551,11 +553,13 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.full_write.reg_value;
 		action.reg_mask = DINFOX_REG_MASK_ALL;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register second action.
 		action.reg_value = previous_reg_value;
 		action.timestamp_seconds = RTC_get_time_seconds() + DINFOX_get_seconds(node_ctx.sigfox_dl_payload.full_write.duration);
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_DOWNLINK_OP_CODE_TEMPORARY_MASKED_WRITE:
 		// Search node.
@@ -570,11 +574,13 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.masked_write.reg_value;
 		action.reg_mask = (uint32_t) node_ctx.sigfox_dl_payload.masked_write.reg_mask;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register second action.
 		action.reg_value = previous_reg_value;
 		action.timestamp_seconds = RTC_get_time_seconds() + DINFOX_get_seconds(node_ctx.sigfox_dl_payload.masked_write.duration);
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_DOWNLINK_OP_CODE_SUCCESSIVE_FULL_WRITE:
 		// Search node.
@@ -586,11 +592,13 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.successive_full_write.reg_value_1;
 		action.reg_mask = DINFOX_REG_MASK_ALL;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register second action.
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.successive_full_write.reg_value_2;
 		action.timestamp_seconds = RTC_get_time_seconds() + DINFOX_get_seconds(node_ctx.sigfox_dl_payload.successive_full_write.duration);
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_DOWNLINK_OP_CODE_SUCCESSIVE_MASKED_WRITE:
 		// Search node.
@@ -602,11 +610,13 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.successive_masked_write.reg_value_1;
 		action.reg_mask = (uint32_t) node_ctx.sigfox_dl_payload.successive_masked_write.reg_mask;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register second action.
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.successive_masked_write.reg_value_2;
 		action.timestamp_seconds = RTC_get_time_seconds() + DINFOX_get_seconds(node_ctx.sigfox_dl_payload.successive_masked_write.duration);
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_DOWNLINK_OP_CODE_DUAL_FULL_WRITE:
 		// Search node.
@@ -618,11 +628,13 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.dual_full_write.reg_1_value;
 		action.reg_mask = DINFOX_REG_MASK_ALL;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register second action.
 		action.reg_addr = node_ctx.sigfox_dl_payload.dual_full_write.reg_2_addr;
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.dual_full_write.reg_2_value;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_DOWNLINK_OP_CODE_TRIPLE_FULL_WRITE:
 		// Search node.
@@ -634,15 +646,18 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.triple_full_write.reg_1_value;
 		action.reg_mask = DINFOX_REG_MASK_ALL;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register second action.
 		action.reg_addr = node_ctx.sigfox_dl_payload.triple_full_write.reg_2_addr;
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.triple_full_write.reg_2_value;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		// Register third action.
 		action.reg_addr = node_ctx.sigfox_dl_payload.triple_full_write.reg_3_addr;
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.triple_full_write.reg_3_value;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	case NODE_DOWNLINK_OP_CODE_DUAL_NODE_WRITE:
 		// Search first node.
@@ -654,7 +669,8 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.dual_node_write.reg_1_value;
 		action.reg_mask = DINFOX_REG_MASK_ALL;
 		action.timestamp_seconds = 0;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		// Search second node.
 		status = _NODE_search(node_ctx.sigfox_dl_payload.dual_node_write.node_2_addr, &node_ptr);
 		if (status != NODE_SUCCESS) goto errors;
@@ -662,7 +678,8 @@ NODE_status_t _NODE_execute_downlink(void) {
 		action.node = node_ptr;
 		action.reg_addr = node_ctx.sigfox_dl_payload.dual_node_write.reg_2_addr;
 		action.reg_value = (uint32_t) node_ctx.sigfox_dl_payload.dual_node_write.reg_2_value;
-		_NODE_record_action(&action);
+		status = _NODE_record_action(&action);
+		if (status != NODE_SUCCESS) goto errors;
 		break;
 	default:
 		status = NODE_ERROR_DOWNLINK_OPERATION_CODE;

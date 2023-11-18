@@ -353,10 +353,10 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	uint8_t reg_offset = 0;
 	uint8_t idx = 0;
 	// Read message status.
-	status = XM_read_register(node_addr, UHFM_REG_ADDR_STATUS, 0, &reg_value, read_status);
+	status = XM_read_register(node_addr, UHFM_REG_ADDR_STATUS_1, 0, &reg_value, read_status);
 	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 	// Compute message status.
-	message_status.all = DINFOX_read_field(reg_value, UHFM_REG_STATUS_MASK_MESSAGE_STATUS);
+	message_status.all = DINFOX_read_field(reg_value, UHFM_REG_STATUS_1_MASK_MESSAGE_STATUS);
 	// Check DL flag.
 	if (message_status.field.dl_frame == 0) goto errors;
 	// Byte loop.

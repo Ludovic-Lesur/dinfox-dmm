@@ -138,7 +138,7 @@ static const uint32_t MPMCM_REG_ERROR_VALUE[MPMCM_REG_ADDR_LAST] = {
 };
 
 static const uint8_t MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_VOLTAGE[] = {
-	MPMCM_REG_ADDR_STATUS,
+	MPMCM_REG_ADDR_STATUS_1,
 	MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0,
 	MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1
 };
@@ -399,11 +399,11 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	}
 	// Build mains voltage frame.
 	sigfox_payload_mains_voltage.unused = 0;
-	sigfox_payload_mains_voltage.mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_MVD);
-	sigfox_payload_mains_voltage.ch4d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_CH4D);
-	sigfox_payload_mains_voltage.ch3d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_CH3D);
-	sigfox_payload_mains_voltage.ch2d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_CH2D);
-	sigfox_payload_mains_voltage.ch1d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS], MPMCM_REG_STATUS_MASK_CH1D);
+	sigfox_payload_mains_voltage.mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_MVD);
+	sigfox_payload_mains_voltage.ch4d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH4D);
+	sigfox_payload_mains_voltage.ch3d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH3D);
+	sigfox_payload_mains_voltage.ch2d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH2D);
+	sigfox_payload_mains_voltage.ch1d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH1D);
 	sigfox_payload_mains_voltage.vrms_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
 	sigfox_payload_mains_voltage.vrms_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
 	sigfox_payload_mains_voltage.vrms_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
@@ -447,7 +447,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	// Channels loop.
 	for (channel_idx=0 ; channel_idx<MPMCM_NUMBER_OF_ACI_CHANNELS ; channel_idx++) {
 		// Check detect flag.
-		if ((MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS] & (0b1 << ((channel_idx << 1) + 1))) == 0) continue;
+		if ((MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1] & (0b1 << ((channel_idx << 1) + 1))) == 0) continue;
 		// Compute data registers offset according to selected channel.
 		reg_offset = (channel_idx * MPMCM_NUMBER_OF_REG_PER_DATA);
 		// Build registers list for mains power frame.

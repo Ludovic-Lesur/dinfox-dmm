@@ -10,9 +10,10 @@
 
 /*** DMM options ***/
 
-// Sigfox default periods.
+// Default periods.
 #define DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	300
 #define DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
+#define DMM_NODES_SCAN_PERIOD_SECONDS_DEFAULT	86400
 
 // Battery security system with LVRM.
 //#define DMM_BMS_ENABLE

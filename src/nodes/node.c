@@ -17,11 +17,13 @@
 #include "dmm.h"
 #include "dmm_reg.h"
 #include "error.h"
+#include "gpio.h"
 #include "gpsm.h"
 #include "gpsm_reg.h"
 #include "lpuart.h"
 #include "lvrm.h"
 #include "lvrm_reg.h"
+#include "mapping.h"
 #include "mode.h"
 #include "mpmcm.h"
 #include "node_common.h"
@@ -167,6 +169,8 @@ typedef struct {
 /*******************************************************************/
 typedef struct {
 	NODE_data_t data;
+	// Nodes scanning.
+	uint32_t scan_next_time_seconds;
 	// Uplink.
 	uint32_t sigfox_ul_next_time_seconds;
 	uint8_t sigfox_ul_node_list_index;
@@ -686,32 +690,14 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_execute_actions(void) {
+NODE_status_t _NODE_scan_process(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	POWER_status_t power_status = POWER_SUCCESS;
-	NODE_action_t node_action;
-	uint8_t idx = 0;
-	// Loop on action table.
-	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) {
-		// Check NODE pointer and timestamp.
-		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
-			// Copy action locally.
-			node_action.node = node_ctx.actions[idx].node;
-			node_action.timestamp_seconds = node_ctx.actions[idx].timestamp_seconds;
-			node_action.reg_addr = node_ctx.actions[idx].reg_addr;
-			node_action.reg_mask = node_ctx.actions[idx].reg_mask;
-			node_action.reg_value = node_ctx.actions[idx].reg_value;
-			// Remove action before execution.
-			status = _NODE_remove_action(idx);
-			if (status != NODE_SUCCESS) goto errors;
-			// Turn bus interface on.
-			power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
-			POWER_exit_error(NODE_ERROR_BASE_POWER);
-			// Perform write operation.
-			status = _NODE_write_register(node_action.node, node_action.reg_addr, node_action.reg_value, node_action.reg_mask);
-			if (status != NODE_SUCCESS) goto errors;
-		}
+	// Check scan period.
+	if (RTC_get_time_seconds() >= node_ctx.scan_next_time_seconds) {
+		// Perform scan.
+		status = NODE_scan();
+		if (status != NODE_SUCCESS) goto errors;
 	}
 errors:
 	return status;
@@ -786,11 +772,43 @@ errors:
 	DMM_read_register(&read_params, &reg_value, &unused_read_status);
 	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
 	if (ul_next_time_update_required != 0) {
-		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_CONTROL_1_MASK_UL_PERIOD));
+		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONTROL_1_MASK_SIGFOX_UL_PERIOD));
 	}
 	if (dl_next_time_update_required != 0) {
-		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds(DINFOX_read_field(reg_value, DMM_REG_CONTROL_1_MASK_DL_PERIOD));
+		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONTROL_1_MASK_SIGFOX_DL_PERIOD));
 	}
+	return status;
+}
+
+/*******************************************************************/
+NODE_status_t _NODE_execute_actions(void) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
+	NODE_action_t node_action;
+	uint8_t idx = 0;
+	// Loop on action table.
+	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) {
+		// Check NODE pointer and timestamp.
+		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
+			// Copy action locally.
+			node_action.node = node_ctx.actions[idx].node;
+			node_action.timestamp_seconds = node_ctx.actions[idx].timestamp_seconds;
+			node_action.reg_addr = node_ctx.actions[idx].reg_addr;
+			node_action.reg_mask = node_ctx.actions[idx].reg_mask;
+			node_action.reg_value = node_ctx.actions[idx].reg_value;
+			// Remove action before execution.
+			status = _NODE_remove_action(idx);
+			if (status != NODE_SUCCESS) goto errors;
+			// Turn bus interface on.
+			power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+			POWER_exit_error(NODE_ERROR_BASE_POWER);
+			// Perform write operation.
+			status = _NODE_write_register(node_action.node, node_action.reg_addr, node_action.reg_value, node_action.reg_mask);
+			if (status != NODE_SUCCESS) goto errors;
+		}
+	}
+errors:
 	return status;
 }
 
@@ -803,6 +821,7 @@ void NODE_init_por(void) {
 	// Reset node list.
 	_NODE_flush_list();
 	// Init context.
+	node_ctx.scan_next_time_seconds = 0;
 	node_ctx.sigfox_ul_node_list_index = 0;
 	node_ctx.sigfox_ul_next_time_seconds = 0;
 	node_ctx.sigfox_dl_next_time_seconds = 0;
@@ -838,17 +857,33 @@ NODE_status_t NODE_scan(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	POWER_status_t power_status = LPUART_SUCCESS;
+	NODE_access_parameters_t read_params;
+	NODE_access_status_t unused_read_status;
+	uint32_t reg_value = 0;
 	uint8_t nodes_count = 0;
 	uint8_t idx = 0;
+	uint8_t rs485_on = 0;
+	// Read scan period.
+	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
+	read_params.reg_addr = DMM_REG_ADDR_CONTROL_1;
+	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
+	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
+	DMM_read_register(&read_params, &reg_value, &unused_read_status);
+	// Update next scan time.
+	node_ctx.scan_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONTROL_1_MASK_NODES_SCAN_PERIOD));
 	// Reset list.
 	_NODE_flush_list();
 	// Add master board to the list.
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
 	NODES_LIST.list[0].address = DINFOX_NODE_ADDRESS_DMM;
 	NODES_LIST.count++;
+	// Check RS485 transceiver power status.
+	rs485_on = GPIO_read(&GPIO_TRX_POWER_ENABLE);
 	// Turn bus interface on.
-	power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
-	POWER_exit_error(NODE_ERROR_BASE_POWER);
+	if (rs485_on == 0) {
+		power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+		POWER_exit_error(NODE_ERROR_BASE_POWER);
+	}
 	// Scan LBUS nodes.
 	status = AT_BUS_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
 	if (status != NODE_SUCCESS) goto errors;
@@ -884,7 +919,9 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.count += nodes_count;
 errors:
 	// Turn bus interface off.
-	POWER_disable(POWER_DOMAIN_RS485);
+	if (rs485_on == 0) {
+		POWER_disable(POWER_DOMAIN_RS485);
+	}
 	return status;
 }
 
@@ -898,6 +935,9 @@ void NODE_process(void) {
 	NODE_stack_error();
 	// Execute node actions.
 	node_status = _NODE_execute_actions();
+	NODE_stack_error();
+	// Periodic nodes scanning.
+	node_status = _NODE_scan_process();
 	NODE_stack_error();
 #ifdef DMM_BMS_ENABLE
 	// Check BMS presence and monitoring period.

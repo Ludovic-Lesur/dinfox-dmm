@@ -39,10 +39,12 @@
 
 /*** NODE local macros ***/
 
-#define NODE_LINE_DATA_INDEX_MAX	32
-#define NODE_REGISTER_ADDRESS_MAX	64
+#define NODE_LINE_DATA_INDEX_MAX				32
 
-#define NODE_ACTIONS_DEPTH			10
+#define NODE_ACTIONS_DEPTH						10
+
+#define NODE_DOWNLINK_HASH_ERROR_VALUE			0xFFFF
+#define NODE_DOWNLINK_WRITE_STATUS_ERROR_VALUE	0xFF
 
 /*** NODE local structures ***/
 
@@ -153,15 +155,6 @@ typedef union {
 
 /*******************************************************************/
 typedef struct {
-	NODE_t* node;
-	uint32_t timestamp_seconds;
-	uint8_t reg_addr;
-	uint32_t reg_value;
-	uint32_t reg_mask;
-} NODE_action_t;
-
-/*******************************************************************/
-typedef struct {
 	char_t line_data_name[NODE_LINE_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
 	char_t line_data_value[NODE_LINE_DATA_INDEX_MAX][NODE_STRING_BUFFER_SIZE];
 } NODE_data_t;
@@ -181,6 +174,7 @@ typedef struct {
 	NODE_action_t actions[NODE_ACTIONS_DEPTH];
 	uint8_t actions_index;
 	// Specific nodes pointers.
+	NODE_t* dmm_node_ptr;
 	NODE_t* uhfm_node_ptr;
 	NODE_t* mpmcm_node_ptr;
 #ifdef DMM_BMS_ENABLE
@@ -284,23 +278,13 @@ void _NODE_flush_list(void) {
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask) {
+NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t write_input;
-	NODE_access_status_t node_access_status = {.all = 0};
 	// Check node and board ID.
 	_NODE_check_node_and_board_id();
 	_NODE_check_function_pointer(write_register);
-	// Check register address.
-	if (NODES[node -> board_id].last_reg_addr == 0) {
-		status = NODE_ERROR_NOT_SUPPORTED;
-		goto errors;
-	}
-	if (reg_addr >= (NODES[node -> board_id].last_reg_addr)) {
-		status = NODE_ERROR_REGISTER_ADDRESS;
-		goto errors;
-	}
 	// Common write parameters.
 	write_input.node_addr = (node -> address);
 	write_input.reg_addr = reg_addr;
@@ -320,9 +304,8 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_
 		status = NODE_ERROR_PROTOCOL;
 		break;
 	}
-	status = NODES[node -> board_id].functions.write_register(&write_input, reg_value, reg_mask, &node_access_status);
+	status = NODES[node -> board_id].functions.write_register(&write_input, reg_value, reg_mask, write_status);
 	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status(node -> address);
 errors:
 	return status;
 }
@@ -393,7 +376,7 @@ NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag, uint8_t
 	}
 	// Reset payload.
 	for (idx=0 ; idx<SIGFOX_UL_PAYLOAD_MAX_SIZE_BYTES ; idx++) dinfox_ul_payload.frame[idx] = 0x00;
-	// Build update structure.
+	// Build payload structure.
 	node_ul_payload.node = node;
 	node_ul_payload.ul_payload = (uint8_t*) dinfox_ul_payload.node_data;
 	node_ul_payload.size = &node_ul_payload_size;
@@ -432,6 +415,8 @@ NODE_status_t _NODE_radio_read(void) {
 	}
 	// Read downlink payload.
 	status = UHFM_get_dl_payload(((node_ctx.uhfm_node_ptr) -> address), node_ctx.sigfox_dl_payload.frame, &node_access_status);
+	if (status != NODE_SUCCESS) goto errors;
+	NODE_check_access_status((node_ctx.uhfm_node_ptr) -> address);
 errors:
 	return status;
 }
@@ -446,10 +431,12 @@ NODE_status_t _NODE_remove_action(uint8_t action_index) {
 		goto errors;
 	}
 	node_ctx.actions[action_index].node = NULL;
+	node_ctx.actions[action_index].downlink_hash = NODE_DOWNLINK_HASH_ERROR_VALUE;
 	node_ctx.actions[action_index].reg_addr = 0x00;
 	node_ctx.actions[action_index].reg_value = 0;
 	node_ctx.actions[action_index].reg_mask = 0;
 	node_ctx.actions[action_index].timestamp_seconds = 0;
+	node_ctx.actions[action_index].write_status.all = NODE_DOWNLINK_WRITE_STATUS_ERROR_VALUE;
 errors:
 	return status;
 }
@@ -465,10 +452,12 @@ NODE_status_t _NODE_record_action(NODE_action_t* action) {
 	}
 	// Store action.
 	node_ctx.actions[node_ctx.actions_index].node = (action -> node);
+	node_ctx.actions[node_ctx.actions_index].downlink_hash = (action -> downlink_hash);
 	node_ctx.actions[node_ctx.actions_index].reg_addr = (action -> reg_addr);
 	node_ctx.actions[node_ctx.actions_index].reg_value = (action -> reg_value);
 	node_ctx.actions[node_ctx.actions_index].reg_mask = (action -> reg_mask);
 	node_ctx.actions[node_ctx.actions_index].timestamp_seconds = (action -> timestamp_seconds);
+	node_ctx.actions[node_ctx.actions_index].write_status = (action -> write_status);
 	// Increment index.
 	node_ctx.actions_index = (node_ctx.actions_index + 1) % NODE_ACTIONS_DEPTH;
 errors:
@@ -506,9 +495,18 @@ errors:
 NODE_status_t _NODE_execute_downlink(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t node_access_status = {.all = 0};
 	NODE_action_t action;
+	uint32_t last_bidirectional_mc = 0;
 	NODE_t* node_ptr = NULL;
 	uint32_t previous_reg_value = 0;
+	// Read last message counter.
+	status = UHFM_get_last_bidirectional_mc(((node_ctx.uhfm_node_ptr) -> address), &last_bidirectional_mc, &node_access_status);
+	if (status != NODE_SUCCESS) goto errors;
+	NODE_check_access_status((node_ctx.uhfm_node_ptr) -> address);
+	// Common action parameters.
+	action.downlink_hash = last_bidirectional_mc;
+	action.write_status.all = NODE_DOWNLINK_WRITE_STATUS_ERROR_VALUE;
 	// Check operation code.
 	switch (node_ctx.sigfox_dl_payload.op_code) {
 	case NODE_DOWNLINK_OP_CODE_NOP:
@@ -785,6 +783,11 @@ NODE_status_t _NODE_execute_actions(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;
+	NODE_ul_payload_t node_ul_payload;
+	uint8_t node_ul_payload_size = 0;
+	NODE_dinfox_ul_payload_t dinfox_ul_payload;
+	UHFM_sigfox_message_t sigfox_message;
+	NODE_access_status_t node_access_status = {.all = 0};
 	NODE_action_t node_action;
 	uint8_t idx = 0;
 	// Loop on action table.
@@ -793,19 +796,38 @@ NODE_status_t _NODE_execute_actions(void) {
 		if ((node_ctx.actions[idx].node != NULL) && (RTC_get_time_seconds() >= node_ctx.actions[idx].timestamp_seconds)) {
 			// Copy action locally.
 			node_action.node = node_ctx.actions[idx].node;
+			node_action.downlink_hash = node_ctx.actions[idx].downlink_hash;
 			node_action.timestamp_seconds = node_ctx.actions[idx].timestamp_seconds;
 			node_action.reg_addr = node_ctx.actions[idx].reg_addr;
 			node_action.reg_mask = node_ctx.actions[idx].reg_mask;
 			node_action.reg_value = node_ctx.actions[idx].reg_value;
+			node_action.write_status = node_ctx.actions[idx].write_status;
 			// Remove action before execution.
 			status = _NODE_remove_action(idx);
 			if (status != NODE_SUCCESS) goto errors;
 			// Turn bus interface on.
 			power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
 			POWER_exit_error(NODE_ERROR_BASE_POWER);
-			// Perform write operation.
-			status = _NODE_write_register(node_action.node, node_action.reg_addr, node_action.reg_value, node_action.reg_mask);
+			// Perform write operation (status is not checked because action log message must be sent whatever the result).
+			_NODE_write_register(node_action.node, node_action.reg_addr, node_action.reg_value, node_action.reg_mask, &(node_action.write_status));
+			// Build payload structure.
+			node_ul_payload.node = (node_ctx.dmm_node_ptr);
+			node_ul_payload.ul_payload = (uint8_t*) dinfox_ul_payload.node_data;
+			node_ul_payload.size = &node_ul_payload_size;
+			// Build frame.
+			status = DMM_build_sigfox_action_log_ul_payload(&node_ul_payload, &node_action);
 			if (status != NODE_SUCCESS) goto errors;
+			// Add board ID and node address.
+			dinfox_ul_payload.board_id = ((node_ctx.dmm_node_ptr) -> board_id);
+			dinfox_ul_payload.node_addr = ((node_ctx.dmm_node_ptr) -> address);
+			// Build Sigfox message structure.
+			sigfox_message.ul_payload = (uint8_t*) dinfox_ul_payload.frame;
+			sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + node_ul_payload_size);
+			sigfox_message.bidirectional_flag = 0;
+			// Send message.
+			status = UHFM_send_sigfox_message(((node_ctx.uhfm_node_ptr) -> address), &sigfox_message, &node_access_status);
+			if (status != NODE_SUCCESS) goto errors;
+			NODE_check_access_status((node_ctx.uhfm_node_ptr) -> address);
 		}
 	}
 errors:
@@ -827,6 +849,7 @@ void NODE_init_por(void) {
 	node_ctx.sigfox_dl_next_time_seconds = 0;
 	for (idx=0 ; idx<NODE_ACTIONS_DEPTH ; idx++) _NODE_remove_action(idx);
 	node_ctx.actions_index = 0;
+	node_ctx.dmm_node_ptr = NULL;
 	node_ctx.uhfm_node_ptr = NULL;
 	node_ctx.mpmcm_node_ptr = NULL;
 #ifdef DMM_BMS_ENABLE
@@ -877,6 +900,7 @@ NODE_status_t NODE_scan(void) {
 	NODES_LIST.list[0].board_id = DINFOX_BOARD_ID_DMM;
 	NODES_LIST.list[0].address = DINFOX_NODE_ADDRESS_DMM;
 	NODES_LIST.count++;
+	node_ctx.dmm_node_ptr = &(NODES_LIST.list[0]);
 	// Check RS485 transceiver power status.
 	rs485_on = GPIO_read(&GPIO_TRX_POWER_ENABLE);
 	// Turn bus interface on.

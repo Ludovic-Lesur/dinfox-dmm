@@ -312,6 +312,11 @@ NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32
 	NODE_command_parameters_t command_params;
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
+	// Check parameters.
+	if ((read_params == NULL) || (read_status == NULL) || (reg_value == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
 	// Build command structure.
 	command_params.node_addr = (read_params -> node_addr);
 	command_params.command = (char_t*) command;

@@ -42,7 +42,7 @@ typedef struct {
 
 static const uint32_t UHFM_REG_WRITE_TIMEOUT_MS[UHFM_NUMBER_OF_SPECIFIC_REG] = {
 	AT_BUS_DEFAULT_TIMEOUT_MS,
-	AT_BUS_DEFAULT_TIMEOUT_MS,
+	1000,
 	AT_BUS_DEFAULT_TIMEOUT_MS,
 	AT_BUS_DEFAULT_TIMEOUT_MS,
 	AT_BUS_DEFAULT_TIMEOUT_MS,
@@ -113,5 +113,15 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
  * \retval		Function execution status.
  *******************************************************************/
 NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload, NODE_access_status_t* read_status);
+
+/*!******************************************************************
+ * \fn NODE_status_t UHFM_get_last_bidirectional_mc(NODE_address_t node_addr, uint32_t* last_message_counter, NODE_access_status_t* read_status)
+ * \brief Get last message counter used by UHFM node.
+ * \param[in]  	node_addr: Address of the UHFM node to use.
+ * \param[out]	last_message_counter: Pointer that will contain the message counter.
+ * \param[out] 	send_status: Pointer to the read operation status.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t UHFM_get_last_bidirectional_mc(NODE_address_t node_addr, uint32_t* last_message_counter, NODE_access_status_t* read_status);
 
 #endif /* __UHFM_H__ */

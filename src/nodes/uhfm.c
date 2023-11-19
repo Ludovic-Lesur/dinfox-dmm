@@ -320,6 +320,11 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	uint32_t reg_value = 0;
 	uint8_t reg_offset = 0;
 	uint8_t idx = 0;
+	// Check parameters.
+	if ((dl_payload == NULL) || (read_status == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
 	// Read message status.
 	status = XM_read_register(node_addr, UHFM_REG_ADDR_STATUS_1, 0, &reg_value, read_status);
 	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
@@ -340,6 +345,25 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 		// Convert to byte array.
 		dl_payload[idx] = (uint8_t) ((reg_value >> (8 * (idx % 4))) & 0xFF);
 	}
+errors:
+	return status;
+}
+
+/*******************************************************************/
+NODE_status_t UHFM_get_last_bidirectional_mc(NODE_address_t node_addr, uint32_t* last_message_counter, NODE_access_status_t* read_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	uint32_t reg_value = 0;
+	// Check parameters.
+	if ((last_message_counter == NULL)  || (read_status == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Read message status.
+	status = XM_read_register(node_addr, UHFM_REG_ADDR_STATUS_1, 0, &reg_value, read_status);
+	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+	// Compute message counter.
+	(*last_message_counter) = DINFOX_read_field(reg_value, UHFM_REG_STATUS_1_MASK_BIDIRECTIONAL_MC);
 errors:
 	return status;
 }

@@ -13,7 +13,7 @@
 
 /*** R4S8CR macros ***/
 
-#define R4S8CR_DEFAULT_TIMEOUT_MS	100
+#define R4S8CR_DEFAULT_TIMEOUT_MS	200
 
 /*** R4S8CR structures ***/
 
@@ -35,7 +35,7 @@ typedef enum {
 
 static const uint32_t R4S8CR_REG_WRITE_TIMEOUT_MS[R4S8CR_REG_ADDR_LAST] = {
 	R4S8CR_DEFAULT_TIMEOUT_MS,
-	R4S8CR_DEFAULT_TIMEOUT_MS
+	1000
 };
 
 /*** R4S8CR functions ***/

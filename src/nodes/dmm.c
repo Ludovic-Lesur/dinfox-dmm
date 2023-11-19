@@ -25,6 +25,7 @@
 
 /*** DMM local macros ***/
 
+#define DMM_SIGFOX_PAYLOAD_ACTION_LOG_SIZE	4
 #define DMM_SIGFOX_PAYLOAD_MONITORING_SIZE	5
 
 #define DMM_SIGFOX_PAYLOAD_LOOP_MAX			10
@@ -40,6 +41,16 @@ typedef enum {
 	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING = 0,
 	DMM_SIGFOX_PAYLOAD_TYPE_LAST
 } DMM_sigfox_payload_type_t;
+
+/*******************************************************************/
+typedef union {
+	uint8_t frame[DMM_SIGFOX_PAYLOAD_ACTION_LOG_SIZE];
+	struct {
+		unsigned downlink_hash : 16;
+		unsigned node_addr : 8;
+		unsigned node_access_status : 8;
+	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+} DMM_sigfox_payload_action_log_t;
 
 /*******************************************************************/
 typedef union {
@@ -333,6 +344,7 @@ void DMM_init_registers(void) {
 NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	NODE_status_t node_status = NODE_SUCCESS;
 	uint32_t temp = 0;
 	// Reset write status.
 	(*write_status).all = 0;
@@ -341,14 +353,10 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Check address.
-	if ((write_params -> reg_addr) >= DMM_REG_ADDR_LAST) {
-		status = NODE_ERROR_REGISTER_ADDRESS;
-		goto errors;
-	}
-	// Check access.
-	if (DMM_REG_ACCESS[(write_params -> reg_addr)] == DINFOX_REG_ACCESS_READ_ONLY) {
-		status = NODE_ERROR_REGISTER_READ_ONLY;
+	// Check address and access.
+	if (((write_params -> reg_addr) >= DMM_REG_ADDR_LAST) || (DMM_REG_ACCESS[(write_params -> reg_addr)] == DINFOX_REG_ACCESS_READ_ONLY)) {
+		// Act as a slave.
+		(*write_status).error_received = 1;
 		goto errors;
 	}
 	// Read register.
@@ -359,7 +367,13 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 	// Write register.
 	DMM_INTERNAL_REGISTERS[(write_params -> reg_addr)] = temp;
 	// Check control bits.
-	status = _DMM_check_register(write_params -> reg_addr, reg_mask);
+	node_status = _DMM_check_register((write_params -> reg_addr), reg_mask);
+	if (node_status != NODE_SUCCESS) {
+		// Act as a slave.
+		NODE_stack_error(node_status);
+		(*write_status).error_received = 1;
+		goto errors;
+	}
 errors:
 	return status;
 }
@@ -368,6 +382,7 @@ errors:
 NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	NODE_status_t node_status = NODE_SUCCESS;
 	// Reset read status.
 	(*read_status).all = 0;
 	// Check parameters.
@@ -377,12 +392,18 @@ NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t*
 	}
 	// Check address.
 	if ((read_params -> reg_addr) >= DMM_REG_ADDR_LAST) {
-		status = NODE_ERROR_REGISTER_ADDRESS;
+		// Act as a slave.
+		(*read_status).error_received = 1;
 		goto errors;
 	}
 	// Update register.
-	status = _DMM_update_register(read_params -> reg_addr);
-	if (status != NODE_SUCCESS) goto errors;
+	node_status = _DMM_update_register(read_params -> reg_addr);
+	if (node_status != NODE_SUCCESS) {
+		// Act as a slave.
+		NODE_stack_error(node_status);
+		(*read_status).error_received = 1;
+		goto errors;
+	}
 	// Read register.
 	(*reg_value) = DMM_INTERNAL_REGISTERS[(read_params -> reg_addr)];
 errors:
@@ -561,6 +582,38 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	}
 	// Increment transmission count.
 	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(DMM_SIGFOX_PAYLOAD_PATTERN));
+errors:
+	return status;
+}
+
+/*******************************************************************/
+NODE_status_t DMM_build_sigfox_action_log_ul_payload(NODE_ul_payload_t* node_ul_payload, NODE_action_t* node_action) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	DMM_sigfox_payload_action_log_t sigfox_payload_action_log;
+	uint8_t idx = 0;
+	// Check parameters.
+	if ((node_ul_payload == NULL) || (node_action == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if (((node_ul_payload -> node) == NULL) || ((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if ((node_action -> node) == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Build frame.
+	sigfox_payload_action_log.downlink_hash = (node_action -> downlink_hash);
+	sigfox_payload_action_log.node_addr = (node_action -> node -> address);
+	sigfox_payload_action_log.node_access_status = ((node_action -> write_status).all);
+	// Copy payload.
+	for (idx=0 ; idx<DMM_SIGFOX_PAYLOAD_ACTION_LOG_SIZE ; idx++) {
+		(node_ul_payload -> ul_payload)[idx] = sigfox_payload_action_log.frame[idx];
+	}
+	(*(node_ul_payload -> size)) = DMM_SIGFOX_PAYLOAD_ACTION_LOG_SIZE;
 errors:
 	return status;
 }

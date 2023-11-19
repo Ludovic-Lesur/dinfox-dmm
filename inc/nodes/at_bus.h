@@ -14,7 +14,7 @@
 
 /*** AT BUS macros ***/
 
-#define AT_BUS_DEFAULT_TIMEOUT_MS	100
+#define AT_BUS_DEFAULT_TIMEOUT_MS	200
 
 /*** AT BUS functions ***/
 

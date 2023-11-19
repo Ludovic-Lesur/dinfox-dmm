@@ -103,6 +103,20 @@ typedef struct {
 } NODE_list_t;
 
 /*!******************************************************************
+ * \enum NODE_action_t
+ * \brief Node action type.
+ *******************************************************************/
+typedef struct {
+	NODE_t* node;
+	uint32_t downlink_hash;
+	uint32_t timestamp_seconds;
+	uint8_t reg_addr;
+	uint32_t reg_value;
+	uint32_t reg_mask;
+	NODE_access_status_t write_status;
+} NODE_action_t;
+
+/*!******************************************************************
  * \enum NODE_line_data_t
  * \brief Displayed line data of a node.
  *******************************************************************/

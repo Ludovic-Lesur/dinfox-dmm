@@ -341,12 +341,12 @@ NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr) {
 	// Check battery voltage.
 	if (vbatt_mv < DMM_BMS_VBATT_LOW_THRESHOLD_MV) {
 		// Open relay.
-		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0b0, LVRM_REG_STATUS_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &node_access_status);
+		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_CONTROL_1, 0b0, LVRM_REG_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &node_access_status);
 		if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;
 	}
 	if (vbatt_mv > DMM_BMS_VBATT_HIGH_THRESHOLD_MV) {
 		// Close relay.
-		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_STATUS_CONTROL_1, 0b1, LVRM_REG_STATUS_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &node_access_status);
+		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_CONTROL_1, 0b1, LVRM_REG_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &node_access_status);
 		if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;
 	}
 errors:

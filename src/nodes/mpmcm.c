@@ -401,13 +401,12 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
 	NODE_check_access_status(uhfm_node_addr);
-
 	// Use dynamic list for channels.
 	reg_list.addr_list = (uint8_t*) addr_list;
 	// Channels loop.
 	for (channel_idx=0 ; channel_idx<MPMCM_NUMBER_OF_ACI_CHANNELS ; channel_idx++) {
 		// Check detect flag.
-		if ((MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1] & (0b1 << ((channel_idx << 1) + 1))) == 0) continue;
+		if ((MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1] & (0b1 << channel_idx)) == 0) continue;
 		// Compute data registers offset according to selected channel.
 		reg_offset = (channel_idx * MPMCM_NUMBER_OF_REG_PER_DATA);
 		// Build registers list for mains power frame.

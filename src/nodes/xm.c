@@ -14,6 +14,7 @@
 #include "dmm.h"
 #include "node.h"
 #include "node_common.h"
+#include "r4s8cr.h"
 
 /*** XM functions ***/
 
@@ -32,7 +33,12 @@ NODE_status_t XM_write_register(NODE_address_t node_addr, uint8_t reg_addr, uint
 		status = DMM_write_register(&write_params, reg_value, reg_mask, write_status);
 	}
 	else {
-		status = AT_BUS_write_register(&write_params, reg_value, reg_mask, write_status);
+		if ((node_addr >= DINFOX_NODE_ADDRESS_R4S8CR_START) && (node_addr < (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
+			status = R4S8CR_write_register(&write_params, reg_value, reg_mask, write_status);
+		}
+		else {
+			status = AT_BUS_write_register(&write_params, reg_value, reg_mask, write_status);
+		}
 	}
 	return status;
 }
@@ -55,7 +61,12 @@ NODE_status_t XM_read_register(NODE_address_t node_addr, uint8_t reg_addr, uint3
 		status = DMM_read_register(&read_params, &local_reg_value, read_status);
 	}
 	else {
-		status = AT_BUS_read_register(&read_params, &local_reg_value, read_status);
+		if ((node_addr >= DINFOX_NODE_ADDRESS_R4S8CR_START) && (node_addr < (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
+			status = R4S8CR_read_register(&read_params, &local_reg_value, read_status);
+		}
+		else {
+			status = AT_BUS_read_register(&read_params, &local_reg_value, read_status);
+		}
 	}
 	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 	// Update value.
@@ -146,18 +157,7 @@ NODE_status_t XM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_l
 NODE_status_t XM_perform_measurements(NODE_address_t node_addr, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_parameters_t write_params;
-	// Build parameters.
-	write_params.node_addr = node_addr;
-	write_params.reg_addr = COMMON_REG_ADDR_CONTROL_0;
-	write_params.reply_params.type = NODE_REPLY_TYPE_OK;
-	write_params.reply_params.timeout_ms = COMMON_REG_WRITE_TIMEOUT_MS[COMMON_REG_ADDR_CONTROL_0];
 	// Write MTRG bit.
-	if (node_addr == DINFOX_NODE_ADDRESS_DMM) {
-		status = DMM_write_register(&write_params, COMMON_REG_CONTROL_0_MASK_MTRG, COMMON_REG_CONTROL_0_MASK_MTRG, write_status);
-	}
-	else {
-		status = AT_BUS_write_register(&write_params, COMMON_REG_CONTROL_0_MASK_MTRG, COMMON_REG_CONTROL_0_MASK_MTRG, write_status);
-	}
+	status = XM_write_register(node_addr, COMMON_REG_ADDR_CONTROL_0, COMMON_REG_CONTROL_0_MASK_MTRG, COMMON_REG_CONTROL_0_MASK_MTRG, COMMON_REG_WRITE_TIMEOUT_MS[COMMON_REG_ADDR_CONTROL_0], write_status);
 	return status;
 }

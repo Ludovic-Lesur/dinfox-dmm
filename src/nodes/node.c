@@ -500,6 +500,8 @@ NODE_status_t _NODE_execute_downlink(void) {
 	uint32_t last_bidirectional_mc = 0;
 	NODE_t* node_ptr = NULL;
 	uint32_t previous_reg_value = 0;
+	// Direcly exit in case of NOP.
+	if (node_ctx.sigfox_dl_payload.op_code == NODE_DOWNLINK_OP_CODE_NOP) goto errors;
 	// Read last message counter.
 	status = UHFM_get_last_bidirectional_mc(((node_ctx.uhfm_node_ptr) -> address), &last_bidirectional_mc, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;

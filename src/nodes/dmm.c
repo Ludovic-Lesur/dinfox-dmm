@@ -210,11 +210,6 @@ static NODE_status_t _DMM_check_register(uint8_t reg_addr, uint32_t reg_mask) {
 	uint32_t reg_value = 0;
 	uint32_t unused_mask = 0;
 	uint32_t duration = 0;
-	// Check parameter.
-	if (reg_addr >= DMM_REG_ADDR_LAST) {
-		status = NODE_ERROR_REGISTER_ADDRESS;
-		goto errors;
-	}
 	// Read register.
 	reg_value = DMM_INTERNAL_REGISTERS[reg_addr];
 	// Check address.
@@ -353,10 +348,19 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Check address and access.
-	if (((write_params -> reg_addr) >= DMM_REG_ADDR_LAST) || (DMM_REG_ACCESS[(write_params -> reg_addr)] == DINFOX_REG_ACCESS_READ_ONLY)) {
+	if ((write_params -> reg_addr) >= DMM_REG_ADDR_LAST) {
 		// Act as a slave.
 		(*write_status).error_received = 1;
+		goto errors;
+	}
+	if (DMM_REG_ACCESS[(write_params -> reg_addr)] == DINFOX_REG_ACCESS_READ_ONLY) {
+		// Act as a slave.
+		(*write_status).error_received = 1;
+		goto errors;
+	}
+	if ((write_params -> node_addr) != DINFOX_NODE_ADDRESS_DMM) {
+		// Act as a slave.
+		(*write_status).reply_timeout = 1;
 		goto errors;
 	}
 	// Read register.
@@ -370,7 +374,7 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 	node_status = _DMM_check_register((write_params -> reg_addr), reg_mask);
 	if (node_status != NODE_SUCCESS) {
 		// Act as a slave.
-		NODE_stack_error(node_status);
+		NODE_stack_error();
 		(*write_status).error_received = 1;
 		goto errors;
 	}
@@ -390,17 +394,23 @@ NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t*
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Check address.
 	if ((read_params -> reg_addr) >= DMM_REG_ADDR_LAST) {
 		// Act as a slave.
 		(*read_status).error_received = 1;
 		goto errors;
 	}
+	if ((read_params -> node_addr) != DINFOX_NODE_ADDRESS_DMM) {
+		// Act as a slave.
+		(*read_status).reply_timeout = 1;
+		goto errors;
+	}
+	// Reset value.
+	(*reg_value) = DMM_REG_ERROR_VALUE[(read_params -> reg_addr)];
 	// Update register.
 	node_status = _DMM_update_register(read_params -> reg_addr);
 	if (node_status != NODE_SUCCESS) {
 		// Act as a slave.
-		NODE_stack_error(node_status);
+		NODE_stack_error();
 		(*read_status).error_received = 1;
 		goto errors;
 	}

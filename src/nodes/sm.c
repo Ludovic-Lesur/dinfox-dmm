@@ -18,8 +18,9 @@
 
 /*** SM local macros ***/
 
-#define SM_SIGFOX_UL_PAYLOAD_SENSOR_1_SIZE		9
-#define SM_SIGFOX_UL_PAYLOAD_SENSOR_2_SIZE		5
+#define SM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE	3
+#define SM_SIGFOX_UL_PAYLOAD_ELECTRICAL_SIZE	9
+#define SM_SIGFOX_UL_PAYLOAD_SENSOR_SIZE		2
 
 #define SM_SIGFOX_UL_PAYLOAD_LOOP_MAX			5
 
@@ -27,14 +28,24 @@
 
 /*******************************************************************/
 typedef enum {
-	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR_1 = 0,
-	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR_2,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING = 0,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR,
 	SM_SIGFOX_UL_PAYLOAD_TYPE_LAST
 } SM_sigfox_ul_payload_type_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[SM_SIGFOX_UL_PAYLOAD_SENSOR_1_SIZE];
+	uint8_t frame[SM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE];
+	struct {
+		unsigned vmcu : 16;
+		unsigned tmcu : 8;
+	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+} SM_sigfox_ul_payload_monitoring_t;
+
+/*******************************************************************/
+typedef union {
+	uint8_t frame[SM_SIGFOX_UL_PAYLOAD_ELECTRICAL_SIZE];
 	struct {
 		unsigned ain0 : 16;
 		unsigned ain1 : 16;
@@ -45,18 +56,16 @@ typedef union {
 		unsigned dio1 : 2;
 		unsigned dio0 : 2;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} SM_sigfox_ul_payload_sensor_1_t;
+} SM_sigfox_ul_payload_electrical_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[SM_SIGFOX_UL_PAYLOAD_SENSOR_2_SIZE];
+	uint8_t frame[SM_SIGFOX_UL_PAYLOAD_SENSOR_SIZE];
 	struct {
-		unsigned vmcu : 16;
-		unsigned tmcu : 8;
 		unsigned tamb : 8;
 		unsigned hamb : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} SM_sigfox_ul_payload_sensor_2_t;
+} SM_sigfox_ul_payload_sensor_t;
 
 /*** SM local global variables ***/
 
@@ -77,26 +86,39 @@ static const NODE_line_data_t SM_LINE_DATA[SM_LINE_DATA_INDEX_LAST - COMMON_LINE
 
 static const uint32_t SM_REG_ERROR_VALUE[SM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
+	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	((DINFOX_HUMIDITY_ERROR_VALUE << 8) | (DINFOX_TEMPERATURE_ERROR_VALUE << 0)),
 	((DINFOX_BIT_ERROR << 6) | (DINFOX_BIT_ERROR << 4) | (DINFOX_BIT_ERROR << 2) | (DINFOX_BIT_ERROR << 0)),
 };
 
-static const uint8_t SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR_1[] = {
+static const uint8_t SM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
+	COMMON_REG_ADDR_ANALOG_DATA_0,
+};
+
+static const uint8_t SM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL[] = {
 	SM_REG_ADDR_ANALOG_DATA_1,
 	SM_REG_ADDR_ANALOG_DATA_2,
 	SM_REG_ADDR_DIGITAL_DATA
 };
 
-static const uint8_t SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR_2[] = {
-	COMMON_REG_ADDR_ANALOG_DATA_0,
+static const uint8_t SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR[] = {
 	SM_REG_ADDR_ANALOG_DATA_3
 };
 
 static const SM_sigfox_ul_payload_type_t SM_SIGFOX_UL_PAYLOAD_PATTERN[] = {
-	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR_1,
-	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR_2
+	SM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR,
+	SM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING
 };
 
 /*** SM functions ***/
@@ -244,8 +266,9 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	NODE_access_status_t access_status;
 	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
-	SM_sigfox_ul_payload_sensor_1_t sigfox_ul_payload_sensor_1;
-	SM_sigfox_ul_payload_sensor_2_t sigfox_ul_payload_sensor_2;
+	SM_sigfox_ul_payload_monitoring_t sigfox_ul_payload_monitoring;
+	SM_sigfox_ul_payload_electrical_t sigfox_ul_payload_electrical;
+	SM_sigfox_ul_payload_sensor_t sigfox_ul_payload_sensor;
 	uint32_t reg_configuration;
 	uint8_t idx = 0;
 	uint32_t loop_count = 0;
@@ -274,12 +297,10 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Payloads loop.
 	do {
 		switch (SM_SIGFOX_UL_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
-		case SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR_1:
-			// Check compilation flags.
-			if (((reg_configuration & SM_REG_CONFIGURATION_MASK_AINF) == 0) && ((reg_configuration & SM_REG_CONFIGURATION_MASK_DIOF) == 0)) break;
+		case SM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING:
 			// Build registers list.
-			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR_1;
-			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR_1);
+			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING;
+			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING);
 			// Reset registers.
 			status = XM_reset_registers(&reg_list, &node_reg);
 			if (status != NODE_SUCCESS) goto errors;
@@ -293,26 +314,20 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 				if (status != NODE_SUCCESS) goto errors;
 			}
 			// Build data payload.
-			sigfox_ul_payload_sensor_1.ain0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN0);
-			sigfox_ul_payload_sensor_1.ain1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN1);
-			sigfox_ul_payload_sensor_1.ain2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN2);
-			sigfox_ul_payload_sensor_1.ain3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN3);
-			sigfox_ul_payload_sensor_1.dio0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO0);
-			sigfox_ul_payload_sensor_1.dio1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO1);
-			sigfox_ul_payload_sensor_1.dio2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO2);
-			sigfox_ul_payload_sensor_1.dio3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO3);
+			sigfox_ul_payload_monitoring.vmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+			sigfox_ul_payload_monitoring.tmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
 			// Copy payload.
-			for (idx=0 ; idx<SM_SIGFOX_UL_PAYLOAD_SENSOR_1_SIZE ; idx++) {
-				(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_sensor_1.frame[idx];
+			for (idx=0 ; idx<SM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE ; idx++) {
+				(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_monitoring.frame[idx];
 			}
-			(*(node_ul_payload -> size)) = SM_SIGFOX_UL_PAYLOAD_SENSOR_1_SIZE;
+			(*(node_ul_payload -> size)) = SM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE;
 			break;
-		case SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR_2:
+		case SM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL:
 			// Check compilation flags.
-			if ((reg_configuration & SM_REG_CONFIGURATION_MASK_DIGF) == 0) break;
+			if (((reg_configuration & SM_REG_CONFIGURATION_MASK_AINF) == 0) && ((reg_configuration & SM_REG_CONFIGURATION_MASK_DIOF) == 0)) break;
 			// Build registers list.
-			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR_2;
-			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR_2);
+			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL;
+			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL);
 			// Reset registers.
 			status = XM_reset_registers(&reg_list, &node_reg);
 			if (status != NODE_SUCCESS) goto errors;
@@ -325,16 +340,47 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
 				if (status != NODE_SUCCESS) goto errors;
 			}
-			// Build monitoring payload.
-			sigfox_ul_payload_sensor_2.vmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
-			sigfox_ul_payload_sensor_2.tmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
-			sigfox_ul_payload_sensor_2.tamb = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_3], SM_REG_ANALOG_DATA_3_MASK_TAMB);
-			sigfox_ul_payload_sensor_2.hamb = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_3], SM_REG_ANALOG_DATA_3_MASK_HAMB);
+			// Build data payload.
+			sigfox_ul_payload_electrical.ain0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN0);
+			sigfox_ul_payload_electrical.ain1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN1);
+			sigfox_ul_payload_electrical.ain2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN2);
+			sigfox_ul_payload_electrical.ain3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN3);
+			sigfox_ul_payload_electrical.dio0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO0);
+			sigfox_ul_payload_electrical.dio1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO1);
+			sigfox_ul_payload_electrical.dio2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO2);
+			sigfox_ul_payload_electrical.dio3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO3);
 			// Copy payload.
-			for (idx=0 ; idx<SM_SIGFOX_UL_PAYLOAD_SENSOR_2_SIZE ; idx++) {
-				(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_sensor_2.frame[idx];
+			for (idx=0 ; idx<SM_SIGFOX_UL_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
+				(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_electrical.frame[idx];
 			}
-			(*(node_ul_payload -> size)) = SM_SIGFOX_UL_PAYLOAD_SENSOR_2_SIZE;
+			(*(node_ul_payload -> size)) = SM_SIGFOX_UL_PAYLOAD_ELECTRICAL_SIZE;
+			break;
+		case SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR:
+			// Check compilation flags.
+			if ((reg_configuration & SM_REG_CONFIGURATION_MASK_DIGF) == 0) break;
+			// Build registers list.
+			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR;
+			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR);
+			// Reset registers.
+			status = XM_reset_registers(&reg_list, &node_reg);
+			if (status != NODE_SUCCESS) goto errors;
+			// Perform measurements.
+			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
+			if (status != NODE_SUCCESS) goto errors;
+			// Check write status.
+			if (access_status.all == 0) {
+				// Read related registers.
+				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+				if (status != NODE_SUCCESS) goto errors;
+			}
+			// Build data payload.
+			sigfox_ul_payload_sensor.tamb = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_3], SM_REG_ANALOG_DATA_3_MASK_TAMB);
+			sigfox_ul_payload_sensor.hamb = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_3], SM_REG_ANALOG_DATA_3_MASK_HAMB);
+			// Copy payload.
+			for (idx=0 ; idx<SM_SIGFOX_UL_PAYLOAD_SENSOR_SIZE ; idx++) {
+				(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_sensor.frame[idx];
+			}
+			(*(node_ul_payload -> size)) = SM_SIGFOX_UL_PAYLOAD_SENSOR_SIZE;
 			break;
 		default:
 			status = NODE_ERROR_SIGFOX_UL_PAYLOAD_TYPE;

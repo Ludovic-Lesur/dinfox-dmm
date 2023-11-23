@@ -26,7 +26,7 @@
 /*** DMM local macros ***/
 
 #define DMM_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE	4
-#define DMM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE	5
+#define DMM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE	7
 
 #define DMM_SIGFOX_UL_PERIOD_SECONDS_MIN		60
 #define DMM_SIGFOX_DL_PERIOD_SECONDS_MIN		600
@@ -56,6 +56,7 @@ typedef union {
 	struct {
 		unsigned vrs : 16;
 		unsigned vhmi : 16;
+		unsigned vusb : 16;
 		unsigned nodes_count : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } DMM_sigfox_ul_payload_monitoring_t;
@@ -77,7 +78,9 @@ static const NODE_line_data_t DMM_LINE_DATA[DMM_LINE_DATA_INDEX_LAST - COMMON_LI
 
 static const uint32_t DMM_REG_ERROR_VALUE[DMM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
-	((DINFOX_TIME_ERROR_VALUE << 24) | (DINFOX_TIME_ERROR_VALUE << 16) | (DINFOX_TIME_ERROR_VALUE << 8)),
+	0x00000000,
+	((DINFOX_TIME_ERROR_VALUE << 16) | (DINFOX_TIME_ERROR_VALUE << 8) | (DINFOX_TIME_ERROR_VALUE << 0)),
+	0x00000000,
 	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0),
@@ -85,7 +88,8 @@ static const uint32_t DMM_REG_ERROR_VALUE[DMM_REG_ADDR_LAST] = {
 
 static const uint8_t DMM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
 	DMM_REG_ADDR_STATUS_1,
-	DMM_REG_ADDR_ANALOG_DATA_1
+	DMM_REG_ADDR_ANALOG_DATA_1,
+	DMM_REG_ADDR_ANALOG_DATA_2
 };
 
 static const DINFOX_register_access_t DMM_REG_ACCESS[DMM_REG_ADDR_LAST] = {
@@ -164,7 +168,7 @@ static NODE_status_t _DMM_mtrg_callback(void) {
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VHMI_MV, &adc_data);
 	ADC1_exit_error(NODE_ERROR_BASE_ADC);
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VHMI);
-	// VHMI.
+	// VUSB.
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &adc_data);
 	ADC1_exit_error(NODE_ERROR_BASE_ADC);
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_2_MASK_VUSB);
@@ -591,6 +595,7 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		// Build monitoring payload.
 		sigfox_ul_payload_monitoring.vrs = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VRS);
 		sigfox_ul_payload_monitoring.vhmi = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VHMI);
+		sigfox_ul_payload_monitoring.vusb = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2], DMM_REG_ANALOG_DATA_2_MASK_VUSB);
 		sigfox_ul_payload_monitoring.nodes_count = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_STATUS_1], DMM_REG_STATUS_1_MASK_NODES_COUNT);
 		// Copy payload.
 		for (idx=0 ; idx<DMM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE ; idx++) {

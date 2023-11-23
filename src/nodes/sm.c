@@ -21,7 +21,7 @@
 #define SM_SIGFOX_PAYLOAD_SENSOR_1_SIZE		9
 #define SM_SIGFOX_PAYLOAD_SENSOR_2_SIZE		5
 
-#define BPSM_SIGFOX_PAYLOAD_LOOP_MAX		10
+#define SM_SIGFOX_PAYLOAD_LOOP_MAX			5
 
 /*** SM local structures ***/
 
@@ -241,12 +241,14 @@ errors:
 NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t write_status;
+	NODE_access_status_t access_status;
 	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
 	SM_sigfox_payload_sensor_1_t sigfox_payload_sensor_1;
 	SM_sigfox_payload_sensor_2_t sigfox_payload_sensor_2;
+	uint32_t reg_configuration;
 	uint8_t idx = 0;
+	uint32_t loop_count = 0;
 	// Check parameters.
 	if (node_ul_payload == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -267,71 +269,84 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
 	// Else use specific pattern of the node.
-	switch (SM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
-	case SM_SIGFOX_PAYLOAD_TYPE_SENSOR_1:
-		// Build registers list.
-		reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_1;
-		reg_list.size = sizeof(SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_1);
-		// Reset registers.
-		status = XM_reset_registers(&reg_list, &node_reg);
-		if (status != NODE_SUCCESS) goto errors;
-		// Perform measurements.
-		status = XM_perform_measurements((node_ul_payload -> node -> address), &write_status);
-		if (status != NODE_SUCCESS) goto errors;
-		// Check write status.
-		if (write_status.all == 0) {
-			// Read related registers.
-			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+	status = XM_read_register((node_ul_payload -> node -> address), SM_REG_ADDR_CONFIGURATION, SM_REG_ERROR_VALUE[SM_REG_ADDR_CONFIGURATION], &reg_configuration, &access_status);
+	if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+	// Payloads loop.
+	do {
+		switch (SM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
+		case SM_SIGFOX_PAYLOAD_TYPE_SENSOR_1:
+			// Check compilation flags.
+			if (((reg_configuration & SM_REG_CONFIGURATION_MASK_AINF) == 0) && ((reg_configuration & SM_REG_CONFIGURATION_MASK_DIOF) == 0)) break;
+			// Build registers list.
+			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_1;
+			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_1);
+			// Reset registers.
+			status = XM_reset_registers(&reg_list, &node_reg);
 			if (status != NODE_SUCCESS) goto errors;
-		}
-		// Build data payload.
-		sigfox_payload_sensor_1.ain0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN0);
-		sigfox_payload_sensor_1.ain1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN1);
-		sigfox_payload_sensor_1.ain2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN2);
-		sigfox_payload_sensor_1.ain3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN3);
-		sigfox_payload_sensor_1.dio0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO0);
-		sigfox_payload_sensor_1.dio1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO1);
-		sigfox_payload_sensor_1.dio2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO2);
-		sigfox_payload_sensor_1.dio3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO3);
-		// Copy payload.
-		for (idx=0 ; idx<SM_SIGFOX_PAYLOAD_SENSOR_1_SIZE ; idx++) {
-			(node_ul_payload -> ul_payload)[idx] = sigfox_payload_sensor_1.frame[idx];
-		}
-		(*(node_ul_payload -> size)) = SM_SIGFOX_PAYLOAD_SENSOR_1_SIZE;
-		break;
-	case SM_SIGFOX_PAYLOAD_TYPE_SENSOR_2:
-		// Build registers list.
-		reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_2;
-		reg_list.size = sizeof(SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_2);
-		// Reset registers.
-		status = XM_reset_registers(&reg_list, &node_reg);
-		if (status != NODE_SUCCESS) goto errors;
-		// Perform measurements.
-		status = XM_perform_measurements((node_ul_payload -> node -> address), &write_status);
-		if (status != NODE_SUCCESS) goto errors;
-		// Check write status.
-		if (write_status.all == 0) {
-			// Read related registers.
-			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+			// Perform measurements.
+			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 			if (status != NODE_SUCCESS) goto errors;
+			// Check write status.
+			if (access_status.all == 0) {
+				// Read related registers.
+				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+				if (status != NODE_SUCCESS) goto errors;
+			}
+			// Build data payload.
+			sigfox_payload_sensor_1.ain0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN0);
+			sigfox_payload_sensor_1.ain1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_1], SM_REG_ANALOG_DATA_1_MASK_VAIN1);
+			sigfox_payload_sensor_1.ain2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN2);
+			sigfox_payload_sensor_1.ain3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_2], SM_REG_ANALOG_DATA_2_MASK_VAIN3);
+			sigfox_payload_sensor_1.dio0 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO0);
+			sigfox_payload_sensor_1.dio1 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO1);
+			sigfox_payload_sensor_1.dio2 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO2);
+			sigfox_payload_sensor_1.dio3 = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_DIGITAL_DATA], SM_REG_DIGITAL_DATA_MASK_DIO3);
+			// Copy payload.
+			for (idx=0 ; idx<SM_SIGFOX_PAYLOAD_SENSOR_1_SIZE ; idx++) {
+				(node_ul_payload -> ul_payload)[idx] = sigfox_payload_sensor_1.frame[idx];
+			}
+			(*(node_ul_payload -> size)) = SM_SIGFOX_PAYLOAD_SENSOR_1_SIZE;
+			break;
+		case SM_SIGFOX_PAYLOAD_TYPE_SENSOR_2:
+			// Check compilation flags.
+			if ((reg_configuration & SM_REG_CONFIGURATION_MASK_DIGF) == 0) break;
+			// Build registers list.
+			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_2;
+			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_PAYLOAD_SENSOR_2);
+			// Reset registers.
+			status = XM_reset_registers(&reg_list, &node_reg);
+			if (status != NODE_SUCCESS) goto errors;
+			// Perform measurements.
+			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
+			if (status != NODE_SUCCESS) goto errors;
+			// Check write status.
+			if (access_status.all == 0) {
+				// Read related registers.
+				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+				if (status != NODE_SUCCESS) goto errors;
+			}
+			// Build monitoring payload.
+			sigfox_payload_sensor_2.vmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+			sigfox_payload_sensor_2.tmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
+			sigfox_payload_sensor_2.tamb = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_3], SM_REG_ANALOG_DATA_3_MASK_TAMB);
+			sigfox_payload_sensor_2.hamb = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_3], SM_REG_ANALOG_DATA_3_MASK_HAMB);
+			// Copy payload.
+			for (idx=0 ; idx<SM_SIGFOX_PAYLOAD_SENSOR_2_SIZE ; idx++) {
+				(node_ul_payload -> ul_payload)[idx] = sigfox_payload_sensor_2.frame[idx];
+			}
+			(*(node_ul_payload -> size)) = SM_SIGFOX_PAYLOAD_SENSOR_2_SIZE;
+			break;
+		default:
+			status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
+			goto errors;
 		}
-		// Build monitoring payload.
-		sigfox_payload_sensor_2.vmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
-		sigfox_payload_sensor_2.tmcu = DINFOX_read_field(SM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
-		sigfox_payload_sensor_2.tamb = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_3], SM_REG_ANALOG_DATA_3_MASK_TAMB);
-		sigfox_payload_sensor_2.hamb = DINFOX_read_field(SM_REGISTERS[SM_REG_ADDR_ANALOG_DATA_3], SM_REG_ANALOG_DATA_3_MASK_HAMB);
-		// Copy payload.
-		for (idx=0 ; idx<SM_SIGFOX_PAYLOAD_SENSOR_2_SIZE ; idx++) {
-			(node_ul_payload -> ul_payload)[idx] = sigfox_payload_sensor_2.frame[idx];
-		}
-		(*(node_ul_payload -> size)) = SM_SIGFOX_PAYLOAD_SENSOR_2_SIZE;
-		break;
-	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
-		goto errors;
+		// Increment transmission count.
+		(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(SM_SIGFOX_PAYLOAD_PATTERN));
+		// Exit in case of loop error.
+		loop_count++;
+		if (loop_count > SM_SIGFOX_PAYLOAD_LOOP_MAX) goto errors;
 	}
-	// Increment transmission count.
-	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(SM_SIGFOX_PAYLOAD_PATTERN));
+	while ((*(node_ul_payload -> size)) == 0);
 errors:
 	return status;
 }

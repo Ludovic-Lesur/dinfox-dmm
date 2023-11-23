@@ -20,8 +20,6 @@
 #define DDRM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
 #define DDRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE		7
 
-#define DDRM_SIGFOX_PAYLOAD_LOOP_MAX			10
-
 /*** DDRM local structures ***/
 
 /*******************************************************************/

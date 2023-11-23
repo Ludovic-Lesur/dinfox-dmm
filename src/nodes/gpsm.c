@@ -19,8 +19,6 @@
 
 #define GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE		7
 
-#define GPSM_SIGFOX_PAYLOAD_LOOP_MAX			10
-
 /*** GPSM local structures ***/
 
 /*******************************************************************/

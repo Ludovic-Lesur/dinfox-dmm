@@ -21,7 +21,6 @@
 /*** UHFM local macros ***/
 
 #define UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE		7
-#define UHFM_SIGFOX_PAYLOAD_LOOP_MAX			10
 
 /*** UHFM local structures ***/
 

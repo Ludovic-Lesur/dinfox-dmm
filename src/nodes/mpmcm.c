@@ -27,8 +27,6 @@
 #define MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE			7
 #define MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_SIZE			9
 
-#define MPMCM_SIGFOX_PAYLOAD_LOOP_MAX					10
-
 /*** MPMCM local structures ***/
 
 /*******************************************************************/

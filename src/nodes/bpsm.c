@@ -20,8 +20,6 @@
 #define BPSM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
 #define BPSM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE		7
 
-#define BPSM_SIGFOX_PAYLOAD_LOOP_MAX			10
-
 /*** BPSM local structures ***/
 
 /*******************************************************************/

@@ -19,14 +19,14 @@
 
 /*** COMMON local macros ***/
 
-#define COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE		8
-#define COMMON_SIGFOX_PAYLOAD_ERROR_STACK_SIZE	10
+#define COMMON_SIGFOX_UL_PAYLOAD_STARTUP_SIZE		8
+#define COMMON_SIGFOX_UL_PAYLOAD_ERROR_STACK_SIZE	10
 
 /*** COMMON local structures ***/
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE];
+	uint8_t frame[COMMON_SIGFOX_UL_PAYLOAD_STARTUP_SIZE];
 	struct {
 		unsigned reset_reason : 8;
 		unsigned major_version : 8;
@@ -35,7 +35,7 @@ typedef union {
 		unsigned commit_id : 28;
 		unsigned dirty_flag : 4;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} COMMON_sigfox_payload_startup_t;
+} COMMON_sigfox_ul_payload_startup_t;
 
 /*** COMMON local global variables ***/
 
@@ -47,7 +47,7 @@ static const NODE_line_data_t COMMON_LINE_DATA[COMMON_LINE_DATA_INDEX_LAST] = {
 	{"TMCU =", " |C", STRING_FORMAT_DECIMAL, 0, COMMON_REG_ADDR_ANALOG_DATA_0, COMMON_REG_ANALOG_DATA_0_MASK_TMCU, COMMON_REG_ADDR_CONTROL_0, DINFOX_REG_MASK_NONE}
 };
 
-static const uint8_t COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP[] = {
+static const uint8_t COMMON_REG_LIST_SIGFOX_UL_PAYLOAD_STARTUP[] = {
 	COMMON_REG_ADDR_SW_VERSION_0,
 	COMMON_REG_ADDR_SW_VERSION_1,
 	COMMON_REG_ADDR_STATUS_0
@@ -56,11 +56,11 @@ static const uint8_t COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP[] = {
 /*** COMMON local functions ***/
 
 /*******************************************************************/
-static NODE_status_t _COMMON_build_sigfox_payload_startup(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg) {
+static NODE_status_t _COMMON_build_sigfox_ul_payload_startup(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	XM_registers_list_t reg_list;
-	COMMON_sigfox_payload_startup_t sigfox_payload_startup;
+	COMMON_sigfox_ul_payload_startup_t sigfox_ul_payload_startup;
 	uint8_t idx = 0;
 	// Check parameters.
 	if ((node_ul_payload == NULL) || (node_reg == NULL)) {
@@ -74,8 +74,8 @@ static NODE_status_t _COMMON_build_sigfox_payload_startup(NODE_ul_payload_t* nod
 	// Reset payload size.
 	(*(node_ul_payload -> size)) = 0;
 	// Build registers list.
-	reg_list.addr_list = (uint8_t*) COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP;
-	reg_list.size = sizeof(COMMON_REG_LIST_SIGFOX_PAYLOAD_STARTUP);
+	reg_list.addr_list = (uint8_t*) COMMON_REG_LIST_SIGFOX_UL_PAYLOAD_STARTUP;
+	reg_list.size = sizeof(COMMON_REG_LIST_SIGFOX_UL_PAYLOAD_STARTUP);
 	// Reset related registers.
 	status = XM_reset_registers(&reg_list, node_reg);
 	if (status != NODE_SUCCESS) goto errors;
@@ -83,23 +83,23 @@ static NODE_status_t _COMMON_build_sigfox_payload_startup(NODE_ul_payload_t* nod
 	status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, node_reg);
 	if (status != NODE_SUCCESS) goto errors;
 	// Build data payload.
-	sigfox_payload_startup.reset_reason = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_STATUS_0], COMMON_REG_STATUS_0_MASK_RESET_FLAGS);
-	sigfox_payload_startup.major_version = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_MAJOR);
-	sigfox_payload_startup.minor_version = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_MINOR);
-	sigfox_payload_startup.commit_index = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_COMMIT_INDEX);
-	sigfox_payload_startup.commit_id = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_1], COMMON_REG_SW_VERSION_1_MASK_COMMIT_ID);
-	sigfox_payload_startup.dirty_flag = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_DTYF);
+	sigfox_ul_payload_startup.reset_reason = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_STATUS_0], COMMON_REG_STATUS_0_MASK_RESET_FLAGS);
+	sigfox_ul_payload_startup.major_version = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_MAJOR);
+	sigfox_ul_payload_startup.minor_version = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_MINOR);
+	sigfox_ul_payload_startup.commit_index = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_COMMIT_INDEX);
+	sigfox_ul_payload_startup.commit_id = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_1], COMMON_REG_SW_VERSION_1_MASK_COMMIT_ID);
+	sigfox_ul_payload_startup.dirty_flag = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_SW_VERSION_0], COMMON_REG_SW_VERSION_0_MASK_DTYF);
 	// Copy payload.
-	for (idx=0 ; idx<COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE ; idx++) {
-		(node_ul_payload -> ul_payload)[idx] = sigfox_payload_startup.frame[idx];
+	for (idx=0 ; idx<COMMON_SIGFOX_UL_PAYLOAD_STARTUP_SIZE ; idx++) {
+		(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_startup.frame[idx];
 	}
-	(*(node_ul_payload -> size)) = COMMON_SIGFOX_PAYLOAD_STARTUP_SIZE;
+	(*(node_ul_payload -> size)) = COMMON_SIGFOX_UL_PAYLOAD_STARTUP_SIZE;
 errors:
 	return status;
 }
 
 /*******************************************************************/
-static NODE_status_t _COMMON_build_sigfox_payload_error_stack(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg) {
+static NODE_status_t _COMMON_build_sigfox_ul_payload_error_stack(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t read_status;
@@ -117,7 +117,7 @@ static NODE_status_t _COMMON_build_sigfox_payload_error_stack(NODE_ul_payload_t*
 	// Reset payload size.
 	(*(node_ul_payload -> size)) = 0;
 	// Read error stack register.
-	for (idx=0 ; idx<(COMMON_SIGFOX_PAYLOAD_ERROR_STACK_SIZE / 2) ; idx++) {
+	for (idx=0 ; idx<(COMMON_SIGFOX_UL_PAYLOAD_ERROR_STACK_SIZE / 2) ; idx++) {
 		// Read error stack register.
 		status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_ERROR_STACK, 0x00000000, &reg_value, &read_status);
 		if ((status != NODE_SUCCESS) || ((read_status.all) != 0)) goto errors;
@@ -128,7 +128,7 @@ static NODE_status_t _COMMON_build_sigfox_payload_error_stack(NODE_ul_payload_t*
 		(node_ul_payload -> ul_payload)[(2 * idx) + 0] = (uint8_t) ((reg_value >> 8) & 0x000000FF);
 		(node_ul_payload -> ul_payload)[(2 * idx) + 1] = (uint8_t) ((reg_value >> 0) & 0x000000FF);
 	}
-	(*(node_ul_payload -> size)) = COMMON_SIGFOX_PAYLOAD_ERROR_STACK_SIZE;
+	(*(node_ul_payload -> size)) = COMMON_SIGFOX_UL_PAYLOAD_ERROR_STACK_SIZE;
 errors:
 	return status;
 }
@@ -273,7 +273,7 @@ NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payl
 	// Read boot flag.
 	if (DINFOX_read_field(reg_status_0, COMMON_REG_STATUS_0_MASK_BF) != 0) {
 		// Compute startup payload.
-		status = _COMMON_build_sigfox_payload_startup(node_ul_payload, node_reg);
+		status = _COMMON_build_sigfox_ul_payload_startup(node_ul_payload, node_reg);
 		if (status != NODE_SUCCESS) goto errors;
 		// Clear boot flag.
 		status = XM_write_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_CONTROL_0, COMMON_REG_CONTROL_0_MASK_BFC, COMMON_REG_CONTROL_0_MASK_BFC, AT_BUS_DEFAULT_TIMEOUT_MS, &access_status);
@@ -282,7 +282,7 @@ NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payl
 	else {
 		if (DINFOX_read_field(reg_status_0, COMMON_REG_STATUS_0_MASK_ESF) != 0) {
 			// Compute error stack payload.
-			status = _COMMON_build_sigfox_payload_error_stack(node_ul_payload, node_reg);
+			status = _COMMON_build_sigfox_ul_payload_error_stack(node_ul_payload, node_reg);
 			if (status != NODE_SUCCESS) goto errors;
 		}
 	}

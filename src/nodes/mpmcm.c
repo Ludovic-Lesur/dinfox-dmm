@@ -20,18 +20,18 @@
 
 /*** MPMCM local macros ***/
 
-#define MPMCM_NUMBER_OF_ACI_CHANNELS					4
+#define MPMCM_NUMBER_OF_ACI_CHANNELS						4
 
-#define MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR_SIZE	4
-#define MPMCM_SIGFOX_PAYLOAD_MAINS_FREQUENCY_SIZE		6
-#define MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE			7
-#define MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_SIZE			9
+#define MPMCM_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR_SIZE		4
+#define MPMCM_SIGFOX_UL_PAYLOAD_MAINS_FREQUENCY_SIZE		6
+#define MPMCM_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE_SIZE			7
+#define MPMCM_SIGFOX_UL_PAYLOAD_MAINS_POWER_SIZE			9
 
 /*** MPMCM local structures ***/
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE];
+	uint8_t frame[MPMCM_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE_SIZE];
 	struct {
 		unsigned unused : 3;
 		unsigned mvd : 1;
@@ -43,21 +43,21 @@ typedef union {
 		unsigned vrms_mean : 16;
 		unsigned vrms_max : 16;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} MPMCM_sigfox_payload_mains_voltage_t;
+} MPMCM_sigfox_ul_payload_mains_voltage_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[MPMCM_SIGFOX_PAYLOAD_MAINS_FREQUENCY_SIZE];
+	uint8_t frame[MPMCM_SIGFOX_UL_PAYLOAD_MAINS_FREQUENCY_SIZE];
 	struct {
 		unsigned f_min : 16;
 		unsigned f_mean : 16;
 		unsigned f_max : 16;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} MPMCM_sigfox_payload_mains_frequency_t;
+} MPMCM_sigfox_ul_payload_mains_frequency_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_SIZE];
+	uint8_t frame[MPMCM_SIGFOX_UL_PAYLOAD_MAINS_POWER_SIZE];
 	struct {
 		unsigned unused : 6;
 		unsigned channel_index : 2;
@@ -66,11 +66,11 @@ typedef union {
 		unsigned papp_mean : 16;
 		unsigned papp_max : 16;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} MPMCM_sigfox_payload_mains_power_t;
+} MPMCM_sigfox_ul_payload_mains_power_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR_SIZE];
+	uint8_t frame[MPMCM_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR_SIZE];
 	struct {
 		unsigned unused : 6;
 		unsigned channel_index : 2;
@@ -78,7 +78,7 @@ typedef union {
 		unsigned pf_mean : 8;
 		unsigned pf_max : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} MPMCM_sigfox_payload_mains_power_factor_t;
+} MPMCM_sigfox_ul_payload_mains_power_factor_t;
 
 /*** MPMCM local global variables ***/
 
@@ -128,25 +128,25 @@ static const uint32_t MPMCM_REG_ERROR_VALUE[MPMCM_REG_ADDR_LAST] = {
 	MPMCM_REG_ERROR_VALUE_CHx
 };
 
-static const uint8_t MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_VOLTAGE[] = {
+static const uint8_t MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE[] = {
 	MPMCM_REG_ADDR_STATUS_1,
 	MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0,
 	MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1
 };
 
-static const uint8_t MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_FREQUENCY[] = {
+static const uint8_t MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_FREQUENCY[] = {
 	MPMCM_REG_ADDR_MAINS_FREQUENCY_0,
 	MPMCM_REG_ADDR_MAINS_FREQUENCY_1,
 };
 
-static const uint8_t MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER[] = {
+static const uint8_t MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER[] = {
 	MPMCM_REG_ADDR_CH1_ACTIVE_POWER_0,
 	MPMCM_REG_ADDR_CH1_ACTIVE_POWER_1,
 	MPMCM_REG_ADDR_CH1_APPARENT_POWER_0,
 	MPMCM_REG_ADDR_CH1_APPARENT_POWER_1
 };
 
-static const uint8_t MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR[] = {
+static const uint8_t MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR[] = {
 	MPMCM_REG_ADDR_CH1_POWER_FACTOR_0,
 	MPMCM_REG_ADDR_CH1_POWER_FACTOR_1,
 };
@@ -312,10 +312,10 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	NODE_access_status_t chxs_access_status;
 	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
-	MPMCM_sigfox_payload_mains_voltage_t sigfox_payload_mains_voltage;
-	MPMCM_sigfox_payload_mains_frequency_t sigfox_payload_mains_frequency;
-	MPMCM_sigfox_payload_mains_power_t sigfox_payload_mains_power;
-	MPMCM_sigfox_payload_mains_power_factor_t sigfox_payload_mains_power_factor;
+	MPMCM_sigfox_ul_payload_mains_voltage_t sigfox_ul_payload_mains_voltage;
+	MPMCM_sigfox_ul_payload_mains_frequency_t sigfox_ul_payload_mains_frequency;
+	MPMCM_sigfox_ul_payload_mains_power_t sigfox_ul_payload_mains_power;
+	MPMCM_sigfox_ul_payload_mains_power_factor_t sigfox_ul_payload_mains_power_factor;
 	NODE_dinfox_ul_payload_t dinfox_ul_payload;
 	UHFM_sigfox_message_t sigfox_message;
 	uint8_t addr_list[4];
@@ -333,7 +333,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	sigfox_message.ul_payload = (uint8_t*) dinfox_ul_payload.frame;
 	sigfox_message.bidirectional_flag = 0;
 	// Reset MVD flag.
-	sigfox_payload_mains_voltage.mvd = 0;
+	sigfox_ul_payload_mains_voltage.mvd = 0;
 	// Store accumulated data of all channels (synchronization reset in case of POR).
 	control_1 |= MPMCM_REG_CONTROL_1_MASK_CH1S;
 	control_1 |= MPMCM_REG_CONTROL_1_MASK_CH2S;
@@ -345,8 +345,8 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	// Do not send frames on POR.
 	if (mpmcm_por_flag != 0) goto errors;
 	// Build registers list for mains voltage.
-	reg_list.addr_list = (uint8_t*) MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_VOLTAGE;
-	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_VOLTAGE);
+	reg_list.addr_list = (uint8_t*) MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE;
+	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE);
 	// Reset data registers.
 	XM_reset_registers(&reg_list, &node_reg);
 	// Check write status.
@@ -356,20 +356,20 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 		if (status != NODE_SUCCESS) goto errors;
 	}
 	// Build mains voltage frame.
-	sigfox_payload_mains_voltage.unused = 0;
-	sigfox_payload_mains_voltage.mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_MVD);
-	sigfox_payload_mains_voltage.ch4d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH4D);
-	sigfox_payload_mains_voltage.ch3d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH3D);
-	sigfox_payload_mains_voltage.ch2d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH2D);
-	sigfox_payload_mains_voltage.ch1d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH1D);
-	sigfox_payload_mains_voltage.vrms_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
-	sigfox_payload_mains_voltage.vrms_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
-	sigfox_payload_mains_voltage.vrms_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
+	sigfox_ul_payload_mains_voltage.unused = 0;
+	sigfox_ul_payload_mains_voltage.mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_MVD);
+	sigfox_ul_payload_mains_voltage.ch4d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH4D);
+	sigfox_ul_payload_mains_voltage.ch3d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH3D);
+	sigfox_ul_payload_mains_voltage.ch2d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH2D);
+	sigfox_ul_payload_mains_voltage.ch1d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH1D);
+	sigfox_ul_payload_mains_voltage.vrms_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
+	sigfox_ul_payload_mains_voltage.vrms_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
+	sigfox_ul_payload_mains_voltage.vrms_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
 	// Copy payload and update size.
-	for (idx=0 ; idx<MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE ; idx++) {
-		dinfox_ul_payload.node_data[idx] = sigfox_payload_mains_voltage.frame[idx];
+	for (idx=0 ; idx<MPMCM_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE_SIZE ; idx++) {
+		dinfox_ul_payload.node_data[idx] = sigfox_ul_payload_mains_voltage.frame[idx];
 	}
-	sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE);
+	sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + MPMCM_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE_SIZE);
 	// Send message.
 	status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
@@ -377,24 +377,24 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	// Do not send any other frame if there was an error during first access.
 	if (chxs_access_status.all != 0) goto errors;
 	// Do not send any other frame if mains voltage was not present 2 consecutive times.
-	if ((sigfox_payload_mains_voltage.mvd == 0) && (mpmcm_mvd_flag == 0)) goto errors;
+	if ((sigfox_ul_payload_mains_voltage.mvd == 0) && (mpmcm_mvd_flag == 0)) goto errors;
 	// Build registers list for mains frequency.
-	reg_list.addr_list = (uint8_t*) MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_FREQUENCY;
-	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_FREQUENCY);
+	reg_list.addr_list = (uint8_t*) MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_FREQUENCY;
+	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_FREQUENCY);
 	// Reset data registers.
 	XM_reset_registers(&reg_list, &node_reg);
 	// Read related registers.
 	status = XM_read_registers(mpmcm_node_addr, &reg_list, &node_reg);
 	if (status != NODE_SUCCESS) goto errors;
 	// Build mains frequency frame.
-	sigfox_payload_mains_frequency.f_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_MAINS_FREQUENCY_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
-	sigfox_payload_mains_frequency.f_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_MAINS_FREQUENCY_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
-	sigfox_payload_mains_frequency.f_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_MAINS_FREQUENCY_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
+	sigfox_ul_payload_mains_frequency.f_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_MAINS_FREQUENCY_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
+	sigfox_ul_payload_mains_frequency.f_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_MAINS_FREQUENCY_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
+	sigfox_ul_payload_mains_frequency.f_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_MAINS_FREQUENCY_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
 	// Copy payload and update size.
-	for (idx=0 ; idx<MPMCM_SIGFOX_PAYLOAD_MAINS_VOLTAGE_SIZE ; idx++) {
-		dinfox_ul_payload.node_data[idx] = sigfox_payload_mains_frequency.frame[idx];
+	for (idx=0 ; idx<MPMCM_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE_SIZE ; idx++) {
+		dinfox_ul_payload.node_data[idx] = sigfox_ul_payload_mains_frequency.frame[idx];
 	}
-	sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + MPMCM_SIGFOX_PAYLOAD_MAINS_FREQUENCY_SIZE);
+	sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + MPMCM_SIGFOX_UL_PAYLOAD_MAINS_FREQUENCY_SIZE);
 	// Send message.
 	status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 	if (status != NODE_SUCCESS) goto errors;
@@ -408,52 +408,52 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 		// Compute data registers offset according to selected channel.
 		reg_offset = (channel_idx * MPMCM_NUMBER_OF_REG_PER_DATA);
 		// Build registers list for mains power frame.
-		for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER) ; idx++) {
-			addr_list[idx] = MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER[idx] + reg_offset;
+		for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER) ; idx++) {
+			addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER[idx] + reg_offset;
 		}
-		reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER);
+		reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER);
 		// Reset data registers.
 		XM_reset_registers(&reg_list, &node_reg);
 		// Read related registers.
 		status = XM_read_registers(mpmcm_node_addr, &reg_list, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
 		// Build mains power frame.
-		sigfox_payload_mains_power.unused = 0;
-		sigfox_payload_mains_power.channel_index = channel_idx;
-		sigfox_payload_mains_power.pact_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_ACTIVE_POWER_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
-		sigfox_payload_mains_power.pact_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_ACTIVE_POWER_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
-		sigfox_payload_mains_power.papp_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_APPARENT_POWER_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
-		sigfox_payload_mains_power.papp_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_APPARENT_POWER_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
+		sigfox_ul_payload_mains_power.unused = 0;
+		sigfox_ul_payload_mains_power.channel_index = channel_idx;
+		sigfox_ul_payload_mains_power.pact_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_ACTIVE_POWER_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
+		sigfox_ul_payload_mains_power.pact_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_ACTIVE_POWER_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
+		sigfox_ul_payload_mains_power.papp_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_APPARENT_POWER_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
+		sigfox_ul_payload_mains_power.papp_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_APPARENT_POWER_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
 		// Copy payload and update size.
-		for (idx=0 ; idx<MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_SIZE ; idx++) {
-			dinfox_ul_payload.node_data[idx] = sigfox_payload_mains_power.frame[idx];
+		for (idx=0 ; idx<MPMCM_SIGFOX_UL_PAYLOAD_MAINS_POWER_SIZE ; idx++) {
+			dinfox_ul_payload.node_data[idx] = sigfox_ul_payload_mains_power.frame[idx];
 		}
-		sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_SIZE);
+		sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + MPMCM_SIGFOX_UL_PAYLOAD_MAINS_POWER_SIZE);
 		// Send message.
 		status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		NODE_check_access_status(uhfm_node_addr);
 		// Build registers list for power factor frame.
-		for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR) ; idx++) {
-			addr_list[idx] = MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR[idx] + reg_offset;
+		for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR) ; idx++) {
+			addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR[idx] + reg_offset;
 		}
-		reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR);
+		reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR);
 		// Reset data registers.
 		XM_reset_registers(&reg_list, &node_reg);
 		// Read related registers.
 		status = XM_read_registers(mpmcm_node_addr, &reg_list, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
 		// Build mains power factor frame.
-		sigfox_payload_mains_power_factor.unused = 0;
-		sigfox_payload_mains_power_factor.channel_index = channel_idx;
-		sigfox_payload_mains_power_factor.pf_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_POWER_FACTOR_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
-		sigfox_payload_mains_power_factor.pf_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_POWER_FACTOR_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
-		sigfox_payload_mains_power_factor.pf_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_POWER_FACTOR_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
+		sigfox_ul_payload_mains_power_factor.unused = 0;
+		sigfox_ul_payload_mains_power_factor.channel_index = channel_idx;
+		sigfox_ul_payload_mains_power_factor.pf_min =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_POWER_FACTOR_1 + reg_offset], MPMCM_REG_X_1_MIN_MASK);
+		sigfox_ul_payload_mains_power_factor.pf_mean = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_POWER_FACTOR_0 + reg_offset], MPMCM_REG_X_0_MEAN_MASK);
+		sigfox_ul_payload_mains_power_factor.pf_max =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CH1_POWER_FACTOR_1 + reg_offset], MPMCM_REG_X_1_MAX_MASK);
 		// Copy payload and update size.
-		for (idx=0 ; idx<MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR_SIZE ; idx++) {
-			dinfox_ul_payload.node_data[idx] = sigfox_payload_mains_power_factor.frame[idx];
+		for (idx=0 ; idx<MPMCM_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR_SIZE ; idx++) {
+			dinfox_ul_payload.node_data[idx] = sigfox_ul_payload_mains_power_factor.frame[idx];
 		}
-		sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + MPMCM_SIGFOX_PAYLOAD_MAINS_POWER_FACTOR_SIZE);
+		sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + MPMCM_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR_SIZE);
 		// Send message.
 		status = UHFM_send_sigfox_message(uhfm_node_addr, &sigfox_message, &node_access_status);
 		if (status != NODE_SUCCESS) goto errors;
@@ -462,6 +462,6 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 errors:
 	// Clear POR flag and update MVD flag.
 	mpmcm_por_flag = 0;
-	mpmcm_mvd_flag = sigfox_payload_mains_voltage.mvd;
+	mpmcm_mvd_flag = sigfox_ul_payload_mains_voltage.mvd;
 	return status;
 }

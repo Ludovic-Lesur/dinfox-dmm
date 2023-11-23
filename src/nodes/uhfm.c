@@ -20,26 +20,26 @@
 
 /*** UHFM local macros ***/
 
-#define UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE		7
+#define UHFM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE		7
 
 /*** UHFM local structures ***/
 
 /*******************************************************************/
 typedef enum {
-	UHFM_SIGFOX_PAYLOAD_TYPE_MONITORING = 0,
-	UHFM_SIGFOX_PAYLOAD_TYPE_LAST
-} UHFM_sigfox_payload_type_t;
+	UHFM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING = 0,
+	UHFM_SIGFOX_UL_PAYLOAD_TYPE_LAST
+} UHFM_sigfox_ul_payload_type_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE];
+	uint8_t frame[UHFM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE];
 	struct {
 		unsigned vmcu : 16;
 		unsigned tmcu : 8;
 		unsigned vrf_tx : 16;
 		unsigned vrf_rx : 16;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} UHFM_sigfox_payload_monitoring_t;
+} UHFM_sigfox_ul_payload_monitoring_t;
 
 /*** UHFM local global variables ***/
 
@@ -77,13 +77,13 @@ static const uint32_t UHFM_REG_ERROR_VALUE[UHFM_REG_ADDR_LAST] = {
 	0x00000000
 };
 
-static const uint8_t UHFM_REG_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
+static const uint8_t UHFM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
 	COMMON_REG_ADDR_ANALOG_DATA_0,
 	UHFM_REG_ADDR_ANALOG_DATA_1
 };
 
-static const UHFM_sigfox_payload_type_t UHFM_SIGFOX_PAYLOAD_PATTERN[] = {
-	UHFM_SIGFOX_PAYLOAD_TYPE_MONITORING
+static const UHFM_sigfox_ul_payload_type_t UHFM_SIGFOX_UL_PAYLOAD_PATTERN[] = {
+	UHFM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING
 };
 
 static uint8_t uhfm_ep_configuration_done = 0;
@@ -197,7 +197,7 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	NODE_access_status_t write_status;
 	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
-	UHFM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
+	UHFM_sigfox_ul_payload_monitoring_t sigfox_ul_payload_monitoring;
 	uint8_t idx = 0;
 	// Check parameters.
 	if (node_ul_payload == NULL) {
@@ -219,11 +219,11 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
 	// Else use specific pattern of the node.
-	switch (UHFM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
-	case UHFM_SIGFOX_PAYLOAD_TYPE_MONITORING:
+	switch (UHFM_SIGFOX_UL_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
+	case UHFM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING:
 		// Build registers list.
-		reg_list.addr_list = (uint8_t*) UHFM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
-		reg_list.size = sizeof(UHFM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+		reg_list.addr_list = (uint8_t*) UHFM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING;
+		reg_list.size = sizeof(UHFM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING);
 		// Reset registers.
 		status = XM_reset_registers(&reg_list, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
@@ -237,22 +237,22 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			if (status != NODE_SUCCESS) goto errors;
 		}
 		// Build monitoring payload.
-		sigfox_payload_monitoring.vmcu = DINFOX_read_field(UHFM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
-		sigfox_payload_monitoring.tmcu = DINFOX_read_field(UHFM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
-		sigfox_payload_monitoring.vrf_tx = DINFOX_read_field(UHFM_REGISTERS[UHFM_REG_ADDR_ANALOG_DATA_1], UHFM_REG_ANALOG_DATA_1_MASK_VRF_TX);
-		sigfox_payload_monitoring.vrf_rx = DINFOX_read_field(UHFM_REGISTERS[UHFM_REG_ADDR_ANALOG_DATA_1], UHFM_REG_ANALOG_DATA_1_MASK_VRF_RX);
+		sigfox_ul_payload_monitoring.vmcu = DINFOX_read_field(UHFM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+		sigfox_ul_payload_monitoring.tmcu = DINFOX_read_field(UHFM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
+		sigfox_ul_payload_monitoring.vrf_tx = DINFOX_read_field(UHFM_REGISTERS[UHFM_REG_ADDR_ANALOG_DATA_1], UHFM_REG_ANALOG_DATA_1_MASK_VRF_TX);
+		sigfox_ul_payload_monitoring.vrf_rx = DINFOX_read_field(UHFM_REGISTERS[UHFM_REG_ADDR_ANALOG_DATA_1], UHFM_REG_ANALOG_DATA_1_MASK_VRF_RX);
 		// Copy payload.
-		for (idx=0 ; idx<UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-			(node_ul_payload -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
+		for (idx=0 ; idx<UHFM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE ; idx++) {
+			(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_monitoring.frame[idx];
 		}
-		(*(node_ul_payload -> size)) = UHFM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+		(*(node_ul_payload -> size)) = UHFM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE;
 		break;
 	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
+		status = NODE_ERROR_SIGFOX_UL_PAYLOAD_TYPE;
 		goto errors;
 	}
 	// Increment transmission count.
-	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(UHFM_SIGFOX_PAYLOAD_PATTERN));
+	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(UHFM_SIGFOX_UL_PAYLOAD_PATTERN));
 errors:
 	return status;
 }

@@ -19,30 +19,30 @@
 
 /*** LVRM local macros ***/
 
-#define LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE		3
-#define LVRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE		7
+#define LVRM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE		3
+#define LVRM_SIGFOX_UL_PAYLOAD_ELECTRICAL_SIZE		7
 
 /*** LVRM local structures ***/
 
 /*******************************************************************/
 typedef enum {
-	LVRM_SIGFOX_PAYLOAD_TYPE_MONITORING = 0,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_LAST
-} LVRM_sigfox_payload_type_t;
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING = 0,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_LAST
+} LVRM_sigfox_ul_payload_type_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE];
+	uint8_t frame[LVRM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE];
 	struct {
 		unsigned vmcu : 16;
 		unsigned tmcu : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} LVRM_sigfox_payload_monitoring_t;
+} LVRM_sigfox_ul_payload_monitoring_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[LVRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE];
+	uint8_t frame[LVRM_SIGFOX_UL_PAYLOAD_ELECTRICAL_SIZE];
 	struct {
 		unsigned vin : 16;
 		unsigned vout : 16;
@@ -50,7 +50,7 @@ typedef union {
 		unsigned unused : 6;
 		unsigned rlstst : 2;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} LVRM_sigfox_payload_electrical_t;
+} LVRM_sigfox_ul_payload_electrical_t;
 
 /*** LVRM local global variables ***/
 
@@ -71,28 +71,28 @@ static const uint32_t LVRM_REG_ERROR_VALUE[LVRM_REG_ADDR_LAST] = {
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0)
 };
 
-static const uint8_t LVRM_REG_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
+static const uint8_t LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
 	COMMON_REG_ADDR_ANALOG_DATA_0
 };
 
-static const uint8_t LVRM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL[] = {
+static const uint8_t LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL[] = {
 	LVRM_REG_ADDR_STATUS_1,
 	LVRM_REG_ADDR_ANALOG_DATA_1,
 	LVRM_REG_ADDR_ANALOG_DATA_2
 };
 
-static const LVRM_sigfox_payload_type_t LVRM_SIGFOX_PAYLOAD_PATTERN[] = {
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL,
-	LVRM_SIGFOX_PAYLOAD_TYPE_MONITORING,
+static const LVRM_sigfox_ul_payload_type_t LVRM_SIGFOX_UL_PAYLOAD_PATTERN[] = {
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL,
+	LVRM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING,
 };
 
 /*** LVRM functions ***/
@@ -228,8 +228,8 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	NODE_access_status_t write_status;
 	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
-	LVRM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
-	LVRM_sigfox_payload_electrical_t sigfox_payload_electrical;
+	LVRM_sigfox_ul_payload_monitoring_t sigfox_ul_payload_monitoring;
+	LVRM_sigfox_ul_payload_electrical_t sigfox_ul_payload_electrical;
 	uint8_t idx = 0;
 	// Check parameters.
 	if (node_ul_payload == NULL) {
@@ -251,11 +251,11 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
 	// Else use specific pattern of the node.
-	switch (LVRM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
-	case LVRM_SIGFOX_PAYLOAD_TYPE_MONITORING:
+	switch (LVRM_SIGFOX_UL_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
+	case LVRM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING:
 		// Build registers list.
-		reg_list.addr_list = (uint8_t*) LVRM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
-		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+		reg_list.addr_list = (uint8_t*) LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING;
+		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING);
 		// Reset registers.
 		status = XM_reset_registers(&reg_list, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
@@ -269,18 +269,18 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			if (status != NODE_SUCCESS) goto errors;
 		}
 		// Build monitoring payload.
-		sigfox_payload_monitoring.vmcu = DINFOX_read_field(LVRM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
-		sigfox_payload_monitoring.tmcu = DINFOX_read_field(LVRM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
+		sigfox_ul_payload_monitoring.vmcu = DINFOX_read_field(LVRM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+		sigfox_ul_payload_monitoring.tmcu = DINFOX_read_field(LVRM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
 		// Copy payload.
-		for (idx=0 ; idx<LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-			(node_ul_payload -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
+		for (idx=0 ; idx<LVRM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE ; idx++) {
+			(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_monitoring.frame[idx];
 		}
-		(*(node_ul_payload -> size)) = LVRM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+		(*(node_ul_payload -> size)) = LVRM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE;
 		break;
-	case LVRM_SIGFOX_PAYLOAD_TYPE_ELECTRICAL:
+	case LVRM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL:
 		// Build registers list.
-		reg_list.addr_list = (uint8_t*) LVRM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL;
-		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_PAYLOAD_ELECTRICAL);
+		reg_list.addr_list = (uint8_t*) LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL;
+		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL);
 		// Reset registers.
 		status = XM_reset_registers(&reg_list, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
@@ -294,23 +294,23 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			if (status != NODE_SUCCESS) goto errors;
 		}
 		// Build data payload.
-		sigfox_payload_electrical.vin = DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_ANALOG_DATA_1], LVRM_REG_ANALOG_DATA_1_MASK_VCOM);
-		sigfox_payload_electrical.vout = DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_ANALOG_DATA_1], LVRM_REG_ANALOG_DATA_1_MASK_VOUT);
-		sigfox_payload_electrical.iout = DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_ANALOG_DATA_2], LVRM_REG_ANALOG_DATA_2_MASK_IOUT);
-		sigfox_payload_electrical.unused = 0;
-		sigfox_payload_electrical.rlstst = DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_STATUS_1], LVRM_REG_STATUS_1_MASK_RLSTST);
+		sigfox_ul_payload_electrical.vin = DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_ANALOG_DATA_1], LVRM_REG_ANALOG_DATA_1_MASK_VCOM);
+		sigfox_ul_payload_electrical.vout = DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_ANALOG_DATA_1], LVRM_REG_ANALOG_DATA_1_MASK_VOUT);
+		sigfox_ul_payload_electrical.iout = DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_ANALOG_DATA_2], LVRM_REG_ANALOG_DATA_2_MASK_IOUT);
+		sigfox_ul_payload_electrical.unused = 0;
+		sigfox_ul_payload_electrical.rlstst = DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_STATUS_1], LVRM_REG_STATUS_1_MASK_RLSTST);
 		// Copy payload.
-		for (idx=0 ; idx<LVRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
-			(node_ul_payload -> ul_payload)[idx] = sigfox_payload_electrical.frame[idx];
+		for (idx=0 ; idx<LVRM_SIGFOX_UL_PAYLOAD_ELECTRICAL_SIZE ; idx++) {
+			(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_electrical.frame[idx];
 		}
-		(*(node_ul_payload -> size)) = LVRM_SIGFOX_PAYLOAD_ELECTRICAL_SIZE;
+		(*(node_ul_payload -> size)) = LVRM_SIGFOX_UL_PAYLOAD_ELECTRICAL_SIZE;
 		break;
 	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
+		status = NODE_ERROR_SIGFOX_UL_PAYLOAD_TYPE;
 		goto errors;
 	}
 	// Increment transmission count.
-	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(LVRM_SIGFOX_PAYLOAD_PATTERN));
+	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(LVRM_SIGFOX_UL_PAYLOAD_PATTERN));
 errors:
 	return status;
 }

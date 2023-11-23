@@ -17,26 +17,26 @@
 
 /*** GPSM local macros ***/
 
-#define GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE		7
+#define GPSM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE		7
 
 /*** GPSM local structures ***/
 
 /*******************************************************************/
 typedef enum {
-	GPSM_SIGFOX_PAYLOAD_TYPE_MONITORING = 0,
-	GPSM_SIGFOX_PAYLOAD_TYPE_LAST
-} GPSM_sigfox_payload_type_t;
+	GPSM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING = 0,
+	GPSM_SIGFOX_UL_PAYLOAD_TYPE_LAST
+} GPSM_sigfox_ul_payload_type_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE];
+	uint8_t frame[GPSM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE];
 	struct {
 		unsigned vmcu : 16;
 		unsigned tmcu : 8;
 		unsigned vgps : 16;
 		unsigned vant : 16;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} GPSM_sigfox_payload_monitoring_t;
+} GPSM_sigfox_ul_payload_monitoring_t;
 
 /*** GPSM local global variables ***/
 
@@ -64,13 +64,13 @@ static const uint32_t GPSM_REG_ERROR_VALUE[GPSM_REG_ADDR_LAST] = {
 	0x00000000
 };
 
-static const uint8_t GPSM_REG_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
+static const uint8_t GPSM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
 	COMMON_REG_ADDR_ANALOG_DATA_0,
 	GPSM_REG_ADDR_ANALOG_DATA_1,
 };
 
-static const GPSM_sigfox_payload_type_t GPSM_SIGFOX_PAYLOAD_PATTERN[] = {
-	GPSM_SIGFOX_PAYLOAD_TYPE_MONITORING
+static const GPSM_sigfox_ul_payload_type_t GPSM_SIGFOX_UL_PAYLOAD_PATTERN[] = {
+	GPSM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING
 };
 
 /*** GPSM functions ***/
@@ -175,7 +175,7 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	NODE_access_status_t write_status;
 	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
-	GPSM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
+	GPSM_sigfox_ul_payload_monitoring_t sigfox_ul_payload_monitoring;
 	uint8_t idx = 0;
 	// Check parameters.
 	if (node_ul_payload == NULL) {
@@ -197,11 +197,11 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
 	// Else use specific pattern of the node.
-	switch (GPSM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
-	case GPSM_SIGFOX_PAYLOAD_TYPE_MONITORING:
+	switch (GPSM_SIGFOX_UL_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
+	case GPSM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING:
 		// Build registers list.
-		reg_list.addr_list = (uint8_t*) GPSM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
-		reg_list.size = sizeof(GPSM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+		reg_list.addr_list = (uint8_t*) GPSM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING;
+		reg_list.size = sizeof(GPSM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING);
 		// Reset registers.
 		status = XM_reset_registers(&reg_list, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
@@ -215,22 +215,22 @@ NODE_status_t GPSM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			if (status != NODE_SUCCESS) goto errors;
 		}
 		// Build monitoring payload.
-		sigfox_payload_monitoring.vmcu = DINFOX_read_field(GPSM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
-		sigfox_payload_monitoring.tmcu = DINFOX_read_field(GPSM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
-		sigfox_payload_monitoring.vgps = DINFOX_read_field(GPSM_REGISTERS[GPSM_REG_ADDR_ANALOG_DATA_1], GPSM_REG_ANALOG_DATA_1_MASK_VGPS);
-		sigfox_payload_monitoring.vant = DINFOX_read_field(GPSM_REGISTERS[GPSM_REG_ADDR_ANALOG_DATA_1], GPSM_REG_ANALOG_DATA_1_MASK_VANT);
+		sigfox_ul_payload_monitoring.vmcu = DINFOX_read_field(GPSM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
+		sigfox_ul_payload_monitoring.tmcu = DINFOX_read_field(GPSM_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0], COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
+		sigfox_ul_payload_monitoring.vgps = DINFOX_read_field(GPSM_REGISTERS[GPSM_REG_ADDR_ANALOG_DATA_1], GPSM_REG_ANALOG_DATA_1_MASK_VGPS);
+		sigfox_ul_payload_monitoring.vant = DINFOX_read_field(GPSM_REGISTERS[GPSM_REG_ADDR_ANALOG_DATA_1], GPSM_REG_ANALOG_DATA_1_MASK_VANT);
 		// Copy payload.
-		for (idx=0 ; idx<GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-			(node_ul_payload -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
+		for (idx=0 ; idx<GPSM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE ; idx++) {
+			(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_monitoring.frame[idx];
 		}
-		(*(node_ul_payload -> size)) = GPSM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+		(*(node_ul_payload -> size)) = GPSM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE;
 		break;
 	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
+		status = NODE_ERROR_SIGFOX_UL_PAYLOAD_TYPE;
 		goto errors;
 	}
 	// Increment transmission count.
-	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(GPSM_SIGFOX_PAYLOAD_PATTERN));
+	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(GPSM_SIGFOX_UL_PAYLOAD_PATTERN));
 errors:
 	return status;
 }

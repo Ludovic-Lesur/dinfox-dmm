@@ -25,40 +25,40 @@
 
 /*** DMM local macros ***/
 
-#define DMM_SIGFOX_PAYLOAD_ACTION_LOG_SIZE	4
-#define DMM_SIGFOX_PAYLOAD_MONITORING_SIZE	5
+#define DMM_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE	4
+#define DMM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE	5
 
-#define DMM_SIGFOX_UL_PERIOD_SECONDS_MIN	60
-#define DMM_SIGFOX_DL_PERIOD_SECONDS_MIN	600
-#define DMM_NODES_SCAN_PERIOD_SECONDS_MIN	3600
+#define DMM_SIGFOX_UL_PERIOD_SECONDS_MIN		60
+#define DMM_SIGFOX_DL_PERIOD_SECONDS_MIN		600
+#define DMM_NODES_SCAN_PERIOD_SECONDS_MIN		3600
 
 /*** DMM local structures ***/
 
 /*******************************************************************/
 typedef enum {
-	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING = 0,
-	DMM_SIGFOX_PAYLOAD_TYPE_LAST
-} DMM_sigfox_payload_type_t;
+	DMM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING = 0,
+	DMM_SIGFOX_UL_PAYLOAD_TYPE_LAST
+} DMM_sigfox_ul_payload_type_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[DMM_SIGFOX_PAYLOAD_ACTION_LOG_SIZE];
+	uint8_t frame[DMM_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE];
 	struct {
 		unsigned downlink_hash : 16;
 		unsigned node_addr : 8;
 		unsigned node_access_status : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} DMM_sigfox_payload_action_log_t;
+} DMM_sigfox_ul_payload_action_log_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[DMM_SIGFOX_PAYLOAD_MONITORING_SIZE];
+	uint8_t frame[DMM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE];
 	struct {
 		unsigned vrs : 16;
 		unsigned vhmi : 16;
 		unsigned nodes_count : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
-} DMM_sigfox_payload_monitoring_t;
+} DMM_sigfox_ul_payload_monitoring_t;
 
 /*** DMM local global variables ***/
 
@@ -83,7 +83,7 @@ static const uint32_t DMM_REG_ERROR_VALUE[DMM_REG_ADDR_LAST] = {
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0),
 };
 
-static const uint8_t DMM_REG_LIST_SIGFOX_PAYLOAD_MONITORING[] = {
+static const uint8_t DMM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
 	DMM_REG_ADDR_STATUS_1,
 	DMM_REG_ADDR_ANALOG_DATA_1
 };
@@ -97,8 +97,8 @@ static const DINFOX_register_access_t DMM_REG_ACCESS[DMM_REG_ADDR_LAST] = {
 	DINFOX_REG_ACCESS_READ_ONLY
 };
 
-static const DMM_sigfox_payload_type_t DMM_SIGFOX_PAYLOAD_PATTERN[] = {
-	DMM_SIGFOX_PAYLOAD_TYPE_MONITORING
+static const DMM_sigfox_ul_payload_type_t DMM_SIGFOX_UL_PAYLOAD_PATTERN[] = {
+	DMM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING
 };
 
 /*** DMM local functions ***/
@@ -549,7 +549,7 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	NODE_access_status_t write_status;
 	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
-	DMM_sigfox_payload_monitoring_t sigfox_payload_monitoring;
+	DMM_sigfox_ul_payload_monitoring_t sigfox_ul_payload_monitoring;
 	uint8_t idx = 0;
 	// Check parameters.
 	if (node_ul_payload == NULL) {
@@ -571,11 +571,11 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
 	// Else use specific pattern of the node.
-	switch (DMM_SIGFOX_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
-	case DMM_SIGFOX_PAYLOAD_TYPE_MONITORING:
+	switch (DMM_SIGFOX_UL_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
+	case DMM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING:
 		// Build registers list.
-		reg_list.addr_list = (uint8_t*) DMM_REG_LIST_SIGFOX_PAYLOAD_MONITORING;
-		reg_list.size = sizeof(DMM_REG_LIST_SIGFOX_PAYLOAD_MONITORING);
+		reg_list.addr_list = (uint8_t*) DMM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING;
+		reg_list.size = sizeof(DMM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING);
 		// Reset registers.
 		status = XM_reset_registers(&reg_list, &node_reg);
 		if (status != NODE_SUCCESS) goto errors;
@@ -589,21 +589,21 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			if (status != NODE_SUCCESS) goto errors;
 		}
 		// Build monitoring payload.
-		sigfox_payload_monitoring.vrs = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VRS);
-		sigfox_payload_monitoring.vhmi = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VHMI);
-		sigfox_payload_monitoring.nodes_count = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_STATUS_1], DMM_REG_STATUS_1_MASK_NODES_COUNT);
+		sigfox_ul_payload_monitoring.vrs = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VRS);
+		sigfox_ul_payload_monitoring.vhmi = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1], DMM_REG_ANALOG_DATA_1_MASK_VHMI);
+		sigfox_ul_payload_monitoring.nodes_count = DINFOX_read_field(DMM_REGISTERS[DMM_REG_ADDR_STATUS_1], DMM_REG_STATUS_1_MASK_NODES_COUNT);
 		// Copy payload.
-		for (idx=0 ; idx<DMM_SIGFOX_PAYLOAD_MONITORING_SIZE ; idx++) {
-			(node_ul_payload -> ul_payload)[idx] = sigfox_payload_monitoring.frame[idx];
+		for (idx=0 ; idx<DMM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE ; idx++) {
+			(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_monitoring.frame[idx];
 		}
-		(*(node_ul_payload -> size)) = DMM_SIGFOX_PAYLOAD_MONITORING_SIZE;
+		(*(node_ul_payload -> size)) = DMM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE;
 		break;
 	default:
-		status = NODE_ERROR_SIGFOX_PAYLOAD_TYPE;
+		status = NODE_ERROR_SIGFOX_UL_PAYLOAD_TYPE;
 		goto errors;
 	}
 	// Increment transmission count.
-	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(DMM_SIGFOX_PAYLOAD_PATTERN));
+	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(DMM_SIGFOX_UL_PAYLOAD_PATTERN));
 errors:
 	return status;
 }
@@ -612,7 +612,7 @@ errors:
 NODE_status_t DMM_build_sigfox_action_log_ul_payload(NODE_ul_payload_t* node_ul_payload, NODE_action_t* node_action) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	DMM_sigfox_payload_action_log_t sigfox_payload_action_log;
+	DMM_sigfox_ul_payload_action_log_t sigfox_ul_payload_action_log;
 	uint8_t idx = 0;
 	// Check parameters.
 	if ((node_ul_payload == NULL) || (node_action == NULL)) {
@@ -628,14 +628,14 @@ NODE_status_t DMM_build_sigfox_action_log_ul_payload(NODE_ul_payload_t* node_ul_
 		goto errors;
 	}
 	// Build frame.
-	sigfox_payload_action_log.downlink_hash = (node_action -> downlink_hash);
-	sigfox_payload_action_log.node_addr = (node_action -> node -> address);
-	sigfox_payload_action_log.node_access_status = ((node_action -> write_status).all);
+	sigfox_ul_payload_action_log.downlink_hash = (node_action -> downlink_hash);
+	sigfox_ul_payload_action_log.node_addr = (node_action -> node -> address);
+	sigfox_ul_payload_action_log.node_access_status = ((node_action -> write_status).all);
 	// Copy payload.
-	for (idx=0 ; idx<DMM_SIGFOX_PAYLOAD_ACTION_LOG_SIZE ; idx++) {
-		(node_ul_payload -> ul_payload)[idx] = sigfox_payload_action_log.frame[idx];
+	for (idx=0 ; idx<DMM_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE ; idx++) {
+		(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_action_log.frame[idx];
 	}
-	(*(node_ul_payload -> size)) = DMM_SIGFOX_PAYLOAD_ACTION_LOG_SIZE;
+	(*(node_ul_payload -> size)) = DMM_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE;
 errors:
 	return status;
 }

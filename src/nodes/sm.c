@@ -71,6 +71,20 @@ typedef union {
 
 static uint32_t SM_REGISTERS[SM_REG_ADDR_LAST];
 
+static const uint32_t SM_REG_ERROR_VALUE[SM_REG_ADDR_LAST] = {
+	COMMON_REG_ERROR_VALUE
+	0x00000000,
+	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	((DINFOX_HUMIDITY_ERROR_VALUE << 8) | (DINFOX_TEMPERATURE_ERROR_VALUE << 0)),
+	((DINFOX_BIT_ERROR << 6) | (DINFOX_BIT_ERROR << 4) | (DINFOX_BIT_ERROR << 2) | (DINFOX_BIT_ERROR << 0)),
+};
+
+static const XM_node_registers_t SM_NODE_REGISTERS = {
+	.value = (uint32_t*) SM_REGISTERS,
+	.error = (uint32_t*) SM_REG_ERROR_VALUE,
+};
+
 static const NODE_line_data_t SM_LINE_DATA[SM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
 	{"AIN0 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_1, SM_REG_ANALOG_DATA_1_MASK_VAIN0,     COMMON_REG_ADDR_CONTROL_0, DINFOX_REG_MASK_NONE},
 	{"AIN1 =", " V", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_1, SM_REG_ANALOG_DATA_1_MASK_VAIN1,     COMMON_REG_ADDR_CONTROL_0, DINFOX_REG_MASK_NONE},
@@ -82,15 +96,6 @@ static const NODE_line_data_t SM_LINE_DATA[SM_LINE_DATA_INDEX_LAST - COMMON_LINE
 	{"DIO3 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_DIGITAL_DATA, SM_REG_DIGITAL_DATA_MASK_DIO3, COMMON_REG_ADDR_CONTROL_0, DINFOX_REG_MASK_NONE},
 	{"TAMB =", " |C", STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_3, SM_REG_ANALOG_DATA_3_MASK_TAMB,     COMMON_REG_ADDR_CONTROL_0, DINFOX_REG_MASK_NONE},
 	{"HAMB =", " %",  STRING_FORMAT_DECIMAL, 0, SM_REG_ADDR_ANALOG_DATA_3, SM_REG_ANALOG_DATA_3_MASK_HAMB,     COMMON_REG_ADDR_CONTROL_0, DINFOX_REG_MASK_NONE}
-};
-
-static const uint32_t SM_REG_ERROR_VALUE[SM_REG_ADDR_LAST] = {
-	COMMON_REG_ERROR_VALUE
-	0x00000000,
-	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
-	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
-	((DINFOX_HUMIDITY_ERROR_VALUE << 8) | (DINFOX_TEMPERATURE_ERROR_VALUE << 0)),
-	((DINFOX_BIT_ERROR << 6) | (DINFOX_BIT_ERROR << 4) | (DINFOX_BIT_ERROR << 2) | (DINFOX_BIT_ERROR << 0)),
 };
 
 static const uint8_t SM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
@@ -187,7 +192,7 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 		NODE_flush_string_value();
 		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 		// Update register.
-		status = XM_read_register((line_data_read -> node_addr), reg_addr, SM_REG_ERROR_VALUE[reg_addr], &(SM_REGISTERS[reg_addr]), read_status);
+		status = XM_read_register((line_data_read -> node_addr), reg_addr, (XM_node_registers_t*) &SM_NODE_REGISTERS, read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
 		field_value = DINFOX_read_field(SM_REGISTERS[reg_addr], SM_LINE_DATA[str_data_idx].read_field_mask);
@@ -264,12 +269,11 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t access_status;
-	XM_node_registers_t node_reg;
 	XM_registers_list_t reg_list;
 	SM_sigfox_ul_payload_monitoring_t sigfox_ul_payload_monitoring;
 	SM_sigfox_ul_payload_electrical_t sigfox_ul_payload_electrical;
 	SM_sigfox_ul_payload_sensor_t sigfox_ul_payload_sensor;
-	uint32_t reg_configuration;
+	uint32_t reg_configuration = 0;
 	uint8_t idx = 0;
 	uint32_t loop_count = 0;
 	// Check parameters.
@@ -281,19 +285,18 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Build node registers structure.
-	node_reg.value = (uint32_t*) SM_REGISTERS;
-	node_reg.error = (uint32_t*) SM_REG_ERROR_VALUE;
 	// Reset payload size.
 	(*(node_ul_payload -> size)) = 0;
 	// Check event driven payloads.
-	status = COMMON_check_event_driven_payloads(node_ul_payload, &node_reg);
+	status = COMMON_check_event_driven_payloads(node_ul_payload, (XM_node_registers_t*) &SM_NODE_REGISTERS);
 	if (status != NODE_SUCCESS) goto errors;
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
 	// Else use specific pattern of the node.
-	status = XM_read_register((node_ul_payload -> node -> address), SM_REG_ADDR_CONFIGURATION, SM_REG_ERROR_VALUE[SM_REG_ADDR_CONFIGURATION], &reg_configuration, &access_status);
+	status = XM_read_register((node_ul_payload -> node -> address), SM_REG_ADDR_CONFIGURATION, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
 	if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+	// Update local value.
+	reg_configuration = SM_REGISTERS[SM_REG_ADDR_CONFIGURATION];
 	// Payloads loop.
 	do {
 		switch (SM_SIGFOX_UL_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
@@ -301,16 +304,13 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			// Build registers list.
 			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING;
 			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING);
-			// Reset registers.
-			status = XM_reset_registers(&reg_list, &node_reg);
-			if (status != NODE_SUCCESS) goto errors;
 			// Perform measurements.
 			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Check write status.
 			if (access_status.all == 0) {
 				// Read related registers.
-				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
 				if (status != NODE_SUCCESS) goto errors;
 			}
 			// Build data payload.
@@ -328,16 +328,13 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			// Build registers list.
 			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL;
 			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL);
-			// Reset registers.
-			status = XM_reset_registers(&reg_list, &node_reg);
-			if (status != NODE_SUCCESS) goto errors;
 			// Perform measurements.
 			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Check write status.
 			if (access_status.all == 0) {
 				// Read related registers.
-				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
 				if (status != NODE_SUCCESS) goto errors;
 			}
 			// Build data payload.
@@ -361,16 +358,13 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			// Build registers list.
 			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR;
 			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR);
-			// Reset registers.
-			status = XM_reset_registers(&reg_list, &node_reg);
-			if (status != NODE_SUCCESS) goto errors;
 			// Perform measurements.
 			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Check write status.
 			if (access_status.all == 0) {
 				// Read related registers.
-				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
 				if (status != NODE_SUCCESS) goto errors;
 			}
 			// Build data payload.

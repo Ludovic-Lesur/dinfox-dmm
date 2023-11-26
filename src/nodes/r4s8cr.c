@@ -72,6 +72,17 @@ typedef union {
 
 static uint32_t R4S8CR_REGISTERS[R4S8CR_REG_ADDR_LAST];
 
+static const uint32_t R4S8CR_REG_ERROR_VALUE[R4S8CR_REG_ADDR_LAST] = {
+	((DINFOX_BIT_ERROR << 14) | (DINFOX_BIT_ERROR << 12) | (DINFOX_BIT_ERROR << 10) | (DINFOX_BIT_ERROR << 8) |
+	 (DINFOX_BIT_ERROR << 6)  | (DINFOX_BIT_ERROR << 4)  | (DINFOX_BIT_ERROR << 2)  | (DINFOX_BIT_ERROR << 0)),
+	0x00000000
+};
+
+static const XM_node_registers_t R4S8CR_NODE_REGISTERS = {
+	.value = (uint32_t*) R4S8CR_REGISTERS,
+	.error = (uint32_t*) R4S8CR_REG_ERROR_VALUE,
+};
+
 static const NODE_line_data_t R4S8CR_LINE_DATA[R4S8CR_LINE_DATA_INDEX_LAST] = {
 	{"RELAY 1 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, R4S8CR_REG_ADDR_STATUS, R4S8CR_REG_STATUS_MASK_R1STST, R4S8CR_REG_ADDR_CONTROL, R4S8CR_REG_CONTROL_MASK_R1ST},
 	{"RELAY 2 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, R4S8CR_REG_ADDR_STATUS, R4S8CR_REG_STATUS_MASK_R2STST, R4S8CR_REG_ADDR_CONTROL, R4S8CR_REG_CONTROL_MASK_R2ST},
@@ -81,12 +92,6 @@ static const NODE_line_data_t R4S8CR_LINE_DATA[R4S8CR_LINE_DATA_INDEX_LAST] = {
 	{"RELAY 6 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, R4S8CR_REG_ADDR_STATUS, R4S8CR_REG_STATUS_MASK_R6STST, R4S8CR_REG_ADDR_CONTROL, R4S8CR_REG_CONTROL_MASK_R6ST},
 	{"RELAY 7 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, R4S8CR_REG_ADDR_STATUS, R4S8CR_REG_STATUS_MASK_R7STST, R4S8CR_REG_ADDR_CONTROL, R4S8CR_REG_CONTROL_MASK_R7ST},
 	{"RELAY 8 =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, R4S8CR_REG_ADDR_STATUS, R4S8CR_REG_STATUS_MASK_R8STST, R4S8CR_REG_ADDR_CONTROL, R4S8CR_REG_CONTROL_MASK_R8ST},
-};
-
-static const uint32_t R4S8CR_REG_ERROR_VALUE[R4S8CR_REG_ADDR_LAST] = {
-	((DINFOX_BIT_ERROR << 14) | (DINFOX_BIT_ERROR << 12) | (DINFOX_BIT_ERROR << 10) | (DINFOX_BIT_ERROR << 8) |
-	 (DINFOX_BIT_ERROR << 6)  | (DINFOX_BIT_ERROR << 4)  | (DINFOX_BIT_ERROR << 2)  | (DINFOX_BIT_ERROR << 0)),
-	0x00000000
 };
 
 static const uint8_t R4S8CR_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL[] = {
@@ -551,7 +556,7 @@ errors:
 NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	XM_node_registers_t node_reg;
+	NODE_access_status_t access_status;
 	XM_registers_list_t reg_list;
 	R4S8CR_sigfox_ul_payload_data_t sigfox_ul_payload_data;
 	uint8_t idx = 0;
@@ -564,17 +569,11 @@ NODE_status_t R4S8CR_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload)
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Build node registers structure.
-	node_reg.value = (uint32_t*) R4S8CR_REGISTERS;
-	node_reg.error = (uint32_t*) R4S8CR_REG_ERROR_VALUE;
 	// Build registers list.
 	reg_list.addr_list = (uint8_t*) R4S8CR_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL;
 	reg_list.size = sizeof(R4S8CR_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL);
-	// Reset registers.
-	status = XM_reset_registers(&reg_list, &node_reg);
-	if (status != NODE_SUCCESS) goto errors;
 	// Read related registers.
-	status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+	status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &R4S8CR_NODE_REGISTERS, &access_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Build data payload.
 	sigfox_ul_payload_data.r1stst = DINFOX_read_field(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS], R4S8CR_REG_STATUS_MASK_R1STST);

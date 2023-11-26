@@ -12,6 +12,7 @@
 #include "common_reg.h"
 #include "dinfox.h"
 #include "dmm.h"
+#include "error.h"
 #include "node.h"
 #include "node_common.h"
 #include "r4s8cr.h"
@@ -23,6 +24,14 @@ NODE_status_t XM_write_register(NODE_address_t node_addr, uint8_t reg_addr, uint
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t write_params;
+	// Check parameters.
+	if (write_status == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Reset access status.
+	(write_status -> all) = 0;
+	(write_status -> type) = NODE_ACCESS_TYPE_WRITE;
 	// Write parameters.
 	write_params.node_addr = node_addr;
 	write_params.reg_addr = reg_addr;
@@ -40,22 +49,37 @@ NODE_status_t XM_write_register(NODE_address_t node_addr, uint8_t reg_addr, uint
 			status = AT_BUS_write_register(&write_params, reg_value, reg_mask, write_status);
 		}
 	}
+	if (status != NODE_SUCCESS) goto errors;
+	// Store eventual access status error.
+	if ((write_status -> all) != 0) {
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status -> all));
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node_addr));
+	}
+errors:
 	return status;
 }
 
 /*******************************************************************/
-NODE_status_t XM_read_register(NODE_address_t node_addr, uint8_t reg_addr, uint32_t reg_error_value, uint32_t* reg_value, NODE_access_status_t* read_status) {
+NODE_status_t XM_read_register(NODE_address_t node_addr, uint8_t reg_addr, XM_node_registers_t* node_reg, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t read_params;
 	uint32_t local_reg_value = 0;
+	// Check parameters.
+	if ((node_reg == NULL) || (read_status == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Reset access status.
+	(read_status -> all) = 0;
+	(read_status -> type) = NODE_ACCESS_TYPE_READ;
 	// Read parameters.
 	read_params.node_addr = node_addr;
 	read_params.reg_addr = reg_addr;
 	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	// Reset value.
-	(*reg_value) = reg_error_value;
+	(node_reg -> value)[reg_addr] = (node_reg -> error)[reg_addr];
 	// Read data.
 	if (node_addr == DINFOX_NODE_ADDRESS_DMM) {
 		status = DMM_read_register(&read_params, &local_reg_value, read_status);
@@ -68,22 +92,30 @@ NODE_status_t XM_read_register(NODE_address_t node_addr, uint8_t reg_addr, uint3
 			status = AT_BUS_read_register(&read_params, &local_reg_value, read_status);
 		}
 	}
-	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
-	// Update value.
-	(*reg_value) = local_reg_value;
+	if (status != NODE_SUCCESS) goto errors;
+	// Store eventual access status error.
+	if ((read_status -> all) != 0) {
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status -> all));
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node_addr));
+	}
+	// Update value if access was successful.
+	if ((read_status -> all) == 0) {
+		(node_reg -> value)[reg_addr] = local_reg_value;
+	}
 errors:
 	return status;
 }
 
 /*******************************************************************/
-NODE_status_t XM_read_registers(NODE_address_t node_addr, XM_registers_list_t* reg_list, XM_node_registers_t* node_reg) {
+NODE_status_t XM_read_registers(NODE_address_t node_addr, XM_registers_list_t* reg_list, XM_node_registers_t* node_reg, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t unused_read_status;
+	NODE_access_status_t local_access_status;
 	uint8_t reg_addr = 0;
 	uint8_t idx = 0;
+	uint8_t access_error_flag = 0;
 	// Check parameters.
-	if ((reg_list == NULL) || (node_reg == NULL)) {
+	if ((reg_list == NULL) || (node_reg == NULL) || (read_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
@@ -95,42 +127,27 @@ NODE_status_t XM_read_registers(NODE_address_t node_addr, XM_registers_list_t* r
 		status = NODE_ERROR_REGISTER_LIST_SIZE;
 		goto errors;
 	}
-	// Read all registers.
+	// Reset all registers.
 	for (idx=0 ; idx<(reg_list -> size) ; idx++) {
-		// Read register.
-		// Note: status is not checked is order fill all registers with their error value.
+		// Update address.
 		reg_addr = (reg_list -> addr_list)[idx];
-		XM_read_register(node_addr, reg_addr, (node_reg -> error)[reg_addr], &((node_reg -> value)[reg_addr]), &unused_read_status);
-	}
-errors:
-	return status;
-}
-
-
-/*******************************************************************/
-NODE_status_t XM_reset_registers(XM_registers_list_t* reg_list, XM_node_registers_t* node_reg) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	uint8_t idx = 0;
-	uint8_t reg_addr = 0;
-	// Check parameters.
-	if ((reg_list == NULL) || (node_reg == NULL)) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	if (((reg_list -> addr_list) == NULL) || ((node_reg -> value) == NULL) || ((node_reg -> error) == NULL)) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	if ((reg_list -> size) == 0) {
-		status = NODE_ERROR_REGISTER_LIST_SIZE;
-		goto errors;
-	}
-	// Read all registers.
-	for (idx=0 ; idx<(reg_list -> size) ; idx++) {
 		// Reset to error value.
-		reg_addr = (reg_list -> addr_list)[idx];
 		(node_reg -> value)[reg_addr] = (node_reg -> error)[reg_addr];
+	}
+	// Read all registers.
+	for (idx=0 ; idx<(reg_list -> size) ; idx++) {
+		// Update address.
+		reg_addr = (reg_list -> addr_list)[idx];
+		// Read register.
+		status = XM_read_register(node_addr, reg_addr, node_reg, &local_access_status);
+		if (status != NODE_SUCCESS) goto errors;
+		// Check access status.
+		if ((local_access_status.all != 0) && (access_error_flag == 0)) {
+			// Copy error without breaking loop.
+			(read_status -> all) = local_access_status.all;
+			// Set flag.
+			access_error_flag = 1;
+		}
 	}
 errors:
 	return status;

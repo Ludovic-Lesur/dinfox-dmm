@@ -64,17 +64,8 @@ typedef union {
 /*** DMM local global variables ***/
 
 static uint32_t DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_LAST];
-static uint32_t DMM_REGISTERS[DMM_REG_ADDR_LAST];
 
-static const NODE_line_data_t DMM_LINE_DATA[DMM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{"VRS =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VRS,   DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"VHMI =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VHMI, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"VUSB =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_2, DMM_REG_ANALOG_DATA_2_MASK_VUSB, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"NODES_CNT =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_STATUS_1, DMM_REG_STATUS_1_MASK_NODES_COUNT, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"SC_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_1, DMM_REG_CONFIGURATION_1_MASK_NODES_SCAN_PERIOD,   DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"UL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_1, DMM_REG_CONFIGURATION_1_MASK_SIGFOX_UL_PERIOD,    DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"DL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_1, DMM_REG_CONFIGURATION_1_MASK_SIGFOX_DL_PERIOD,    DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE}
-};
+static uint32_t DMM_REGISTERS[DMM_REG_ADDR_LAST];
 
 static const uint32_t DMM_REG_ERROR_VALUE[DMM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
@@ -84,6 +75,21 @@ static const uint32_t DMM_REG_ERROR_VALUE[DMM_REG_ADDR_LAST] = {
 	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0),
+};
+
+static const XM_node_registers_t DMM_NODE_REGISTERS = {
+	.value = (uint32_t*) DMM_REGISTERS,
+	.error = (uint32_t*) DMM_REG_ERROR_VALUE,
+};
+
+static const NODE_line_data_t DMM_LINE_DATA[DMM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
+	{"VRS =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VRS,   DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"VHMI =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VHMI, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"VUSB =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_2, DMM_REG_ANALOG_DATA_2_MASK_VUSB, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"NODES_CNT =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_STATUS_1, DMM_REG_STATUS_1_MASK_NODES_COUNT, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"SC_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_1, DMM_REG_CONFIGURATION_1_MASK_NODES_SCAN_PERIOD,   DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"UL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_1, DMM_REG_CONFIGURATION_1_MASK_SIGFOX_UL_PERIOD,    DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"DL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_1, DMM_REG_CONFIGURATION_1_MASK_SIGFOX_DL_PERIOD,    DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE}
 };
 
 static const uint8_t DMM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
@@ -499,7 +505,7 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 		NODE_flush_string_value();
 		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 		// Update register.
-		status = XM_read_register((line_data_read -> node_addr), reg_addr, DMM_REG_ERROR_VALUE[reg_addr], &(DMM_REGISTERS[reg_addr]), read_status);
+		status = XM_read_register((line_data_read -> node_addr), reg_addr, (XM_node_registers_t*) &DMM_NODE_REGISTERS, read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
 		field_value = DINFOX_read_field(DMM_REGISTERS[reg_addr], DMM_LINE_DATA[str_data_idx].read_field_mask);
@@ -550,8 +556,7 @@ errors:
 NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t write_status;
-	XM_node_registers_t node_reg;
+	NODE_access_status_t access_status;
 	XM_registers_list_t reg_list;
 	DMM_sigfox_ul_payload_monitoring_t sigfox_ul_payload_monitoring;
 	uint8_t idx = 0;
@@ -564,13 +569,10 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Build node registers structure.
-	node_reg.value = (uint32_t*) DMM_REGISTERS;
-	node_reg.error = (uint32_t*) DMM_REG_ERROR_VALUE;
 	// Reset payload size.
 	(*(node_ul_payload -> size)) = 0;
 	// Check event driven payloads.
-	status = COMMON_check_event_driven_payloads(node_ul_payload, &node_reg);
+	status = COMMON_check_event_driven_payloads(node_ul_payload, (XM_node_registers_t*) &DMM_NODE_REGISTERS);
 	if (status != NODE_SUCCESS) goto errors;
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
@@ -580,16 +582,13 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		// Build registers list.
 		reg_list.addr_list = (uint8_t*) DMM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING;
 		reg_list.size = sizeof(DMM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING);
-		// Reset registers.
-		status = XM_reset_registers(&reg_list, &node_reg);
-		if (status != NODE_SUCCESS) goto errors;
 		// Perform measurements.
-		status = XM_perform_measurements((node_ul_payload -> node -> address), &write_status);
+		status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check write status.
-		if (write_status.all == 0) {
+		if (access_status.all == 0) {
 			// Read related registers.
-			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &DMM_NODE_REGISTERS, &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 		}
 		// Build monitoring payload.

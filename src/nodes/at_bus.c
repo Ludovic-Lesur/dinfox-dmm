@@ -327,6 +327,7 @@ NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32
 	STRING_exit_error(NODE_ERROR_BASE_STRING);
 	// Send command.
 	status = AT_BUS_send_command(&command_params);
+	if (status != NODE_SUCCESS) goto errors;
 	// Wait reply.
 	status = _AT_BUS_wait_reply(&(read_params -> reply_params), reg_value, read_status);
 	if (status != NODE_SUCCESS) goto errors;

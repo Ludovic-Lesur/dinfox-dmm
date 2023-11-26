@@ -51,6 +51,12 @@ typedef enum {
 	NODE_SUCCESS = 0,
 	NODE_ERROR_NOT_SUPPORTED,
 	NODE_ERROR_NULL_PARAMETER,
+	NODE_ERROR_WRITE_ACCESS,
+	NODE_ERROR_READ_ACCESS,
+	NODE_ERROR_RADIO_SEND_DATA,
+	NODE_ERROR_RADIO_READ_DATA,
+	NODE_ERROR_RADIO_READ_BIDIRECTIONAL_MC,
+	NODE_ERROR_RADIO_NONE_MODULE,
 	NODE_ERROR_PROTOCOL,
 	NODE_ERROR_R4S8CR_ADDRESS,
 	NODE_ERROR_MPMCM_ADDRESS,
@@ -61,13 +67,11 @@ typedef enum {
 	NODE_ERROR_REGISTER_LIST_SIZE,
 	NODE_ERROR_LINE_DATA_INDEX,
 	NODE_ERROR_REPLY_TYPE,
-	NODE_ERROR_ACCESS,
-	NODE_ERROR_NONE_RADIO_MODULE,
 	NODE_ERROR_SIGFOX_UL_PAYLOAD_TYPE,
 	NODE_ERROR_SIGFOX_UPLINK_PERIOD,
 	NODE_ERROR_SIGFOX_DOWNLINK_PERIOD,
-	NODE_ERROR_DOWNLINK_NODE_ADDRESS,
-	NODE_ERROR_DOWNLINK_OPERATION_CODE,
+	NODE_ERROR_SIGFOX_DOWNLINK_NODE_ADDRESS,
+	NODE_ERROR_SIGFOX_DOWNLINK_OPERATION_CODE,
 	NODE_ERROR_ACTION_INDEX,
 	NODE_ERROR_RELAY_ID,
 	// Low level drivers errors.
@@ -282,15 +286,6 @@ NODE_status_t NODE_get_last_line_data_index(NODE_t* node, uint8_t* last_line_dat
  * \retval		Function execution status.
  *******************************************************************/
 NODE_status_t NODE_get_line_data(NODE_t* node, uint8_t line_data_index, char_t** line_data_name_ptr, char_t** line_data_value_ptr);
-
-/*******************************************************************/
-#define NODE_check_access_status(node_addr) { \
-	if ((node_access_status.all) != 0) { \
-		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + node_access_status.all); \
-		status = (NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node_addr)); \
-		goto errors; \
-	} \
-}
 
 /*******************************************************************/
 #define NODE_append_name_string(str) { \

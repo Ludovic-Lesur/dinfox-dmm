@@ -59,6 +59,7 @@ static const uint8_t COMMON_REG_LIST_SIGFOX_UL_PAYLOAD_STARTUP[] = {
 static NODE_status_t _COMMON_build_sigfox_ul_payload_startup(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	NODE_access_status_t access_status;
 	XM_registers_list_t reg_list;
 	COMMON_sigfox_ul_payload_startup_t sigfox_ul_payload_startup;
 	uint8_t idx = 0;
@@ -76,11 +77,8 @@ static NODE_status_t _COMMON_build_sigfox_ul_payload_startup(NODE_ul_payload_t* 
 	// Build registers list.
 	reg_list.addr_list = (uint8_t*) COMMON_REG_LIST_SIGFOX_UL_PAYLOAD_STARTUP;
 	reg_list.size = sizeof(COMMON_REG_LIST_SIGFOX_UL_PAYLOAD_STARTUP);
-	// Reset related registers.
-	status = XM_reset_registers(&reg_list, node_reg);
-	if (status != NODE_SUCCESS) goto errors;
 	// Read related registers.
-	status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, node_reg);
+	status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, node_reg, &access_status);
 	if (status != NODE_SUCCESS) goto errors;
 	// Build data payload.
 	sigfox_ul_payload_startup.reset_reason = DINFOX_read_field((node_reg -> value)[COMMON_REG_ADDR_STATUS_0], COMMON_REG_STATUS_0_MASK_RESET_FLAGS);
@@ -102,7 +100,7 @@ errors:
 static NODE_status_t _COMMON_build_sigfox_ul_payload_error_stack(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t read_status;
+	NODE_access_status_t access_status;
 	uint32_t reg_value = 0;
 	uint8_t idx = 0;
 	// Check parameters.
@@ -119,8 +117,10 @@ static NODE_status_t _COMMON_build_sigfox_ul_payload_error_stack(NODE_ul_payload
 	// Read error stack register.
 	for (idx=0 ; idx<(COMMON_SIGFOX_UL_PAYLOAD_ERROR_STACK_SIZE / 2) ; idx++) {
 		// Read error stack register.
-		status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_ERROR_STACK, 0x00000000, &reg_value, &read_status);
-		if ((status != NODE_SUCCESS) || ((read_status.all) != 0)) goto errors;
+		status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_ERROR_STACK, node_reg, &access_status);
+		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		// Update local value.
+		reg_value = (node_reg -> value)[COMMON_REG_ADDR_ERROR_STACK];
 		// If the first error is zero, the stack is empty, no frame has to be sent.
 		if ((idx == 0) && ((reg_value & COMMON_REG_ERROR_STACK_MASK_ERROR) == 0)) {
 			goto errors;
@@ -179,10 +179,10 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 	NODE_flush_string_value();
 	NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 	// Read register.
-	status = XM_read_register((line_data_read -> node_addr), reg_addr, (node_reg -> error)[reg_addr], &reg_value, read_status);
+	status = XM_read_register((line_data_read -> node_addr), reg_addr, node_reg, read_status);
 	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
-	// Update RAM register.
-	(node_reg -> value)[reg_addr] = reg_value;
+	// Update local value.
+	reg_value = (node_reg -> value)[reg_addr];
 	// Check index.
 	switch (str_data_idx) {
 	case COMMON_LINE_DATA_INDEX_HW_VERSION:
@@ -268,8 +268,10 @@ NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payl
 	// Reset payload size.
 	(*(node_ul_payload -> size)) = 0;
 	// Read status register.
-	status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_STATUS_0, 0, &reg_status_0, &access_status);
+	status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_STATUS_0, node_reg, &access_status);
 	if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+	// Update local value.
+	reg_status_0 = (node_reg -> value)[COMMON_REG_ADDR_STATUS_0];
 	// Read boot flag.
 	if (DINFOX_read_field(reg_status_0, COMMON_REG_STATUS_0_MASK_BF) != 0) {
 		// Compute startup payload.
@@ -277,7 +279,7 @@ NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payl
 		if (status != NODE_SUCCESS) goto errors;
 		// Clear boot flag.
 		status = XM_write_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_CONTROL_0, COMMON_REG_CONTROL_0_MASK_BFC, COMMON_REG_CONTROL_0_MASK_BFC, AT_BUS_DEFAULT_TIMEOUT_MS, &access_status);
-		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		if (status != NODE_SUCCESS) goto errors;
 	}
 	else {
 		if (DINFOX_read_field(reg_status_0, COMMON_REG_STATUS_0_MASK_ESF) != 0) {

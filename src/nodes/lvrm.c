@@ -56,19 +56,24 @@ typedef union {
 
 static uint32_t LVRM_REGISTERS[LVRM_REG_ADDR_LAST];
 
-static const NODE_line_data_t LVRM_LINE_DATA[LVRM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
-	{"VCOM =", " V",  STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_1,   LVRM_REG_ANALOG_DATA_1_MASK_VCOM, LVRM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"VOUT =", " V",  STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_1,   LVRM_REG_ANALOG_DATA_1_MASK_VOUT, LVRM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"IOUT =", " mA", STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_2,   LVRM_REG_ANALOG_DATA_2_MASK_IOUT, LVRM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"RELAY =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_STATUS_1, LVRM_REG_STATUS_1_MASK_RLSTST,    LVRM_REG_ADDR_CONTROL_1, LVRM_REG_CONTROL_1_MASK_RLST}
-};
-
 static const uint32_t LVRM_REG_ERROR_VALUE[LVRM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
 	(DINFOX_BIT_ERROR << 0),
 	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0)
+};
+
+static const XM_node_registers_t LVRM_NODE_REGISTERS = {
+	.value = (uint32_t*) LVRM_REGISTERS,
+	.error = (uint32_t*) LVRM_REG_ERROR_VALUE,
+};
+
+static const NODE_line_data_t LVRM_LINE_DATA[LVRM_LINE_DATA_INDEX_LAST - COMMON_LINE_DATA_INDEX_LAST] = {
+	{"VCOM =", " V",  STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_1,   LVRM_REG_ANALOG_DATA_1_MASK_VCOM, LVRM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"VOUT =", " V",  STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_1,   LVRM_REG_ANALOG_DATA_1_MASK_VOUT, LVRM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"IOUT =", " mA", STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_ANALOG_DATA_2,   LVRM_REG_ANALOG_DATA_2_MASK_IOUT, LVRM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"RELAY =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, LVRM_REG_ADDR_STATUS_1, LVRM_REG_STATUS_1_MASK_RLSTST,    LVRM_REG_ADDR_CONTROL_1, LVRM_REG_CONTROL_1_MASK_RLST}
 };
 
 static const uint8_t LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
@@ -160,7 +165,7 @@ NODE_status_t LVRM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		NODE_flush_string_value();
 		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 		// Update register.
-		status = XM_read_register((line_data_read -> node_addr), reg_addr, LVRM_REG_ERROR_VALUE[reg_addr], &(LVRM_REGISTERS[reg_addr]), read_status);
+		status = XM_read_register((line_data_read -> node_addr), reg_addr, (XM_node_registers_t*) &LVRM_NODE_REGISTERS, read_status);
 		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
 		// Compute field.
 		field_value = DINFOX_read_field(LVRM_REGISTERS[reg_addr], LVRM_LINE_DATA[str_data_idx].read_field_mask);
@@ -225,8 +230,7 @@ errors:
 NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t write_status;
-	XM_node_registers_t node_reg;
+	NODE_access_status_t access_status;
 	XM_registers_list_t reg_list;
 	LVRM_sigfox_ul_payload_monitoring_t sigfox_ul_payload_monitoring;
 	LVRM_sigfox_ul_payload_electrical_t sigfox_ul_payload_electrical;
@@ -240,13 +244,10 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Build node registers structure.
-	node_reg.value = (uint32_t*) LVRM_REGISTERS;
-	node_reg.error = (uint32_t*) LVRM_REG_ERROR_VALUE;
 	// Reset payload size.
 	(*(node_ul_payload -> size)) = 0;
 	// Check event driven payloads.
-	status = COMMON_check_event_driven_payloads(node_ul_payload, &node_reg);
+	status = COMMON_check_event_driven_payloads(node_ul_payload, (XM_node_registers_t*) &LVRM_NODE_REGISTERS);
 	if (status != NODE_SUCCESS) goto errors;
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
@@ -256,16 +257,13 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		// Build registers list.
 		reg_list.addr_list = (uint8_t*) LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING;
 		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING);
-		// Reset registers.
-		status = XM_reset_registers(&reg_list, &node_reg);
-		if (status != NODE_SUCCESS) goto errors;
 		// Perform measurements.
-		status = XM_perform_measurements((node_ul_payload -> node -> address), &write_status);
+		status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check write status.
-		if (write_status.all == 0) {
+		if (access_status.all == 0) {
 			// Read related registers.
-			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &LVRM_NODE_REGISTERS, &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 		}
 		// Build monitoring payload.
@@ -281,16 +279,13 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		// Build registers list.
 		reg_list.addr_list = (uint8_t*) LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL;
 		reg_list.size = sizeof(LVRM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL);
-		// Reset registers.
-		status = XM_reset_registers(&reg_list, &node_reg);
-		if (status != NODE_SUCCESS) goto errors;
 		// Perform measurements.
-		status = XM_perform_measurements((node_ul_payload -> node -> address), &write_status);
+		status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check write status.
-		if (write_status.all == 0) {
+		if (access_status.all == 0) {
 			// Read related registers.
-			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, &node_reg);
+			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &LVRM_NODE_REGISTERS, &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 		}
 		// Build data payload.

@@ -46,7 +46,7 @@ typedef union {
 static uint32_t UHFM_REGISTERS[UHFM_REG_ADDR_LAST];
 
 static const uint32_t UHFM_REG_ERROR_VALUE[UHFM_REG_ADDR_LAST] = {
-	COMMON_REG_ERROR_VALUE
+	COMMON_REG_ERROR_VALUE_LIST
 	0x00000000,
 	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
@@ -160,7 +160,7 @@ NODE_status_t UHFM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 		// Update register.
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, (XM_node_registers_t*) &UHFM_NODE_REGISTERS, read_status);
-		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+		if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 		// Compute field.
 		field_value = DINFOX_read_field(UHFM_REGISTERS[reg_addr], UHFM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
@@ -229,7 +229,7 @@ NODE_status_t UHFM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check write status.
-		if (access_status.all == 0) {
+		if (access_status.flags == 0) {
 			// Read related registers.
 			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &UHFM_NODE_REGISTERS, &access_status);
 			if (status != NODE_SUCCESS) goto errors;
@@ -276,7 +276,7 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0x0E, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_TX_POWER);
 		// Write register.
 		status = XM_write_register(node_addr, UHFM_REG_ADDR_SIGFOX_EP_CONFIGURATION_0, ep_config_0, ep_config_0_mask, AT_BUS_DEFAULT_TIMEOUT_MS, send_status);
-		if ((status != NODE_SUCCESS) || ((send_status -> all) != 0)) goto errors;
+		if ((status != NODE_SUCCESS) || ((send_status -> flags) != 0)) goto errors;
 		// Reset flag.
 		uhfm_ep_configuration_done = 1;
 	}
@@ -286,7 +286,7 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 	DINFOX_write_field(&ep_config_2, &ep_config_2_mask, (uint32_t) (sigfox_message -> ul_payload_size), UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_UL_PAYLOAD_SIZE);
 	// Write register.
 	status = XM_write_register(node_addr, UHFM_REG_ADDR_SIGFOX_EP_CONFIGURATION_2, ep_config_2, ep_config_2_mask, AT_BUS_DEFAULT_TIMEOUT_MS, send_status);
-	if ((status != NODE_SUCCESS) || ((send_status -> all) != 0)) goto errors;
+	if ((status != NODE_SUCCESS) || ((send_status -> flags) != 0)) goto errors;
 	// UL payload.
 	for (idx=0 ; idx<(sigfox_message -> ul_payload_size) ; idx++) {
 		// Build register.
@@ -295,7 +295,7 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 		if ((((idx + 1) % 4) == 0) || (idx == ((sigfox_message -> ul_payload_size) - 1))) {
 			// Write register.
 			status = XM_write_register(node_addr, (UHFM_REG_ADDR_SIGFOX_UL_PAYLOAD_0 + reg_offset), ul_payload_x, DINFOX_REG_MASK_ALL, AT_BUS_DEFAULT_TIMEOUT_MS, send_status);
-			if ((status != NODE_SUCCESS) || ((send_status -> all) != 0)) goto errors;
+			if ((status != NODE_SUCCESS) || ((send_status -> flags) != 0)) goto errors;
 			// Go to next register and reset value.
 			reg_offset++;
 			ul_payload_x = 0;
@@ -323,7 +323,7 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	}
 	// Read message status.
 	status = XM_read_register(node_addr, UHFM_REG_ADDR_STATUS_1, (XM_node_registers_t*) &UHFM_NODE_REGISTERS, read_status);
-	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+	if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 	// Compute message status.
 	message_status.all = DINFOX_read_field(UHFM_REGISTERS[UHFM_REG_ADDR_STATUS_1], UHFM_REG_STATUS_1_MASK_MESSAGE_STATUS);
 	// Check DL flag.
@@ -334,7 +334,7 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 		if ((idx % 4) == 0) {
 			// Read register.
 			status = XM_read_register(node_addr, (UHFM_REG_ADDR_SIGFOX_DL_PAYLOAD_0 + reg_offset), (XM_node_registers_t*) &UHFM_NODE_REGISTERS, read_status);
-			if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+			if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 			// Go to next register and reset value.
 			reg_offset++;
 		}
@@ -356,7 +356,7 @@ NODE_status_t UHFM_get_last_bidirectional_mc(NODE_address_t node_addr, uint32_t*
 	}
 	// Read message status.
 	status = XM_read_register(node_addr, UHFM_REG_ADDR_STATUS_1, (XM_node_registers_t*) &UHFM_NODE_REGISTERS, read_status);
-	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+	if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 	// Compute message counter.
 	(*last_message_counter) = DINFOX_read_field(UHFM_REGISTERS[UHFM_REG_ADDR_STATUS_1], UHFM_REG_STATUS_1_MASK_BIDIRECTIONAL_MC);
 errors:

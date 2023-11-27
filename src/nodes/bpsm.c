@@ -57,7 +57,7 @@ typedef union {
 static uint32_t BPSM_REGISTERS[BPSM_REG_ADDR_LAST];
 
 static const uint32_t BPSM_REG_ERROR_VALUE[BPSM_REG_ADDR_LAST] = {
-	COMMON_REG_ERROR_VALUE
+	COMMON_REG_ERROR_VALUE_LIST
 	0x00000000,
 	((DINFOX_BIT_ERROR << 4) | (DINFOX_BIT_ERROR << 2) | (DINFOX_BIT_ERROR << 0)),
 	0x00000000,
@@ -169,7 +169,7 @@ NODE_status_t BPSM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 		// Update register.
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, (XM_node_registers_t*) &BPSM_NODE_REGISTERS, read_status);
-		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+		if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 		// Compute field.
 		field_value = DINFOX_read_field(BPSM_REGISTERS[reg_addr], BPSM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
@@ -254,7 +254,7 @@ NODE_status_t BPSM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check write status.
-		if (access_status.all == 0) {
+		if (access_status.flags == 0) {
 			// Read related registers.
 			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &BPSM_NODE_REGISTERS, &access_status);
 			if (status != NODE_SUCCESS) goto errors;
@@ -276,7 +276,7 @@ NODE_status_t BPSM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check write status.
-		if (access_status.all == 0) {
+		if (access_status.flags == 0) {
 			// Read related registers.
 			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &BPSM_NODE_REGISTERS, &access_status);
 			if (status != NODE_SUCCESS) goto errors;

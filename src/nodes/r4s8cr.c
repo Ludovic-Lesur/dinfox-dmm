@@ -155,7 +155,7 @@ static NODE_status_t _R4S8CR_write_relay_state(uint8_t relay_id, uint8_t rxst, N
 		goto errors;
 	}
 	// No confirmation after write operation.
-	(write_status -> all) = 0;
+	(write_status -> flags) = 0;
 	// Flush buffers.
 	_R4S8CR_flush_buffers();
 	// Build command.
@@ -190,7 +190,7 @@ static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, NODE_access
 	}
 	// Flush buffers and status.
 	_R4S8CR_flush_buffers();
-	(read_status -> all) = 0;
+	(read_status -> flags) = 0;
 	// Build command.
 	r4s8cr_ctx.command[0] = R4S8CR_NODE_ADDRESS;
 	r4s8cr_ctx.command[1] = (R4S8CR_COMMAND_READ | relay_box_id);
@@ -251,7 +251,7 @@ static NODE_status_t _R4S8CR_update_register(NODE_address_t node_addr, uint8_t r
 		relay_box_id = (node_addr - DINFOX_NODE_ADDRESS_R4S8CR_START + 1) & 0x0F;
 		// Read relays state.
 		status = _R4S8CR_read_relays_state(relay_box_id, read_status);
-		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+		if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 		// Write register.
 		for (idx=0 ; idx<R4S8CR_NUMBER_OF_RELAYS ; idx++) {
 			DINFOX_write_field(&(R4S8CR_REGISTERS[R4S8CR_REG_ADDR_STATUS]), &unused_mask, ((uint32_t) r4s8cr_ctx.rxst[idx]), (0b11 << (idx << 1)));
@@ -293,7 +293,7 @@ static NODE_status_t _R4S8CR_check_register(NODE_address_t node_addr, uint8_t re
 			if ((reg_mask & (0b1 << idx)) != 0) {
 				// Set relay state
 				status = _R4S8CR_write_relay_state(relay_id, (reg_value & (0b1 << idx)), write_status);
-				if ((status != NODE_SUCCESS) || ((write_status -> all) != 0)) goto errors;
+				if ((status != NODE_SUCCESS) || ((write_status -> flags) != 0)) goto errors;
 			}
 		}
 		break;
@@ -323,13 +323,15 @@ NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	uint32_t temp = 0;
-	// Reset write status.
-	(*write_status).all = 0;
 	// Check parameters.
 	if ((write_params == NULL) || (write_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
+	// Reset access status.
+	(write_status -> all) = 0;
+	(write_status -> type) = NODE_ACCESS_TYPE_WRITE;
+	// Check address.
 	if ((write_params -> reg_addr) >= R4S8CR_REG_ADDR_LAST) {
 		// Act as a slave.
 		(*write_status).error_received = 1;
@@ -361,6 +363,11 @@ NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint
 		goto errors;
 	}
 errors:
+	// Store eventual access status error.
+	if ((write_status -> flags) != 0) {
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status -> all));
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (write_params -> node_addr));
+	}
 	return status;
 }
 
@@ -374,6 +381,10 @@ NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
+	// Reset access status.
+	(read_status -> all) = 0;
+	(read_status -> type) = NODE_ACCESS_TYPE_READ;
+	// Check address.
 	if ((read_params -> reg_addr) >= R4S8CR_REG_ADDR_LAST) {
 		// Act as a slave.
 		(*read_status).error_received = 1;
@@ -397,6 +408,11 @@ NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32
 	// Read register.
 	(*reg_value) = R4S8CR_REGISTERS[(read_params -> reg_addr)];
 errors:
+	// Store eventual access status error.
+	if ((read_status -> flags) != 0) {
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status -> all));
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (read_params -> node_addr));
+	}
 	return status;
 }
 
@@ -428,7 +444,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 		status = R4S8CR_read_register(&read_params, &reg_value, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply status.
-		if (read_status.all == 0) {
+		if (read_status.flags == 0) {
 			// Node found.
 			(*nodes_count)++;
 			// Store address and reset board ID.
@@ -513,7 +529,7 @@ NODE_status_t R4S8CR_read_line_data(NODE_line_data_read_t* line_data_read, NODE_
 	read_params.reply_params.timeout_ms = R4S8CR_READ_TIMEOUT_MS;
 	// Update register.
 	status = R4S8CR_read_register(&read_params, &reg_value, read_status);
-	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+	if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 	// Compute field.
 	NODE_flush_string_value();
 	field_value = DINFOX_read_field(reg_value, R4S8CR_LINE_DATA[str_data_idx].read_field_mask);

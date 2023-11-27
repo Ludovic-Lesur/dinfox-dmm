@@ -72,7 +72,7 @@ typedef union {
 static uint32_t SM_REGISTERS[SM_REG_ADDR_LAST];
 
 static const uint32_t SM_REG_ERROR_VALUE[SM_REG_ADDR_LAST] = {
-	COMMON_REG_ERROR_VALUE
+	COMMON_REG_ERROR_VALUE_LIST
 	0x00000000,
 	0x00000000,
 	0x00000000,
@@ -195,7 +195,7 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 		// Update register.
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, (XM_node_registers_t*) &SM_NODE_REGISTERS, read_status);
-		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+		if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 		// Compute field.
 		field_value = DINFOX_read_field(SM_REGISTERS[reg_addr], SM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
@@ -296,7 +296,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
 	// Else use specific pattern of the node.
 	status = XM_read_register((node_ul_payload -> node -> address), SM_REG_ADDR_CONFIGURATION_0, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
-	if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+	if ((status != NODE_SUCCESS) || (access_status.flags != 0)) goto errors;
 	// Update local value.
 	reg_configuration = SM_REGISTERS[SM_REG_ADDR_CONFIGURATION_0];
 	// Payloads loop.
@@ -310,7 +310,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Check write status.
-			if (access_status.all == 0) {
+			if (access_status.flags == 0) {
 				// Read related registers.
 				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
 				if (status != NODE_SUCCESS) goto errors;
@@ -334,7 +334,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Check write status.
-			if (access_status.all == 0) {
+			if (access_status.flags == 0) {
 				// Read related registers.
 				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
 				if (status != NODE_SUCCESS) goto errors;
@@ -364,7 +364,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 			if (status != NODE_SUCCESS) goto errors;
 			// Check write status.
-			if (access_status.all == 0) {
+			if (access_status.flags == 0) {
 				// Read related registers.
 				status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
 				if (status != NODE_SUCCESS) goto errors;

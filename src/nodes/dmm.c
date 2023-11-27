@@ -68,7 +68,7 @@ static uint32_t DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_LAST];
 static uint32_t DMM_REGISTERS[DMM_REG_ADDR_LAST];
 
 static const uint32_t DMM_REG_ERROR_VALUE[DMM_REG_ADDR_LAST] = {
-	COMMON_REG_ERROR_VALUE
+	COMMON_REG_ERROR_VALUE_LIST
 	0x00000000,
 	((DINFOX_TIME_ERROR_VALUE << 16) | (DINFOX_TIME_ERROR_VALUE << 8) | (DINFOX_TIME_ERROR_VALUE << 0)),
 	0x00000000,
@@ -363,13 +363,15 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	uint32_t temp = 0;
-	// Reset write status.
-	(*write_status).all = 0;
 	// Check parameters.
 	if ((write_params == NULL) || (write_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
+	// Reset access status.
+	(write_status -> all) = 0;
+	(write_status -> type) = NODE_ACCESS_TYPE_WRITE;
+	// Check address.
 	if ((write_params -> reg_addr) >= DMM_REG_ADDR_LAST) {
 		// Act as a slave.
 		(*write_status).error_received = 1;
@@ -401,6 +403,11 @@ NODE_status_t DMM_write_register(NODE_access_parameters_t* write_params, uint32_
 		goto errors;
 	}
 errors:
+	// Store eventual access status error.
+	if ((write_status -> flags) != 0) {
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status -> all));
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (write_params -> node_addr));
+	}
 	return status;
 }
 
@@ -409,13 +416,15 @@ NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t*
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
-	// Reset read status.
-	(*read_status).all = 0;
 	// Check parameters.
 	if ((read_params == NULL) || (read_status == NULL) || (reg_value == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
+	// Reset access status.
+	(read_status -> all) = 0;
+	(read_status -> type) = NODE_ACCESS_TYPE_READ;
+	// Check address.
 	if ((read_params -> reg_addr) >= DMM_REG_ADDR_LAST) {
 		// Act as a slave.
 		(*read_status).error_received = 1;
@@ -439,6 +448,11 @@ NODE_status_t DMM_read_register(NODE_access_parameters_t* read_params, uint32_t*
 	// Read register.
 	(*reg_value) = DMM_INTERNAL_REGISTERS[(read_params -> reg_addr)];
 errors:
+	// Store eventual access status error.
+	if ((read_status -> flags) != 0) {
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status -> all));
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (read_params -> node_addr));
+	}
 	return status;
 }
 
@@ -506,7 +520,7 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 		NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 		// Update register.
 		status = XM_read_register((line_data_read -> node_addr), reg_addr, (XM_node_registers_t*) &DMM_NODE_REGISTERS, read_status);
-		if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+		if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 		// Compute field.
 		field_value = DINFOX_read_field(DMM_REGISTERS[reg_addr], DMM_LINE_DATA[str_data_idx].read_field_mask);
 		// Check index.
@@ -586,7 +600,7 @@ NODE_status_t DMM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		status = XM_perform_measurements((node_ul_payload -> node -> address), &access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check write status.
-		if (access_status.all == 0) {
+		if (access_status.flags == 0) {
 			// Read related registers.
 			status = XM_read_registers((node_ul_payload -> node -> address), &reg_list, (XM_node_registers_t*) &DMM_NODE_REGISTERS, &access_status);
 			if (status != NODE_SUCCESS) goto errors;

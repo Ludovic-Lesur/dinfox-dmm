@@ -29,9 +29,6 @@ NODE_status_t XM_write_register(NODE_address_t node_addr, uint8_t reg_addr, uint
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Reset access status.
-	(write_status -> all) = 0;
-	(write_status -> type) = NODE_ACCESS_TYPE_WRITE;
 	// Write parameters.
 	write_params.node_addr = node_addr;
 	write_params.reg_addr = reg_addr;
@@ -49,12 +46,6 @@ NODE_status_t XM_write_register(NODE_address_t node_addr, uint8_t reg_addr, uint
 			status = AT_BUS_write_register(&write_params, reg_value, reg_mask, write_status);
 		}
 	}
-	if (status != NODE_SUCCESS) goto errors;
-	// Store eventual access status error.
-	if ((write_status -> all) != 0) {
-		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status -> all));
-		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node_addr));
-	}
 errors:
 	return status;
 }
@@ -70,9 +61,6 @@ NODE_status_t XM_read_register(NODE_address_t node_addr, uint8_t reg_addr, XM_no
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Reset access status.
-	(read_status -> all) = 0;
-	(read_status -> type) = NODE_ACCESS_TYPE_READ;
 	// Read parameters.
 	read_params.node_addr = node_addr;
 	read_params.reg_addr = reg_addr;
@@ -93,13 +81,9 @@ NODE_status_t XM_read_register(NODE_address_t node_addr, uint8_t reg_addr, XM_no
 		}
 	}
 	if (status != NODE_SUCCESS) goto errors;
-	// Store eventual access status error.
-	if ((read_status -> all) != 0) {
-		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status -> all));
-		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node_addr));
-	}
-	// Update value if access was successful.
-	if ((read_status -> all) == 0) {
+	// Check access status.
+	if ((read_status -> flags) == 0) {
+		// Update register value.
 		(node_reg -> value)[reg_addr] = local_reg_value;
 	}
 errors:
@@ -142,9 +126,9 @@ NODE_status_t XM_read_registers(NODE_address_t node_addr, XM_registers_list_t* r
 		status = XM_read_register(node_addr, reg_addr, node_reg, &local_access_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check access status.
-		if ((local_access_status.all != 0) && (access_error_flag == 0)) {
+		if ((local_access_status.flags != 0) && (access_error_flag == 0)) {
 			// Copy error without breaking loop.
-			(read_status -> all) = local_access_status.all;
+			(read_status -> flags) = local_access_status.flags;
 			// Set flag.
 			access_error_flag = 1;
 		}

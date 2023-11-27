@@ -118,7 +118,7 @@ static NODE_status_t _COMMON_build_sigfox_ul_payload_error_stack(NODE_ul_payload
 	for (idx=0 ; idx<(COMMON_SIGFOX_UL_PAYLOAD_ERROR_STACK_SIZE / 2) ; idx++) {
 		// Read error stack register.
 		status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_ERROR_STACK, node_reg, &access_status);
-		if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+		if ((status != NODE_SUCCESS) || (access_status.flags != 0)) goto errors;
 		// Update local value.
 		reg_value = (node_reg -> value)[COMMON_REG_ADDR_ERROR_STACK];
 		// If the first error is zero, the stack is empty, no frame has to be sent.
@@ -180,7 +180,7 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 	NODE_append_value_string((char_t*) NODE_ERROR_STRING);
 	// Read register.
 	status = XM_read_register((line_data_read -> node_addr), reg_addr, node_reg, read_status);
-	if ((status != NODE_SUCCESS) || ((read_status -> all) != 0)) goto errors;
+	if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 	// Update local value.
 	reg_value = (node_reg -> value)[reg_addr];
 	// Check index.
@@ -269,7 +269,7 @@ NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payl
 	(*(node_ul_payload -> size)) = 0;
 	// Read status register.
 	status = XM_read_register((node_ul_payload -> node -> address), COMMON_REG_ADDR_STATUS_0, node_reg, &access_status);
-	if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
+	if ((status != NODE_SUCCESS) || (access_status.flags != 0)) goto errors;
 	// Update local value.
 	reg_status_0 = (node_reg -> value)[COMMON_REG_ADDR_STATUS_0];
 	// Read boot flag.

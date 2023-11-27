@@ -300,6 +300,7 @@ NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint
 	}
 	// Send command.
 	status = AT_BUS_send_command(&command_params);
+	if (status != NODE_SUCCESS) goto errors;
 	// Wait reply.
 	status = _AT_BUS_wait_reply(&(write_params -> reply_params), &unused_reg_value, write_status);
 	if (status != NODE_SUCCESS) goto errors;

@@ -39,6 +39,8 @@ typedef enum {
 
 /*******************************************************************/
 #define MPMCM_REG_WRITE_TIMEOUT_CHx \
+	/* Channel configuration */ \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
 	/* Active power */ \
 	AT_BUS_DEFAULT_TIMEOUT_MS, \
 	AT_BUS_DEFAULT_TIMEOUT_MS, \
@@ -57,6 +59,7 @@ typedef enum {
 
 static const uint32_t MPMCM_REG_WRITE_TIMEOUT_MS[MPMCM_REG_ADDR_LAST] = {
 	COMMON_REG_WRITE_TIMEOUT_MS_LIST
+	AT_BUS_DEFAULT_TIMEOUT_MS,
 	AT_BUS_DEFAULT_TIMEOUT_MS,
 	1000,
 	AT_BUS_DEFAULT_TIMEOUT_MS,

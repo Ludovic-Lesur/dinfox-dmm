@@ -87,7 +87,7 @@ static uint8_t mpmcm_por_flag = 1;
 static uint8_t mpmcm_mvd_flag = 0;
 
 #define MPMCM_REG_ERROR_VALUE_CHx \
-	/* Configuration */ \
+	/* Channel configuration */ \
 	0x00000000, \
 	/* Active power */ \
 	((DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 16) | (DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 0)), \

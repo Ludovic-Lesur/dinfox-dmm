@@ -74,6 +74,8 @@ static uint32_t SM_REGISTERS[SM_REG_ADDR_LAST];
 static const uint32_t SM_REG_ERROR_VALUE[SM_REG_ADDR_LAST] = {
 	COMMON_REG_ERROR_VALUE
 	0x00000000,
+	0x00000000,
+	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	((DINFOX_HUMIDITY_ERROR_VALUE << 8) | (DINFOX_TEMPERATURE_ERROR_VALUE << 0)),
@@ -293,10 +295,10 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 	// Directly exits if a common payload was computed.
 	if ((*(node_ul_payload -> size)) > 0) goto errors;
 	// Else use specific pattern of the node.
-	status = XM_read_register((node_ul_payload -> node -> address), SM_REG_ADDR_CONFIGURATION, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
+	status = XM_read_register((node_ul_payload -> node -> address), SM_REG_ADDR_CONFIGURATION_0, (XM_node_registers_t*) &SM_NODE_REGISTERS, &access_status);
 	if ((status != NODE_SUCCESS) || (access_status.all != 0)) goto errors;
 	// Update local value.
-	reg_configuration = SM_REGISTERS[SM_REG_ADDR_CONFIGURATION];
+	reg_configuration = SM_REGISTERS[SM_REG_ADDR_CONFIGURATION_0];
 	// Payloads loop.
 	do {
 		switch (SM_SIGFOX_UL_PAYLOAD_PATTERN[node_ul_payload -> node -> radio_transmission_count]) {
@@ -324,7 +326,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			break;
 		case SM_SIGFOX_UL_PAYLOAD_TYPE_ELECTRICAL:
 			// Check compilation flags.
-			if (((reg_configuration & SM_REG_CONFIGURATION_MASK_AINF) == 0) && ((reg_configuration & SM_REG_CONFIGURATION_MASK_DIOF) == 0)) break;
+			if (((reg_configuration & SM_REG_CONFIGURATION_0_MASK_AINF) == 0) && ((reg_configuration & SM_REG_CONFIGURATION_0_MASK_DIOF) == 0)) break;
 			// Build registers list.
 			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL;
 			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_ELECTRICAL);
@@ -354,7 +356,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			break;
 		case SM_SIGFOX_UL_PAYLOAD_TYPE_SENSOR:
 			// Check compilation flags.
-			if ((reg_configuration & SM_REG_CONFIGURATION_MASK_DIGF) == 0) break;
+			if ((reg_configuration & SM_REG_CONFIGURATION_0_MASK_DIGF) == 0) break;
 			// Build registers list.
 			reg_list.addr_list = (uint8_t*) SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR;
 			reg_list.size = sizeof(SM_REG_LIST_SIGFOX_UL_PAYLOAD_SENSOR);

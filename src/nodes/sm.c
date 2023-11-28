@@ -134,6 +134,16 @@ static const SM_sigfox_ul_payload_type_t SM_SIGFOX_UL_PAYLOAD_PATTERN[] = {
 NODE_status_t SM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	// Check parameters.
+	if ((line_data_write == NULL) || (write_status == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Check index.
+	if ((line_data_write -> line_data_index) >= SM_LINE_DATA_INDEX_LAST) {
+		status = NODE_ERROR_LINE_DATA_INDEX;
+		goto errors;
+	}
 	// Check common range.
 	if ((line_data_write -> line_data_index) < COMMON_LINE_DATA_INDEX_LAST) {
 		// Call common function.
@@ -145,6 +155,7 @@ NODE_status_t SM_write_line_data(NODE_line_data_write_t* line_data_write, NODE_a
 		// Call common function.
 		status = XM_write_line_data(line_data_write, (NODE_line_data_t*) SM_LINE_DATA, (uint32_t*) SM_REG_WRITE_TIMEOUT_MS, write_status);
 	}
+errors:
 	return status;
 }
 

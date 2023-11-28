@@ -460,11 +460,6 @@ errors:
 NODE_status_t R4S8CR_write_line_data(NODE_line_data_write_t* line_data_write, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_parameters_t write_params;
-	uint32_t reg_addr = 0;
-	uint32_t reg_value = 0;
-	uint32_t reg_mask = 0;
-	uint32_t timeout_ms = 0;
 	// Check parameters.
 	if ((line_data_write == NULL) || (write_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -475,17 +470,8 @@ NODE_status_t R4S8CR_write_line_data(NODE_line_data_write_t* line_data_write, NO
 		status = NODE_ERROR_LINE_DATA_INDEX;
 		goto errors;
 	}
-	// Compute parameters.
-	reg_addr = R4S8CR_LINE_DATA[(line_data_write -> line_data_index)].write_reg_addr;
-	DINFOX_write_field(&reg_value, &reg_mask, (line_data_write -> field_value), R4S8CR_LINE_DATA[(line_data_write -> line_data_index)].write_field_mask);
-	timeout_ms = R4S8CR_REG_WRITE_TIMEOUT_MS[reg_addr];
-	// Write parameters.
-	write_params.node_addr = (line_data_write -> node_addr);
-	write_params.reg_addr = reg_addr;
-	write_params.reply_params.type = NODE_REPLY_TYPE_NONE;
-	write_params.reply_params.timeout_ms = timeout_ms;
-	// Write register.
-	status = R4S8CR_write_register(&write_params, reg_value, reg_mask, write_status, 1);
+	// Call common function.
+	status = XM_write_line_data(line_data_write, (NODE_line_data_t*) R4S8CR_LINE_DATA, (uint32_t*) R4S8CR_REG_WRITE_TIMEOUT_MS, write_status);
 errors:
 	return status;
 }

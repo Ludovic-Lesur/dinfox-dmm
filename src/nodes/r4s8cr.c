@@ -318,7 +318,7 @@ void R4S8CR_init_registers(void) {
 }
 
 /*******************************************************************/
-NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
+NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status, uint8_t access_error_stack) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
@@ -364,7 +364,7 @@ NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint
 	}
 errors:
 	// Store eventual access status error.
-	if ((write_status -> flags) != 0) {
+	if (((write_status -> flags) != 0) && (access_error_stack != 0)) {
 		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status -> all));
 		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (write_params -> node_addr));
 	}
@@ -372,7 +372,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
+NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status, uint8_t access_error_stack) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
@@ -409,7 +409,7 @@ NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32
 	(*reg_value) = R4S8CR_REGISTERS[(read_params -> reg_addr)];
 errors:
 	// Store eventual access status error.
-	if ((read_status -> flags) != 0) {
+	if (((read_status -> flags) != 0) && (access_error_stack != 0)) {
 		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status -> all));
 		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (read_params -> node_addr));
 	}
@@ -441,7 +441,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 		// Update read parameters.
 		read_params.node_addr = node_addr;
 		// Ping address.
-		status = R4S8CR_read_register(&read_params, &reg_value, &read_status);
+		status = R4S8CR_read_register(&read_params, &reg_value, &read_status, 0);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply status.
 		if (read_status.flags == 0) {
@@ -485,7 +485,7 @@ NODE_status_t R4S8CR_write_line_data(NODE_line_data_write_t* line_data_write, NO
 	write_params.reply_params.type = NODE_REPLY_TYPE_NONE;
 	write_params.reply_params.timeout_ms = timeout_ms;
 	// Write register.
-	status = R4S8CR_write_register(&write_params, reg_value, reg_mask, write_status);
+	status = R4S8CR_write_register(&write_params, reg_value, reg_mask, write_status, 1);
 errors:
 	return status;
 }
@@ -528,7 +528,7 @@ NODE_status_t R4S8CR_read_line_data(NODE_line_data_read_t* line_data_read, NODE_
 	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
 	read_params.reply_params.timeout_ms = R4S8CR_READ_TIMEOUT_MS;
 	// Update register.
-	status = R4S8CR_read_register(&read_params, &reg_value, read_status);
+	status = R4S8CR_read_register(&read_params, &reg_value, read_status, 1);
 	if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
 	// Compute field.
 	NODE_flush_string_value();

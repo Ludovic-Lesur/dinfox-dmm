@@ -36,14 +36,14 @@ NODE_status_t XM_write_register(NODE_address_t node_addr, uint8_t reg_addr, uint
 	write_params.reply_params.timeout_ms = timeout_ms;
 	// Write register.
 	if (node_addr == DINFOX_NODE_ADDRESS_DMM) {
-		status = DMM_write_register(&write_params, reg_value, reg_mask, write_status);
+		status = DMM_write_register(&write_params, reg_value, reg_mask, write_status, 1);
 	}
 	else {
 		if ((node_addr >= DINFOX_NODE_ADDRESS_R4S8CR_START) && (node_addr < (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
-			status = R4S8CR_write_register(&write_params, reg_value, reg_mask, write_status);
+			status = R4S8CR_write_register(&write_params, reg_value, reg_mask, write_status, 1);
 		}
 		else {
-			status = AT_BUS_write_register(&write_params, reg_value, reg_mask, write_status);
+			status = AT_BUS_write_register(&write_params, reg_value, reg_mask, write_status, 1);
 		}
 	}
 errors:
@@ -70,14 +70,14 @@ NODE_status_t XM_read_register(NODE_address_t node_addr, uint8_t reg_addr, XM_no
 	(node_reg -> value)[reg_addr] = (node_reg -> error)[reg_addr];
 	// Read data.
 	if (node_addr == DINFOX_NODE_ADDRESS_DMM) {
-		status = DMM_read_register(&read_params, &local_reg_value, read_status);
+		status = DMM_read_register(&read_params, &local_reg_value, read_status, 1);
 	}
 	else {
 		if ((node_addr >= DINFOX_NODE_ADDRESS_R4S8CR_START) && (node_addr < (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
-			status = R4S8CR_read_register(&read_params, &local_reg_value, read_status);
+			status = R4S8CR_read_register(&read_params, &local_reg_value, read_status, 1);
 		}
 		else {
-			status = AT_BUS_read_register(&read_params, &local_reg_value, read_status);
+			status = AT_BUS_read_register(&read_params, &local_reg_value, read_status, 1);
 		}
 	}
 	if (status != NODE_SUCCESS) goto errors;

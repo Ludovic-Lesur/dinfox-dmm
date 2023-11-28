@@ -56,20 +56,22 @@ void R4S8CR_init_registers(void);
  * \param[in]  	write_params: Pointer to the write operation parameters.
  * \param[in]	reg_value: Register value to write.
  * \param[in]	reg_mask: Writing operation mask.
+ * \param[in]	access_error_stack: Stack node access status error is non-zero.
  * \param[out] 	write_status: Pointer to the writing operation status.
  * \retval		Function execution status.
  *******************************************************************/
-NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
+NODE_status_t R4S8CR_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_statu, uint8_t access_error_stacks);
 
 /*!******************************************************************
  * \fn NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status)
  * \brief Read R4S8CR node register.
  * \param[in]  	read_params: Pointer to the read operation parameters.
+ * \param[in]	access_error_stack: Stack node access status error is non-zero.
  * \param[out]	reg_value: Pointer to the read register value.
  * \param[out] 	read_status: Pointer to the read operation status.
  * \retval		Function execution status.
  *******************************************************************/
-NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status);
+NODE_status_t R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status, uint8_t access_error_stack);
 
 /*!******************************************************************
  * \fn NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count)

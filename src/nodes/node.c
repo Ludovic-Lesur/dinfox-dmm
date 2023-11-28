@@ -64,8 +64,8 @@ typedef enum {
 } NODE_downlink_operation_code_t;
 
 /*******************************************************************/
-typedef NODE_status_t (*NODE_write_register_t)(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
-typedef NODE_status_t (*NODE_read_register_t)(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status);
+typedef NODE_status_t (*NODE_write_register_t)(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status, uint8_t access_error_stack);
+typedef NODE_status_t (*NODE_read_register_t)(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status, uint8_t access_error_stack);
 typedef NODE_status_t (*NODE_write_line_data_t)(NODE_line_data_write_t* line_write, NODE_access_status_t* write_status);
 typedef NODE_status_t (*NODE_read_line_data_t)(NODE_line_data_read_t* line_read, NODE_access_status_t* read_status);
 typedef NODE_status_t (*NODE_build_sigfox_ul_payload_t)(NODE_ul_payload_t* node_ul_payload);
@@ -295,7 +295,7 @@ NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_
 	write_input.reply_params.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[reg_addr];
 	write_input.reply_params.type = (((NODES[node -> board_id].protocol) == NODE_PROTOCOL_R4S8CR) ? NODE_REPLY_TYPE_VALUE : NODE_REPLY_TYPE_OK);
 	// Write register.
-	status = NODES[node -> board_id].functions.write_register(&write_input, reg_value, reg_mask, write_status);
+	status = NODES[node -> board_id].functions.write_register(&write_input, reg_value, reg_mask, write_status, 1);
 errors:
 	return status;
 }
@@ -314,7 +314,7 @@ NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_
 	read_input.reply_params.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[reg_addr];
 	read_input.reply_params.type = NODE_REPLY_TYPE_VALUE;
 	// Write register.
-	status = NODES[node -> board_id].functions.read_register(&read_input, reg_value, read_status);
+	status = NODES[node -> board_id].functions.read_register(&read_input, reg_value, read_status, 1);
 errors:
 	return status;
 }
@@ -756,7 +756,7 @@ errors:
 	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION_1;
 	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
 	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-	DMM_read_register(&read_params, &reg_value, &read_status);
+	DMM_read_register(&read_params, &reg_value, &read_status, 1);
 	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
 	if (ul_next_time_update_required != 0) {
 		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_1_MASK_SIGFOX_UL_PERIOD));
@@ -884,7 +884,7 @@ NODE_status_t NODE_scan(void) {
 	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION_1;
 	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
 	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-	DMM_read_register(&read_params, &reg_value, &read_status);
+	DMM_read_register(&read_params, &reg_value, &read_status, 1);
 	// Check access status.
 	if (read_status.flags != 0) {
 		status = NODE_ERROR_READ_ACCESS;

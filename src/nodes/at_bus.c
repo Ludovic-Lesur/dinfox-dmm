@@ -256,7 +256,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
+NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status, uint8_t access_error_stack) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -307,7 +307,7 @@ NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint
 errors:
 	LPUART1_disable_rx();
 	// Store eventual access status error.
-	if ((write_status -> flags) != 0) {
+	if (((write_status -> flags) != 0) && (access_error_stack != 0)) {
 		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status -> all));
 		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (write_params -> node_addr));
 	}
@@ -315,7 +315,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
+NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status, uint8_t access_error_stack) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -347,7 +347,7 @@ NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32
 errors:
 	LPUART1_disable_rx();
 	// Store eventual access status error.
-	if ((read_status -> flags) != 0) {
+	if (((read_status -> flags) != 0) && (access_error_stack != 0)) {
 		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status -> all));
 		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (read_params -> node_addr));
 	}
@@ -378,7 +378,7 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 		// Uppdate address.
 		read_params.node_addr = node_addr;
 		// Read NODE_ID register.
-		status = AT_BUS_read_register(&read_params, &reg_value, &read_status);
+		status = AT_BUS_read_register(&read_params, &reg_value, &read_status, 0);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply status.
 		if (read_status.flags == 0) {

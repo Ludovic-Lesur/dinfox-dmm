@@ -22,6 +22,9 @@
 
 #define UHFM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE		7
 
+#define UHFM_SIGFOX_UL_TIMEOUT_SECONDS				20000
+#define UHFM_SIGFOX_DL_TIMEOUT_SECONDS				60000
+
 /*** UHFM local structures ***/
 
 /*******************************************************************/
@@ -302,7 +305,7 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 		}
 	}
 	// Set proper timeout.
-	radio_timeout_ms = ((sigfox_message -> bidirectional_flag) == 0) ? 10000 : 60000;
+	radio_timeout_ms = ((sigfox_message -> bidirectional_flag) == 0) ? UHFM_SIGFOX_UL_TIMEOUT_SECONDS : UHFM_SIGFOX_DL_TIMEOUT_SECONDS;
 	// Send message.
 	status = XM_write_register(node_addr, UHFM_REG_ADDR_CONTROL_1, UHFM_REG_CONTROL_1_MASK_STRG, UHFM_REG_CONTROL_1_MASK_STRG, radio_timeout_ms, send_status);
 errors:

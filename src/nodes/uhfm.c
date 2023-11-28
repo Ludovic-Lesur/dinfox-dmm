@@ -94,8 +94,6 @@ static const UHFM_sigfox_ul_payload_type_t UHFM_SIGFOX_UL_PAYLOAD_PATTERN[] = {
 	UHFM_SIGFOX_UL_PAYLOAD_TYPE_MONITORING
 };
 
-static uint8_t uhfm_ep_configuration_done = 0;
-
 /*** UHFM functions ***/
 
 /*******************************************************************/
@@ -273,27 +271,12 @@ errors:
 NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	uint32_t ep_config_0 = 0;
-	uint32_t ep_config_0_mask = 0;
 	uint32_t ep_config_2 = 0;
 	uint32_t ep_config_2_mask = 0;
 	uint32_t ul_payload_x = 0;
 	uint8_t reg_offset = 0;
 	uint8_t idx = 0;
 	uint32_t radio_timeout_ms = 0;
-	// Write default transmission parameters only at startup, in order to be configurable later on via downlink.
-	if (uhfm_ep_configuration_done == 0) {
-		// RC1, 600bps, N=3, 14dBm.
-		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0b0000, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_RC);
-		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0b01, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_BR);
-		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0b11, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_NFR);
-		DINFOX_write_field(&ep_config_0, &ep_config_0_mask, 0x0E, UHFM_REG_SIGFOX_EP_CONFIGURATION_0_MASK_TX_POWER);
-		// Write register.
-		status = XM_write_register(node_addr, UHFM_REG_ADDR_SIGFOX_EP_CONFIGURATION_0, ep_config_0, ep_config_0_mask, AT_BUS_DEFAULT_TIMEOUT_MS, send_status);
-		if ((status != NODE_SUCCESS) || ((send_status -> flags) != 0)) goto errors;
-		// Reset flag.
-		uhfm_ep_configuration_done = 1;
-	}
 	// Configuration register 2.
 	DINFOX_write_field(&ep_config_2, &ep_config_2_mask, (uint32_t) SIGFOX_APPLICATION_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_MSGT);
 	DINFOX_write_field(&ep_config_2, &ep_config_2_mask, (uint32_t) (sigfox_message -> bidirectional_flag), UHFM_REG_SIGFOX_EP_CONFIGURATION_2_MASK_BF);

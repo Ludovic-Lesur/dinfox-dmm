@@ -72,7 +72,8 @@ typedef enum {
 	NODE_ERROR_SIGFOX_DOWNLINK_PERIOD,
 	NODE_ERROR_SIGFOX_DOWNLINK_NODE_ADDRESS,
 	NODE_ERROR_SIGFOX_DOWNLINK_OPERATION_CODE,
-	NODE_ERROR_ACTION_INDEX,
+	NODE_ERROR_ACTIONS_LIST_INDEX,
+	NODE_ERROR_ACTIONS_LIST_OVERFLOW,
 	NODE_ERROR_RELAY_ID,
 	// Low level drivers errors.
 	NODE_ERROR_BASE_ACCESS_STATUS_CODE = 0x0100,
@@ -117,7 +118,7 @@ typedef struct {
 	uint8_t reg_addr;
 	uint32_t reg_value;
 	uint32_t reg_mask;
-	NODE_access_status_t write_status;
+	NODE_access_status_t access_status;
 } NODE_action_t;
 
 /*!******************************************************************

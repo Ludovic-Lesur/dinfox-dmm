@@ -11,6 +11,7 @@
 #include "at_bus.h"
 #include "common.h"
 #include "node.h"
+#include "node_common.h"
 #include "string.h"
 #include "types.h"
 #include "uhfm_reg.h"

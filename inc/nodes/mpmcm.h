@@ -12,6 +12,7 @@
 #include "common.h"
 #include "mpmcm_reg.h"
 #include "node.h"
+#include "node_common.h"
 #include "string.h"
 #include "types.h"
 

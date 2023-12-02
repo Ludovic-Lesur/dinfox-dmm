@@ -9,6 +9,7 @@
 #define __R4S8CR_H__
 
 #include "node.h"
+#include "node_common.h"
 #include "r4s8cr_reg.h"
 
 /*** R4S8CR macros ***/

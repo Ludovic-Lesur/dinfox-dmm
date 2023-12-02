@@ -13,6 +13,7 @@
 #include "lvrm_reg.h"
 #include "mode.h"
 #include "node.h"
+#include "node_common.h"
 #include "string.h"
 #include "types.h"
 

@@ -25,7 +25,7 @@
 
 /*** DMM local macros ***/
 
-#define DMM_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE	4
+#define DMM_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE	9
 #define DMM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE	7
 
 #define DMM_SIGFOX_UL_PERIOD_SECONDS_MIN		60
@@ -46,6 +46,8 @@ typedef union {
 	struct {
 		unsigned downlink_hash : 16;
 		unsigned node_addr : 8;
+		unsigned reg_addr : 8;
+		unsigned reg_value : 32;
 		unsigned node_access_status : 8;
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } DMM_sigfox_ul_payload_action_log_t;
@@ -659,7 +661,9 @@ NODE_status_t DMM_build_sigfox_action_log_ul_payload(NODE_ul_payload_t* node_ul_
 	// Build frame.
 	sigfox_ul_payload_action_log.downlink_hash = (node_action -> downlink_hash);
 	sigfox_ul_payload_action_log.node_addr = (node_action -> node -> address);
-	sigfox_ul_payload_action_log.node_access_status = ((node_action -> write_status).all);
+	sigfox_ul_payload_action_log.reg_addr = (node_action -> reg_addr);
+	sigfox_ul_payload_action_log.reg_value = (node_action -> reg_value);
+	sigfox_ul_payload_action_log.node_access_status = ((node_action -> access_status).all);
 	// Copy payload.
 	for (idx=0 ; idx<DMM_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE ; idx++) {
 		(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_action_log.frame[idx];

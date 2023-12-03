@@ -326,32 +326,30 @@ errors:
 NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_access_status_t node_access_status = {.all = 0};
+	NODE_access_status_t access_status;
 	DINFOX_voltage_representation_t vbatt_dinfox = 0;
 	uint32_t vbatt_mv = 0;
-	uint32_t reg_value = 0;
 	// Perform measurements.
-	status = XM_perform_measurements(lvrm_node_addr, &node_access_status);
-	if (status != NODE_SUCCESS) goto errors;
-	NODE_check_access_status(lvrm_node_addr);
+	status = XM_perform_measurements(lvrm_node_addr, &access_status);
+	if ((status != NODE_SUCCESS) || (access_status.flags != 0)) goto errors;
 	// Read battery voltage.
-	status = XM_read_register(lvrm_node_addr, LVRM_REG_ADDR_ANALOG_DATA_1, LVRM_REG_ERROR_VALUE[LVRM_REG_ADDR_ANALOG_DATA_1], &reg_value, &node_access_status);
-	if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;
+	status = XM_read_register(lvrm_node_addr, LVRM_REG_ADDR_ANALOG_DATA_1, (XM_node_registers_t*) &LVRM_NODE_REGISTERS, &access_status);
+	if ((status != NODE_SUCCESS) || (access_status.flags != 0)) goto errors;
 	// Check error value.
-	vbatt_dinfox = (uint16_t) DINFOX_read_field(reg_value, LVRM_REG_ANALOG_DATA_1_MASK_VCOM);
+	vbatt_dinfox = (uint16_t) DINFOX_read_field(LVRM_REGISTERS[LVRM_REG_ADDR_ANALOG_DATA_1], LVRM_REG_ANALOG_DATA_1_MASK_VCOM);
 	if (vbatt_dinfox == DINFOX_VOLTAGE_ERROR_VALUE) goto errors;
 	// Get battery voltage.
 	vbatt_mv = DINFOX_get_mv(vbatt_dinfox);
 	// Check battery voltage.
 	if (vbatt_mv < DMM_BMS_VBATT_LOW_THRESHOLD_MV) {
 		// Open relay.
-		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_CONTROL_1, 0b0, LVRM_REG_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &node_access_status);
-		if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;
+		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_CONTROL_1, 0b0, LVRM_REG_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &access_status);
+		if ((status != NODE_SUCCESS) || (access_status.flags != 0)) goto errors;
 	}
 	if (vbatt_mv > DMM_BMS_VBATT_HIGH_THRESHOLD_MV) {
 		// Close relay.
-		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_CONTROL_1, 0b1, LVRM_REG_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &node_access_status);
-		if ((status != NODE_SUCCESS) || (node_access_status.all != 0)) goto errors;
+		status = XM_write_register(lvrm_node_addr, LVRM_REG_ADDR_CONTROL_1, 0b1, LVRM_REG_CONTROL_1_MASK_RLST, AT_BUS_DEFAULT_TIMEOUT_MS, &access_status);
+		if ((status != NODE_SUCCESS) || (access_status.flags != 0)) goto errors;
 	}
 errors:
 	return status;

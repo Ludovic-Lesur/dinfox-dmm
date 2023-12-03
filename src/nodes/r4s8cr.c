@@ -9,6 +9,7 @@
 
 #include "dinfox.h"
 #include "error.h"
+#include "iwdg.h"
 #include "lpuart.h"
 #include "node.h"
 #include "node_common.h"
@@ -221,11 +222,12 @@ static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, NODE_access
 			break;
 		}
 		// Exit if timeout.
-		if (reply_time_ms > R4S8CR_WRITE_TIMEOUT_MS) {
+		if (reply_time_ms > R4S8CR_READ_TIMEOUT_MS) {
 			// Set status to timeout.
 			(read_status -> reply_timeout) = 1;
 			break;
 		}
+		IWDG_reload();
 	}
 errors:
 	LPUART1_disable_rx();

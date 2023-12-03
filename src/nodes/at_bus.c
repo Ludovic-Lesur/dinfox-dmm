@@ -113,7 +113,7 @@ static void _AT_BUS_flush_reply(uint8_t reply_index) {
 
 /*******************************************************************/
 static void _AT_BUS_flush_replies(void) {
-	// Local variabless.
+	// Local variables.
 	uint8_t rep_idx = 0;
 	// Reset replys buffers.
 	for (rep_idx=0 ; rep_idx<AT_BUS_REPLY_BUFFER_DEPTH ; rep_idx++) {

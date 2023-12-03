@@ -15,7 +15,7 @@
 /*** R4S8CR macros ***/
 
 #define R4S8CR_READ_TIMEOUT_MS		200
-#define R4S8CR_WRITE_TIMEOUT_MS		1000
+#define R4S8CR_WRITE_TIMEOUT_MS		5000
 
 /*** R4S8CR structures ***/
 

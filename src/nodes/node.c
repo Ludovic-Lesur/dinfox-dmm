@@ -183,10 +183,6 @@ typedef struct {
 	NODE_t* dmm_node_ptr;
 	NODE_t* uhfm_node_ptr;
 	NODE_t* mpmcm_node_ptr;
-#ifdef DMM_BMS_ENABLE
-	NODE_t* bms_node_ptr;
-	uint32_t bms_monitoring_next_time_seconds;
-#endif
 } NODE_context_t;
 
 /*** NODE local global variables ***/
@@ -796,16 +792,16 @@ NODE_status_t _NODE_radio_process(void) {
 errors:
 	// Update next radio times.
 	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
-	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION_1;
+	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION;
 	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
 	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	DMM_read_register(&read_params, &reg_value, &read_status, 1);
 	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
 	if (ul_next_time_update_required != 0) {
-		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_1_MASK_SIGFOX_UL_PERIOD));
+		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD));
 	}
 	if (dl_next_time_update_required != 0) {
-		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_1_MASK_SIGFOX_DL_PERIOD));
+		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD));
 	}
 	return status;
 }
@@ -893,10 +889,6 @@ void NODE_init_por(void) {
 	node_ctx.dmm_node_ptr = NULL;
 	node_ctx.uhfm_node_ptr = NULL;
 	node_ctx.mpmcm_node_ptr = NULL;
-#ifdef DMM_BMS_ENABLE
-	node_ctx.bms_node_ptr = NULL;
-	node_ctx.bms_monitoring_next_time_seconds = 0;
-#endif
 	// Init registers.
 	DMM_init_registers();
 	R4S8CR_init_registers();
@@ -929,7 +921,7 @@ NODE_status_t NODE_scan(void) {
 	uint8_t rs485_on = 0;
 	// Read scan period.
 	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
-	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION_1;
+	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION;
 	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
 	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	DMM_read_register(&read_params, &reg_value, &read_status, 1);
@@ -939,7 +931,7 @@ NODE_status_t NODE_scan(void) {
 		goto errors;
 	}
 	// Update next scan time.
-	node_ctx.scan_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_1_MASK_NODES_SCAN_PERIOD));
+	node_ctx.scan_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD));
 	// Reset list.
 	_NODE_flush_list();
 	// Add master board to the list.
@@ -962,9 +954,6 @@ NODE_status_t NODE_scan(void) {
 	// Reset pointers.
 	node_ctx.uhfm_node_ptr = NULL;
 	node_ctx.mpmcm_node_ptr = NULL;
-#ifdef DMM_BMS_ENABLE
-	node_ctx.bms_node_ptr = NULL;
-#endif
 	// Search specific boards in nodes list.
 	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
 		// UHFM.
@@ -975,12 +964,6 @@ NODE_status_t NODE_scan(void) {
 		if (NODES_LIST.list[idx].board_id == DINFOX_BOARD_ID_MPMCM) {
 			node_ctx.mpmcm_node_ptr = &(NODES_LIST.list[idx]);
 		}
-#ifdef DMM_BMS_ENABLE
-		// LVRM as BMS.
-		if (NODES_LIST.list[idx].address == DMM_BMS_NODE_ADDRESS) {
-			node_ctx.bms_node_ptr = &(NODES_LIST.list[idx]);
-		}
-#endif
 	}
 	// Scan R4S8CR nodes.
 	status = R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (NODES_LIST_SIZE_MAX - NODES_LIST.count), &nodes_count);
@@ -1009,19 +992,6 @@ void NODE_process(void) {
 	// Periodic nodes scanning.
 	node_status = _NODE_scan_process();
 	NODE_stack_error();
-#ifdef DMM_BMS_ENABLE
-	// Check BMS presence and monitoring period.
-	if ((node_ctx.bms_node_ptr != NULL) && (RTC_get_time_seconds() >= node_ctx.bms_monitoring_next_time_seconds)) {
-		// Update next time.
-		node_ctx.bms_monitoring_next_time_seconds = (RTC_get_time_seconds() + DMM_BMS_MONITORING_PERIOD_SECONDS);
-		// Turn bus interface on.
-		power_status = POWER_enable(POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
-		POWER_stack_error();
-		// Process BMS.
-		node_status = LVRM_bms_process((node_ctx.bms_node_ptr) -> address);
-		NODE_stack_error();
-	}
-#endif
 	// Turn bus interface off.
 	power_status = POWER_disable(POWER_DOMAIN_RS485);
 	POWER_stack_error();

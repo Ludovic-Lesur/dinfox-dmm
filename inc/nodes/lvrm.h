@@ -36,6 +36,8 @@ typedef enum {
 static const uint32_t LVRM_REG_WRITE_TIMEOUT_MS[LVRM_REG_ADDR_LAST] = {
 	COMMON_REG_WRITE_TIMEOUT_MS_LIST
 	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
 	5000,
 	AT_BUS_DEFAULT_TIMEOUT_MS,
 	AT_BUS_DEFAULT_TIMEOUT_MS
@@ -69,16 +71,5 @@ NODE_status_t LVRM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
  * \retval		Function execution status.
  *******************************************************************/
 NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload);
-
-#ifdef DMM_BMS_ENABLE
-/*!******************************************************************
- * \fn NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr)
- * \brief Process LVRM to perform BMS function.
- * \param[in]  	lvrm_node_addr: Node address of the LVRM used as BMS.
- * \param[out] 	none
- * \retval		Function execution status.
- *******************************************************************/
-NODE_status_t LVRM_bms_process(NODE_address_t lvrm_node_addr);
-#endif
 
 #endif /* __LVRM_H__ */

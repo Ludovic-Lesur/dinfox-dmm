@@ -57,6 +57,8 @@ typedef enum {
 	/* Power factor */ \
 	AT_BUS_DEFAULT_TIMEOUT_MS, \
 	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	/* Energy */ \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
 
 static const uint32_t MPMCM_REG_WRITE_TIMEOUT_MS[MPMCM_REG_ADDR_LAST] = {
 	COMMON_REG_WRITE_TIMEOUT_MS_LIST

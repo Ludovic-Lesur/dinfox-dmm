@@ -22,8 +22,7 @@
 
 #define UHFM_SIGFOX_UL_PAYLOAD_MONITORING_SIZE		7
 
-#define UHFM_SIGFOX_UL_TIMEOUT_SECONDS				20000
-#define UHFM_SIGFOX_DL_TIMEOUT_SECONDS				60000
+#define UHFM_SIGFOX_SEND_TIMEOUT_MS					90000
 
 /*** UHFM local structures ***/
 
@@ -276,7 +275,6 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 	uint32_t ul_payload_x = 0;
 	uint8_t reg_offset = 0;
 	uint8_t idx = 0;
-	uint32_t radio_timeout_ms = 0;
 	// Configuration register 2.
 	DINFOX_write_field(&reg_config_2, &reg_config_2_mask, (uint32_t) SIGFOX_APPLICATION_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REG_CONFIGURATION_2_MASK_MSGT);
 	DINFOX_write_field(&reg_config_2, &reg_config_2_mask, (uint32_t) (sigfox_message -> bidirectional_flag), UHFM_REG_CONFIGURATION_2_MASK_BF);
@@ -298,10 +296,8 @@ NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_mes
 			ul_payload_x = 0;
 		}
 	}
-	// Set proper timeout.
-	radio_timeout_ms = ((sigfox_message -> bidirectional_flag) == 0) ? UHFM_SIGFOX_UL_TIMEOUT_SECONDS : UHFM_SIGFOX_DL_TIMEOUT_SECONDS;
 	// Send message.
-	status = XM_write_register(node_addr, UHFM_REG_ADDR_CONTROL_1, UHFM_REG_CONTROL_1_MASK_STRG, UHFM_REG_CONTROL_1_MASK_STRG, radio_timeout_ms, send_status);
+	status = XM_write_register(node_addr, UHFM_REG_ADDR_CONTROL_1, UHFM_REG_CONTROL_1_MASK_STRG, UHFM_REG_CONTROL_1_MASK_STRG, UHFM_SIGFOX_SEND_TIMEOUT_MS, send_status);
 errors:
 	return status;
 }

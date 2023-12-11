@@ -8,14 +8,15 @@
 #ifndef __MODE_H__
 #define __MODE_H__
 
-/*** DMM options ***/
+/*** Board modes ***/
+
+//#define DEBUG
+
+/*** Board options ***/
 
 // Default periods.
 #define DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT	300
 #define DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT	21600
 #define DMM_NODES_SCAN_PERIOD_SECONDS_DEFAULT	86400
-
-// Debug mode.
-//#define DEBUG
 
 #endif /* __MODE_H__ */

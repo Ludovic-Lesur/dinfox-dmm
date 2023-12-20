@@ -39,7 +39,7 @@ typedef enum {
 typedef struct {
 	uint8_t i2c_tx_buffer[SH1106_I2C_BUFFER_SIZE_BYTES];
 	uint8_t i2c_rx_buffer[SH1106_I2C_BUFFER_SIZE_BYTES];
-	uint8_t ram_data[SH1106_SCREEN_WIDTH_PIXELS];
+	uint8_t ram_data[SH1106_RAM_WIDTH_PIXELS];
 } SH1106_context_t;
 
 /*** SH1106 local global variables ***/

@@ -276,7 +276,7 @@ static NODE_status_t _DMM_check_register(uint8_t reg_addr, uint32_t reg_mask) {
 			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD));
 			if (duration < DMM_NODES_SCAN_PERIOD_SECONDS_MIN) {
 				// Force default value.
-				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONTROL_1]), &unused_mask, DINFOX_convert_seconds(DMM_NODES_SCAN_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD);
+				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_NODES_SCAN_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD);
 				status = NODE_ERROR_REGISTER_FIELD_RANGE;
 				goto errors;
 			}
@@ -287,7 +287,7 @@ static NODE_status_t _DMM_check_register(uint8_t reg_addr, uint32_t reg_mask) {
 			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD));
 			if (duration < DMM_SIGFOX_UL_PERIOD_SECONDS_MIN) {
 				// Force default value.
-				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONTROL_1]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD);
+				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD);
 				status = NODE_ERROR_REGISTER_FIELD_RANGE;
 				goto errors;
 			}
@@ -298,7 +298,7 @@ static NODE_status_t _DMM_check_register(uint8_t reg_addr, uint32_t reg_mask) {
 			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD));
 			if (duration < DMM_SIGFOX_DL_PERIOD_SECONDS_MIN) {
 				// Force default value.
-				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONTROL_1]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD);
+				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD);
 				status = NODE_ERROR_REGISTER_FIELD_RANGE;
 				goto errors;
 			}

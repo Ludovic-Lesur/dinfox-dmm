@@ -896,8 +896,11 @@ void NODE_init_por(void) {
 
 /*******************************************************************/
 void NODE_init(void) {
+	// Local variables.
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	// Init common LPUART interface.
-	LPUART1_init(DINFOX_NODE_ADDRESS_DMM);
+	lpuart1_status = LPUART1_init(DINFOX_NODE_ADDRESS_DMM);
+	LPUART1_stack_error();
 	// Init interface layers.
 	AT_BUS_init();
 }

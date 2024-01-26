@@ -38,6 +38,7 @@ static void _DMM_init_hw(void) {
 	// Local variables.
 	RCC_status_t rcc_status = RCC_SUCCESS;
 	RTC_status_t rtc_status = RTC_SUCCESS;
+	LED_status_t led_status = LED_SUCCESS;
 #ifndef DEBUG
 	IWDG_status_t iwdg_status = IWDG_SUCCESS;
 #endif
@@ -60,6 +61,9 @@ static void _DMM_init_hw(void) {
 	// High speed oscillator.
 	rcc_status = RCC_switch_to_hsi();
 	RCC_stack_error();
+	// Calibrate clocks.
+	rcc_status = RCC_calibrate();
+	RCC_stack_error();
 	// Init RTC.
 	rtc_status = RTC_init();
 	RTC_stack_error();
@@ -67,7 +71,8 @@ static void _DMM_init_hw(void) {
 	LPTIM1_init();
 	// Init components.
 	POWER_init();
-	LED_init();
+	led_status = LED_init();
+	LED_stack_error();
 	// Init nodes layer.
 	NODE_init_por();
 	// Init HMI wake-up control.

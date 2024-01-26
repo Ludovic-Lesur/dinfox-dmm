@@ -56,7 +56,7 @@ void __attribute__((optimize("-O0"))) LPTIM1_IRQHandler(void) {
 /*** LPTIM functions ***/
 
 /*******************************************************************/
-void LPTIM1_init(void) {
+void __attribute__((optimize("-O0"))) LPTIM1_init(void) {
 	// Use LSE.
 	lptim_ctx.clock_frequency_hz = (RCC_LSE_FREQUENCY_HZ >> 3);
 	// Enable LPTIM EXTI line.

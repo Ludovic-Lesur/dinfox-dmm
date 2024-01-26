@@ -21,7 +21,7 @@ typedef enum {
 	// Driver errors.
 	TIM_SUCCESS = 0,
 	TIM_ERROR_NULL_PARAMETER,
-	TIM_ERROR_INTERRUPT_TIMEOUT,
+	TIM_ERROR_CAPTURE_TIMEOUT,
 	TIM_ERROR_CHANNEL,
 	TIM_ERROR_DURATION_UNDERFLOW,
 	TIM_ERROR_DURATION_OVERFLOW,
@@ -145,9 +145,9 @@ TIM_status_t TIM2_wait_completion(TIM2_channel_t channel, TIM_waiting_mode_t wai
  * \brief Init TIM3 peripheral for RGB LED blinking operation.
  * \param[in]  	none
  * \param[out] 	none
- * \retval		none
+ * \retval		Function execution status.
  *******************************************************************/
-void TIM3_init(void);
+TIM_status_t TIM3_init(void);
 
 /*!******************************************************************
  * \fn void TIM3_start(TIM3_channel_mask_t led_color)
@@ -169,7 +169,7 @@ void TIM3_stop(void);
 
 /*!******************************************************************
  * \fn void TIM21_init(void)
- * \brief Init TIM21 peripheral for RGB LED blinking operation.
+ * \brief Init TIM21 peripheral for internal oscillators frequency measurement.
  * \param[in]  	none
  * \param[out] 	none
  * \retval		none
@@ -177,31 +177,59 @@ void TIM3_stop(void);
 void TIM21_init(void);
 
 /*!******************************************************************
- * \fn void TIM21_start(uint32_t led_blink_period_ms)
- * \brief Start LED blink duration timer.
- * \param[in]  	led_blink_period_ms: Blink duration in ms.
+ * \fn void TIM21_de_init(void)
+ * \brief Release TIM21 peripheral.
+ * \param[in]  	none
  * \param[out] 	none
  * \retval		none
  *******************************************************************/
-void TIM21_start(uint32_t led_blink_period_ms);
+void TIM21_de_init(void);
 
 /*!******************************************************************
- * \fn void TIM21_stop(void)
+ * \fn TIM_status_t TIM21_mco_capture(uint16_t* ref_clock_pulse_count, uint16_t* mco_pulse_count)
+ * \brief Perform MCO clock capture.
+ * \param[in]  	none
+ * \param[out] 	ref_clock_pulse_count: Pointer to the number of pulses of the timer reference clock during the capture.
+ * \param[out]	mco_pulse_count: Pointer to the number of pulses of the MCO clock during the capture.
+ * \retval		Function execution status.
+ *******************************************************************/
+TIM_status_t TIM21_mco_capture(uint16_t* ref_clock_pulse_count, uint16_t* mco_pulse_count);
+
+/*!******************************************************************
+ * \fn void TIM22_init(void)
+ * \brief Init TIM22 peripheral for RGB LED blinking operation.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
+void TIM22_init(void);
+
+/*!******************************************************************
+ * \fn void TIM22_start(uint32_t led_blink_period_ms)
+ * \brief Start LED blink duration timer.
+ * \param[in]  	led_blink_period_ms: Blink duration in ms.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+TIM_status_t TIM22_start(uint32_t led_blink_period_ms);
+
+/*!******************************************************************
+ * \fn void TIM22_stop(void)
  * \brief Stop LED blink timer.
  * \param[in]  	none
  * \param[out] 	none
  * \retval		none
  *******************************************************************/
-void TIM21_stop(void);
+void TIM22_stop(void);
 
 /*!******************************************************************
- * \fn uint8_t TIM21_is_single_blink_done(void)
+ * \fn uint8_t TIM22_is_single_blink_done(void)
  * \brief Get the LED blink status.
  * \param[in]  	none
  * \param[out] 	none
  * \retval		0 if the LED blink id running, 1 if it is complete.
  *******************************************************************/
-uint8_t TIM21_is_single_blink_done(void);
+uint8_t TIM22_is_single_blink_done(void);
 
 /*******************************************************************/
 #define TIM2_exit_error(error_base) { if (tim2_status != TIM_SUCCESS) { status = (error_base + tim2_status); goto errors; } }
@@ -211,5 +239,32 @@ uint8_t TIM21_is_single_blink_done(void);
 
 /*******************************************************************/
 #define TIM2_stack_exit_error(error_code) { if (tim2_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM2 + tim2_status); status = error_code; goto errors; } }
+
+/*******************************************************************/
+#define TIM3_exit_error(error_base) { if (tim3_status != TIM_SUCCESS) { status = (error_base + tim3_status); goto errors; } }
+
+/*******************************************************************/
+#define TIM3_stack_error(void) { if (tim3_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM3 + tim3_status); } }
+
+/*******************************************************************/
+#define TIM3_stack_exit_error(error_code) { if (tim3_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM3 + tim3_status); status = error_code; goto errors; } }
+
+/*******************************************************************/
+#define TIM21_exit_error(error_base) { if (tim21_status != TIM_SUCCESS) { status = (error_base + tim21_status); goto errors; } }
+
+/*******************************************************************/
+#define TIM21_stack_error(void) { if (tim21_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM21 + tim21_status); } }
+
+/*******************************************************************/
+#define TIM21_stack_exit_error(error_code) { if (tim21_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM21 + tim21_status); status = error_code; goto errors; } }
+
+/*******************************************************************/
+#define TIM22_exit_error(error_base) { if (tim22_status != TIM_SUCCESS) { status = (error_base + tim22_status); goto errors; } }
+
+/*******************************************************************/
+#define TIM22_stack_error(void) { if (tim22_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM22 + tim22_status); } }
+
+/*******************************************************************/
+#define TIM22_stack_exit_error(error_code) { if (tim22_status != TIM_SUCCESS) { ERROR_stack_add(ERROR_BASE_TIM22 + tim22_status); status = error_code; goto errors; } }
 
 #endif /* __TIM_H__ */

@@ -81,30 +81,35 @@ errors:
 static LPUART_status_t _LPUART1_set_baud_rate(uint32_t baud_rate) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
+	RCC_status_t rcc_status = RCC_SUCCESS;
+	RCC_clock_t lpuart_clock;
 	uint32_t lpuart_clock_hz = 0;
-	uint32_t brr = 0;
+	uint64_t brr = 0;
 	// Ensure peripheral is disabled.
 	LPUART1 -> CR1 &= ~(0b1 << 0); // UE='0'.
 	// Select LPUART clock source.
 	if (baud_rate < LPUART_BAUD_RATE_CLOCK_THRESHOLD) {
 		// Use LSE.
 		RCC -> CCIPR |= (0b1 << 10); // LPUART1SEL='11'.
-		lpuart_clock_hz = RCC_LSE_FREQUENCY_HZ;
+		lpuart_clock = RCC_CLOCK_LSE;
 	}
 	else {
 		// Use HSI.
 		RCC -> CCIPR &= ~(0b1 << 10); // LPUART1SEL='10'.
-		lpuart_clock_hz = (RCC_HSI_FREQUENCY_KHZ * 1000);
+		lpuart_clock = RCC_CLOCK_HSI;
 	}
+	// Get clock source frequency.
+	rcc_status = RCC_get_frequency_hz(lpuart_clock, &lpuart_clock_hz);
+	RCC_exit_error(LPUART_ERROR_BASE_RCC);
 	// Compute register value.
-	brr = (lpuart_clock_hz * 256);
-	brr /= baud_rate;
+	brr = ((uint64_t) lpuart_clock_hz) << 8;
+	brr /= (uint64_t) baud_rate;
 	// Check value.
 	if ((brr < LPUART_BRR_VALUE_MIN) || (brr > LPUART_BRR_VALUE_MAX)) {
 		status = LPUART_ERROR_BAUD_RATE;
 		goto errors;
 	}
-	LPUART1 -> BRR = (brr & 0x000FFFFF); // BRR = (256*fCK)/(baud rate). See p.730 of RM0377 datasheet.
+	LPUART1 -> BRR = (uint32_t) (brr & 0x000FFFFF); // BRR = (256*fCK)/(baud rate). See p.730 of RM0377 datasheet.
 errors:
 	return status;
 }
@@ -112,7 +117,9 @@ errors:
 /*** LPUART functions ***/
 
 /*******************************************************************/
-void LPUART1_init(NODE_address_t self_address) {
+LPUART_status_t LPUART1_init(NODE_address_t self_address) {
+	// Local variables.
+	LPUART_status_t status = LPUART_SUCCESS;
 	// Select LSE as clock source.
 	RCC -> CCIPR |= (0b11 << 10); // LPUART1SEL='11'.
 	// Enable peripheral clock.
@@ -122,7 +129,8 @@ void LPUART1_init(NODE_address_t self_address) {
 	LPUART1 -> CR2 |= (self_address << 24) | (0b1 << 4);
 	LPUART1 -> CR3 |= 0x00805000;
 	// Baud rate.
-	_LPUART1_set_baud_rate(LPUART_BAUD_RATE_DEFAULT);
+	status = _LPUART1_set_baud_rate(LPUART_BAUD_RATE_DEFAULT);
+	if (status != LPUART_SUCCESS) goto errors;
 	// Configure interrupt.
 	EXTI_configure_line(EXTI_LINE_LPUART1, EXTI_TRIGGER_RISING_EDGE);
 	// Enable transmitter.
@@ -141,6 +149,8 @@ void LPUART1_init(NODE_address_t self_address) {
 	// Put NRE pin in high impedance since it is directly connected to the DE pin.
 	GPIO_configure(&GPIO_LPUART1_NRE, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 #endif
+errors:
+	return status;
 }
 
 /*******************************************************************/

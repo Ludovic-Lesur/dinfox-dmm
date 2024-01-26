@@ -150,7 +150,7 @@ static NODE_status_t _DMM_mtrg_callback(void) {
 	POWER_exit_error(NODE_ERROR_BASE_POWER);
 	// Perform analog measurements.
 	adc1_status = ADC1_perform_measurements();
-	ADC1_exit_error(NODE_ERROR_BASE_ADC);
+	ADC1_exit_error(NODE_ERROR_BASE_ADC1);
 	// Release ADC.
 	power_status = POWER_disable(POWER_DOMAIN_ANALOG);
 	POWER_exit_error(NODE_ERROR_BASE_POWER);
@@ -161,23 +161,23 @@ static NODE_status_t _DMM_mtrg_callback(void) {
 	}
 	// VMCU.
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VMCU_MV, &adc_data);
-	ADC1_exit_error(NODE_ERROR_BASE_ADC);
+	ADC1_exit_error(NODE_ERROR_BASE_ADC1);
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), &unused_mask, DINFOX_convert_mv(adc_data), COMMON_REG_ANALOG_DATA_0_MASK_VMCU);
 	// TMCU.
 	adc1_status = ADC1_get_tmcu(&tmcu_degrees);
-	ADC1_exit_error(NODE_ERROR_BASE_ADC);
+	ADC1_exit_error(NODE_ERROR_BASE_ADC1);
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_ANALOG_DATA_0]), &unused_mask, DINFOX_convert_degrees(tmcu_degrees), COMMON_REG_ANALOG_DATA_0_MASK_TMCU);
 	// VRS.
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &adc_data);
-	ADC1_exit_error(NODE_ERROR_BASE_ADC);
+	ADC1_exit_error(NODE_ERROR_BASE_ADC1);
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VRS);
 	// VHMI.
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VHMI_MV, &adc_data);
-	ADC1_exit_error(NODE_ERROR_BASE_ADC);
+	ADC1_exit_error(NODE_ERROR_BASE_ADC1);
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_1]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_1_MASK_VHMI);
 	// VUSB.
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &adc_data);
-	ADC1_exit_error(NODE_ERROR_BASE_ADC);
+	ADC1_exit_error(NODE_ERROR_BASE_ADC1);
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_ANALOG_DATA_2]), &unused_mask, DINFOX_convert_mv(adc_data), DMM_REG_ANALOG_DATA_2_MASK_VUSB);
 errors:
 	// Turn power block off.

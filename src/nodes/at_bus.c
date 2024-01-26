@@ -150,7 +150,7 @@ static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, u
 	while (1) {
 		// Delay.
 		lptim1_status = LPTIM1_delay_milliseconds(AT_BUS_REPLY_PARSING_DELAY_MS, LPTIM_DELAY_MODE_STOP);
-		LPTIM1_exit_error(NODE_ERROR_BASE_LPTIM);
+		LPTIM1_exit_error(NODE_ERROR_BASE_LPTIM1);
 		reply_time_ms += AT_BUS_REPLY_PARSING_DELAY_MS;
 		sequence_time_ms += AT_BUS_REPLY_PARSING_DELAY_MS;
 		// Check write index.

@@ -841,7 +841,7 @@ static HMI_status_t _HMI_state_machine(void) {
 		sh1106_status = SH1106_print_image(SH1106_HMI_I2C_ADDRESS, DINFOX_LOGO);
 		SH1106_exit_error(HMI_ERROR_BASE_SH1106);
 		lptim1_status = LPTIM1_delay_milliseconds(1000, LPTIM_DELAY_MODE_STOP);
-		LPTIM1_exit_error(HMI_ERROR_BASE_LPTIM);
+		LPTIM1_exit_error(HMI_ERROR_BASE_LPTIM1);
 		SH1106_clear(SH1106_HMI_I2C_ADDRESS);
 		// Enable external interrupts.
 		_HMI_enable_irq();
@@ -969,26 +969,26 @@ HMI_status_t HMI_process(void) {
 			_HMI_update(HMI_SCREEN_ERROR, 1, 1);
 			// Delay and exit.
 			lptim1_status = LPTIM1_delay_milliseconds((HMI_UNUSED_DURATION_THRESHOLD_SECONDS * 1000), LPTIM_DELAY_MODE_STOP);
-			LPTIM1_exit_error(HMI_ERROR_BASE_LPTIM);
+			LPTIM1_exit_error(HMI_ERROR_BASE_LPTIM1);
 			goto errors;
 		}
 		// Start auto power-off timer.
 		tim2_status = TIM2_start(TIM2_CHANNEL_1, (HMI_UNUSED_DURATION_THRESHOLD_SECONDS * 1000), TIM_WAITING_MODE_SLEEP);
-		TIM2_exit_error(HMI_ERROR_BASE_TIM);
+		TIM2_exit_error(HMI_ERROR_BASE_TIM2);
 		// Enter stop mode.
 		PWR_enter_sleep_mode();
 		// Wake-up.
 		IWDG_reload();
 		// Read timer status.
 		tim2_status = TIM2_get_status(TIM2_CHANNEL_1, &timer_has_elapsed);
-		TIM2_exit_error(HMI_ERROR_BASE_TIM);
+		TIM2_exit_error(HMI_ERROR_BASE_TIM2);
 		// Check flags.
 		if ((timer_has_elapsed != 0) && (hmi_ctx.irq_flags == 0)) {
 			// Auto power-off.
 			hmi_ctx.state = HMI_STATE_UNUSED;
 		}
 		tim2_status = TIM2_stop(TIM2_CHANNEL_1);
-		TIM2_exit_error(HMI_ERROR_BASE_TIM);
+		TIM2_exit_error(HMI_ERROR_BASE_TIM2);
 	}
 	// Turn HMI off.
 	power_status = POWER_disable(POWER_DOMAIN_HMI);

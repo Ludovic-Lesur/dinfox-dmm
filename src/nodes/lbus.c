@@ -74,7 +74,7 @@ static LBUS_status_t _LBUS_configure_phy(void) {
 	lpuart_config.rx_mode = LPUART_RX_MODE_ADDRESSED;
 	lpuart_config.rx_callback = &_LBUS_fill_rx_buffer;
 	lpuart1_status = LPUART1_configure(&lpuart_config);
-	LPUART1_exit_error(LBUS_ERROR_BASE_LPUART);
+	LPUART1_exit_error(LBUS_ERROR_BASE_LPUART1);
 errors:
 	return status;
 }
@@ -111,10 +111,10 @@ LBUS_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint3
 	if (status != LBUS_SUCCESS) goto errors;
 	// Send header.
 	lpuart1_status = LPUART1_write(lbus_header, LBUS_FRAME_FIELD_INDEX_DATA);
-	LPUART1_exit_error(LBUS_ERROR_BASE_LPUART);
+	LPUART1_exit_error(LBUS_ERROR_BASE_LPUART1);
 	// Send command.
 	lpuart1_status = LPUART1_write(data, data_size_bytes);
-	LPUART1_exit_error(LBUS_ERROR_BASE_LPUART);
+	LPUART1_exit_error(LBUS_ERROR_BASE_LPUART1);
 errors:
 	// Reset RX byte for next reception.
 	lbus_ctx.rx_byte_count = 0;

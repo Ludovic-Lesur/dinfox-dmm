@@ -25,18 +25,21 @@
  * \brief HMI driver error codes.
  *******************************************************************/
 typedef enum {
+	// Driver errors.
 	HMI_SUCCESS = 0,
 	HMI_ERROR_NULL_PARAMETER,
 	HMI_ERROR_DATA_DEPTH_OVERFLOW,
 	HMI_ERROR_SCREEN,
-	HMI_ERROR_BASE_I2C = 0x0100,
-	HMI_ERROR_BASE_LPTIM = (HMI_ERROR_BASE_I2C + I2C_ERROR_BASE_LAST),
-	HMI_ERROR_BASE_LPUART = (HMI_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
-	HMI_ERROR_BASE_TIM = (HMI_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
-	HMI_ERROR_BASE_STRING = (HMI_ERROR_BASE_TIM + TIM_ERROR_BASE_LAST),
+	// Low level drivers errors.
+	HMI_ERROR_BASE_I2C1 = 0x0100,
+	HMI_ERROR_BASE_LPTIM1 = (HMI_ERROR_BASE_I2C1 + I2C_ERROR_BASE_LAST),
+	HMI_ERROR_BASE_LPUART1 = (HMI_ERROR_BASE_LPTIM1 + LPTIM_ERROR_BASE_LAST),
+	HMI_ERROR_BASE_TIM2 = (HMI_ERROR_BASE_LPUART1 + LPUART_ERROR_BASE_LAST),
+	HMI_ERROR_BASE_STRING = (HMI_ERROR_BASE_TIM2 + TIM_ERROR_BASE_LAST),
 	HMI_ERROR_BASE_POWER = (HMI_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
 	HMI_ERROR_BASE_SH1106 = (HMI_ERROR_BASE_POWER + POWER_ERROR_BASE_LAST),
 	HMI_ERROR_BASE_NODE = (HMI_ERROR_BASE_SH1106 + SH1106_ERROR_BASE_LAST),
+	// Last base value.
 	HMI_ERROR_BASE_LAST = (HMI_ERROR_BASE_NODE + NODE_ERROR_BASE_LAST)
 } HMI_status_t;
 
@@ -44,7 +47,7 @@ typedef enum {
 
 /*!******************************************************************
  * \fn void HMI_init_por(void)
- * \brief POR intialization of the HMI interface.
+ * \brief POR initialization of the HMI interface.
  * \param[in]  	none
  * \param[out] 	none
  * \retval		none

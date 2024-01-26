@@ -70,7 +70,7 @@ SH1106_status_t _SH1106_write(uint8_t i2c_address, SH1106_data_type_t data_type,
 	}
 	// Burst write with C0='0'.
 	i2c1_status = I2C1_write(i2c_address, sh1106_ctx.i2c_tx_buffer, (data_size_bytes + 1), 1);
-	I2C1_exit_error(SH1106_ERROR_BASE_I2C);
+	I2C1_exit_error(SH1106_ERROR_BASE_I2C1);
 errors:
 	return status;
 }
@@ -82,7 +82,7 @@ SH1106_status_t _SH1106_read(uint8_t i2c_address, uint8_t* data, uint8_t data_si
 	I2C_status_t i2c1_status = I2C_SUCCESS;
 	// Read data.
 	i2c1_status = I2C1_read(i2c_address, data, data_size_bytes);
-	I2C1_exit_error(SH1106_ERROR_BASE_I2C);
+	I2C1_exit_error(SH1106_ERROR_BASE_I2C1);
 errors:
 	return status;
 }

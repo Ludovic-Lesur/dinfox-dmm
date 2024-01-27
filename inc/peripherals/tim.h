@@ -102,7 +102,7 @@ void TIM2_init(void);
 void TIM2_de_init(void);
 
 /*!******************************************************************
- * \fn TIM_status_t TIM2_start(TIM2_channel_t channel, uint32_t duration_ms)
+ * \fn TIM_status_t TIM2_start(TIM2_channel_t channel, uint32_t duration_ms, TIM_waiting_mode_t waiting_mode)
  * \brief Start a timer channel.
  * \param[in]  	channel: Channel to start.
  * \param[in]	duration_ms: Timer duration in ms.
@@ -131,7 +131,7 @@ TIM_status_t TIM2_stop(TIM2_channel_t channel);
 TIM_status_t TIM2_get_status(TIM2_channel_t channel, uint8_t* timer_has_elapsed);
 
 /*!******************************************************************
- * \fn TIM_status_t TIM2_wait_completion(TIM2_channel_t channel)
+ * \fn TIM_status_t TIM2_wait_completion(TIM2_channel_t channel, TIM_waiting_mode_t waiting_mode)
  * \brief Blocking function waiting for a timer channel completion.
  * \param[in]  	channel: Channel to wait for.
  * \param[in]	waiting_mode: Completion waiting mode.
@@ -141,7 +141,7 @@ TIM_status_t TIM2_get_status(TIM2_channel_t channel, uint8_t* timer_has_elapsed)
 TIM_status_t TIM2_wait_completion(TIM2_channel_t channel, TIM_waiting_mode_t waiting_mode);
 
 /*!******************************************************************
- * \fn void TIM3_init(void)
+ * \fn TIM_status_t TIM3_init(void)
  * \brief Init TIM3 peripheral for RGB LED blinking operation.
  * \param[in]  	none
  * \param[out] 	none
@@ -205,7 +205,7 @@ TIM_status_t TIM21_mco_capture(uint16_t* ref_clock_pulse_count, uint16_t* mco_pu
 void TIM22_init(void);
 
 /*!******************************************************************
- * \fn void TIM22_start(uint32_t led_blink_period_ms)
+ * \fn TIM_status_t TIM22_start(uint32_t led_blink_period_ms)
  * \brief Start LED blink duration timer.
  * \param[in]  	led_blink_period_ms: Blink duration in ms.
  * \param[out] 	none

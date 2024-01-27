@@ -97,7 +97,7 @@ typedef struct {
 /*** SH1106 functions ***/
 
 /*!******************************************************************
- * \fn SH1106_status_t SH1106_setup(void)
+ * \fn SH1106_status_t SH1106_setup(uint8_t i2c_address)
  * \brief Configure OLED screen.
  * \param[in]  	i2c_address: I2C address of the screen.
  * \param[out] 	none
@@ -106,7 +106,7 @@ typedef struct {
 SH1106_status_t SH1106_setup(uint8_t i2c_address);
 
 /*!******************************************************************
- * \fn SH1106_status_t SH1106_clear(void)
+ * \fn SH1106_status_t SH1106_clear(uint8_t i2c_address)
  * \brief Clear OLED screen.
  * \param[in]  	i2c_address: I2C address of the screen.
  * \param[out] 	none
@@ -115,7 +115,7 @@ SH1106_status_t SH1106_setup(uint8_t i2c_address);
 SH1106_status_t SH1106_clear(uint8_t i2c_address);
 
 /*!******************************************************************
- * \fn SH1106_status_t SH1106_print_text(SH1106_text_t* text)
+ * \fn SH1106_status_t SH1106_print_text(uint8_t i2c_address, SH1106_text_t* text)
  * \brief Print text on OLED screen.
  * \param[in]	i2c_address: I2C address of the screen.
  * \param[in]  	text: Pointer to the text to print.
@@ -125,7 +125,7 @@ SH1106_status_t SH1106_clear(uint8_t i2c_address);
 SH1106_status_t SH1106_print_text(uint8_t i2c_address, SH1106_text_t* text);
 
 /*!******************************************************************
- * \fn SH1106_status_t SH1106_print_horizontal_line(SH1106_horizontal_line_t* horizontal_line)
+ * \fn SH1106_status_t SH1106_print_horizontal_line(uint8_t i2c_address, SH1106_horizontal_line_t* horizontal_line)
  * \brief Print a line on OLED screen.
  * \param[in]	i2c_address: I2C address of the screen.
  * \param[in]  	text: Pointer to the line to print.
@@ -135,7 +135,7 @@ SH1106_status_t SH1106_print_text(uint8_t i2c_address, SH1106_text_t* text);
 SH1106_status_t SH1106_print_horizontal_line(uint8_t i2c_address, SH1106_horizontal_line_t* horizontal_line);
 
 /*!******************************************************************
- * \fn SH1106_status_t SH1106_print_image(const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS])
+ * \fn SH1106_status_t SH1106_print_image(uint8_t i2c_address, const uint8_t image[SH1106_SCREEN_HEIGHT_LINE][SH1106_SCREEN_WIDTH_PIXELS])
  * \brief Print an image on OLED screen.
  * \param[in]	i2c_address: I2C address of the screen.
  * \param[in]  	image: Image bitmap to print.

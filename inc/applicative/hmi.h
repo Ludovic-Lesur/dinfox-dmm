@@ -73,7 +73,7 @@ void HMI_init(void);
 void HMI_de_init(void);
 
 /*!******************************************************************
- * \fn void HMI_process(void)
+ * \fn HMI_status_t HMI_process(void)
  * \brief Main task of HMI interface.
  * \param[in]  	none
  * \param[out] 	none

@@ -61,7 +61,7 @@ typedef struct {
 /*** LPUART functions ***/
 
 /*!******************************************************************
- * \fn void LPUART1_init(NODE_address_t self_address)
+ * \fn LPUART_status_t LPUART1_init(NODE_address_t self_address)
  * \brief Init LPUART1 peripheral.
  * \param[in]  	self_address: RS485 address of the node.
  * \param[out] 	none

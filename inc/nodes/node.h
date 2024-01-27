@@ -232,7 +232,7 @@ NODE_status_t NODE_scan(void);
 void NODE_process(void);
 
 /*!******************************************************************
- * \fn NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t value, NODE_access_status_t* write_status)
+ * \fn NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t field_value)
  * \brief Write corresponding node register of screen data line.
  * \param[in]  	node: Pointer to the node.
  * \param[in]	line_data_index: Index of the data line to write.
@@ -242,7 +242,7 @@ void NODE_process(void);
 NODE_status_t NODE_write_line_data(NODE_t* node, uint8_t line_data_index, uint32_t field_value);
 
 /*!******************************************************************
- * \fn NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index, NODE_access_status_t* read_status)
+ * \fn NODE_status_t NODE_read_line_data(NODE_t* node, uint8_t line_data_index)
  * \brief Read corresponding node register of screen data line.
  * \param[in]  	node: Pointer to the node.
  * \param[in]	line_data_index: Index of the data line to read.

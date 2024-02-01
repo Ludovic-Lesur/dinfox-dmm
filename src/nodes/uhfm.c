@@ -53,7 +53,6 @@ static const uint32_t UHFM_REG_ERROR_VALUE[UHFM_REG_ADDR_LAST] = {
 	0x00000000,
 	0x00000000,
 	0x00000000,
-	0x00000000,
 	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	0x00000000,
 	0x00000000,
@@ -270,17 +269,17 @@ errors:
 NODE_status_t UHFM_send_sigfox_message(NODE_address_t node_addr, UHFM_sigfox_message_t* sigfox_message, NODE_access_status_t* send_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	uint32_t reg_config_2 = 0;
-	uint32_t reg_config_2_mask = 0;
+	uint32_t reg_control_1 = 0;
+	uint32_t reg_control_1_mask = 0;
 	uint32_t ul_payload_x = 0;
 	uint8_t reg_offset = 0;
 	uint8_t idx = 0;
 	// Configuration register 2.
-	DINFOX_write_field(&reg_config_2, &reg_config_2_mask, (uint32_t) SIGFOX_APPLICATION_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REG_CONFIGURATION_2_MASK_MSGT);
-	DINFOX_write_field(&reg_config_2, &reg_config_2_mask, (uint32_t) (sigfox_message -> bidirectional_flag), UHFM_REG_CONFIGURATION_2_MASK_BF);
-	DINFOX_write_field(&reg_config_2, &reg_config_2_mask, (uint32_t) (sigfox_message -> ul_payload_size), UHFM_REG_CONFIGURATION_2_MASK_UL_PAYLOAD_SIZE);
+	DINFOX_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) SIGFOX_APPLICATION_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REG_CONTROL_1_MASK_MSGT);
+	DINFOX_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) (sigfox_message -> bidirectional_flag), UHFM_REG_CONTROL_1_MASK_BF);
+	DINFOX_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) (sigfox_message -> ul_payload_size), UHFM_REG_CONTROL_1_MASK_UL_PAYLOAD_SIZE);
 	// Write register.
-	status = XM_write_register(node_addr, UHFM_REG_ADDR_CONFIGURATION_2, reg_config_2, reg_config_2_mask, AT_BUS_DEFAULT_TIMEOUT_MS, send_status);
+	status = XM_write_register(node_addr, UHFM_REG_ADDR_CONTROL_1, reg_control_1, reg_control_1_mask, AT_BUS_DEFAULT_TIMEOUT_MS, send_status);
 	if ((status != NODE_SUCCESS) || ((send_status -> flags) != 0)) goto errors;
 	// UL payload.
 	for (idx=0 ; idx<(sigfox_message -> ul_payload_size) ; idx++) {

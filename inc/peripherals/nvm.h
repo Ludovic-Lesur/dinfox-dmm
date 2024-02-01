@@ -10,7 +10,7 @@
 
 #include "types.h"
 
-/*** NVM macros ***/
+/*** NVM structures ***/
 
 /*!******************************************************************
  * \enum NVM_status_t
@@ -23,6 +23,7 @@ typedef enum {
 	NVM_ERROR_ADDRESS,
 	NVM_ERROR_UNLOCK,
 	NVM_ERROR_LOCK,
+	NVM_ERROR_READ,
 	NVM_ERROR_WRITE,
 	// Last base value.
 	NVM_ERROR_BASE_LAST = 0x0100
@@ -34,7 +35,8 @@ typedef enum {
  *******************************************************************/
 typedef enum {
 	NVM_ADDRESS_SELF_ADDRESS = 0,
-	NVM_ADDRESS_LAST
+	NVM_ADDRESS_REGISTERS = 0x40,
+	NVM_ADDRESS_LAST = 0xFF
 } NVM_address_t;
 
 /*** NVM functions ***/

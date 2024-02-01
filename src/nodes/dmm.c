@@ -88,9 +88,9 @@ static const NODE_line_data_t DMM_LINE_DATA[DMM_LINE_DATA_INDEX_LAST - COMMON_LI
 	{"VHMI =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_1, DMM_REG_ANALOG_DATA_1_MASK_VHMI, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
 	{"VUSB =", " V", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_ANALOG_DATA_2, DMM_REG_ANALOG_DATA_2_MASK_VUSB, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
 	{"NODES_CNT =", STRING_NULL, STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_STATUS_1, DMM_REG_STATUS_1_MASK_NODES_COUNT, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"SC_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION, DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"UL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION, DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD,  DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
-	{"DL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION, DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD,  DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE}
+	{"SC_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_0, DMM_REG_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD, DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"UL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_0, DMM_REG_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD,  DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE},
+	{"DL_PRD =", " s", STRING_FORMAT_DECIMAL, 0, DMM_REG_ADDR_CONFIGURATION_0, DMM_REG_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD,  DMM_REG_ADDR_CONTROL_1, DINFOX_REG_MASK_NONE}
 };
 
 static const uint8_t DMM_REG_LIST_SIGFOX_UL_PAYLOAD_MONITORING[] = {
@@ -113,6 +113,20 @@ static const DMM_sigfox_ul_payload_type_t DMM_SIGFOX_UL_PAYLOAD_PATTERN[] = {
 };
 
 /*** DMM local functions ***/
+
+/*******************************************************************/
+static void _DMM_load_dynamic_configuration(void) {
+	// Local variables.
+	uint8_t reg_addr = 0;
+	uint32_t reg_value = 0;
+	// Load configuration registers from NVM.
+	for (reg_addr=DMM_REG_ADDR_CONFIGURATION_0 ; reg_addr<DMM_REG_ADDR_STATUS_1 ; reg_addr++) {
+		// Read NVM.
+		reg_value = DINFOX_read_nvm_register(reg_addr);
+		// Write register.
+		DMM_INTERNAL_REGISTERS[reg_addr] = reg_value;
+	}
+}
 
 /*******************************************************************/
 static void _DMM_reset_analog_data(void) {
@@ -225,6 +239,42 @@ static NODE_status_t _DMM_check_register(uint8_t reg_addr, uint32_t reg_mask) {
 	reg_value = DMM_INTERNAL_REGISTERS[reg_addr];
 	// Check address.
 	switch (reg_addr) {
+	case DMM_REG_ADDR_CONFIGURATION_0:
+		// Check nodes scan period.
+		if ((reg_mask & DMM_REG_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD) != 0) {
+			// Check range.
+			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD));
+			if (duration < DMM_NODES_SCAN_PERIOD_SECONDS_MIN) {
+				// Force minimum value and notify error.
+				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION_0]), &unused_mask, DINFOX_convert_seconds(DMM_NODES_SCAN_PERIOD_SECONDS_MIN), DMM_REG_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD);
+				status = NODE_ERROR_REGISTER_FIELD_RANGE;
+			}
+		}
+		// Check Sigfox uplink period.
+		if ((reg_mask & DMM_REG_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD) != 0) {
+			// Check range.
+			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD));
+			if (duration < DMM_SIGFOX_UL_PERIOD_SECONDS_MIN) {
+				// Force minimum value and notify error.
+				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION_0]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS_MIN), DMM_REG_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD);
+				status = NODE_ERROR_REGISTER_FIELD_RANGE;
+			}
+		}
+		// Check Sigfox downlink period.
+		if ((reg_mask & DMM_REG_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD) != 0) {
+			// Check range.
+			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD));
+			if (duration < DMM_SIGFOX_DL_PERIOD_SECONDS_MIN) {
+				// Force minimum value and notify error.
+				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION_0]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS_MIN), DMM_REG_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD);
+				status = NODE_ERROR_REGISTER_FIELD_RANGE;
+			}
+		}
+		// Store new value in NVM.
+		if (reg_mask != 0) {
+			DINFOX_write_nvm_register(reg_addr, reg_value);
+		}
+		break;
 	case COMMON_REG_ADDR_CONTROL_0:
 		// RTRG.
 		if ((reg_mask & COMMON_REG_CONTROL_0_MASK_RTRG) != 0) {
@@ -269,41 +319,6 @@ static NODE_status_t _DMM_check_register(uint8_t reg_addr, uint32_t reg_mask) {
 			}
 		}
 		break;
-	case DMM_REG_ADDR_CONFIGURATION:
-		// Nodes scan period.
-		if ((reg_mask & DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD) != 0) {
-			// Check range.
-			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD));
-			if (duration < DMM_NODES_SCAN_PERIOD_SECONDS_MIN) {
-				// Force default value.
-				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_NODES_SCAN_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD);
-				status = NODE_ERROR_REGISTER_FIELD_RANGE;
-				goto errors;
-			}
-		}
-		// Sigfox uplink period.
-		if ((reg_mask & DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD) != 0) {
-			// Check range.
-			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD));
-			if (duration < DMM_SIGFOX_UL_PERIOD_SECONDS_MIN) {
-				// Force default value.
-				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD);
-				status = NODE_ERROR_REGISTER_FIELD_RANGE;
-				goto errors;
-			}
-		}
-		// Sigfox downlink period.
-		if ((reg_mask & DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD) != 0) {
-			// Check range.
-			duration = DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD));
-			if (duration < DMM_SIGFOX_DL_PERIOD_SECONDS_MIN) {
-				// Force default value.
-				DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD);
-				status = NODE_ERROR_REGISTER_FIELD_RANGE;
-				goto errors;
-			}
-		}
-		break;
 	default:
 		// Nothing to do for other registers.
 		break;
@@ -342,9 +357,7 @@ void DMM_init_registers(void) {
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_0]), &unused_mask, ((uint32_t) (((RCC -> CSR) >> 24) & 0xFF)), COMMON_REG_STATUS_0_MASK_RESET_FLAGS);
 	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[COMMON_REG_ADDR_STATUS_0]), &unused_mask, 0b1, COMMON_REG_STATUS_0_MASK_BF);
 	// Load default values.
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_NODES_SCAN_PERIOD_SECONDS_DEFAULT), DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT),  DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD);
-	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT),  DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD);
+	_DMM_load_dynamic_configuration();
 	_DMM_reset_analog_data();
 }
 

@@ -792,16 +792,16 @@ NODE_status_t _NODE_radio_process(void) {
 errors:
 	// Update next radio times.
 	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
-	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION;
+	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION_0;
 	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
 	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	DMM_read_register(&read_params, &reg_value, &read_status, 1);
 	// This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
 	if (ul_next_time_update_required != 0) {
-		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_SIGFOX_UL_PERIOD));
+		node_ctx.sigfox_ul_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD));
 	}
 	if (dl_next_time_update_required != 0) {
-		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_SIGFOX_DL_PERIOD));
+		node_ctx.sigfox_dl_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD));
 	}
 	return status;
 }
@@ -924,7 +924,7 @@ NODE_status_t NODE_scan(void) {
 	uint8_t rs485_on = 0;
 	// Read scan period.
 	read_params.node_addr = DINFOX_NODE_ADDRESS_DMM;
-	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION;
+	read_params.reg_addr = DMM_REG_ADDR_CONFIGURATION_0;
 	read_params.reply_params.type = NODE_REPLY_TYPE_OK;
 	read_params.reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
 	DMM_read_register(&read_params, &reg_value, &read_status, 1);
@@ -934,7 +934,7 @@ NODE_status_t NODE_scan(void) {
 		goto errors;
 	}
 	// Update next scan time.
-	node_ctx.scan_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_MASK_NODES_SCAN_PERIOD));
+	node_ctx.scan_next_time_seconds += DINFOX_get_seconds((DINFOX_time_representation_t) DINFOX_read_field(reg_value, DMM_REG_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD));
 	// Reset list.
 	_NODE_flush_list();
 	// Add master board to the list.

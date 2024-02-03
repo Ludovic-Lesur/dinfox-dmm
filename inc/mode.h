@@ -11,5 +11,14 @@
 /*** Board modes ***/
 
 //#define DEBUG
+//#define NVM_FACTORY_RESET
+
+/*** Board options ***/
+
+#ifdef NVM_FACTORY_RESET
+#define DMM_SIGFOX_UL_PERIOD_SECONDS	300
+#define DMM_SIGFOX_DL_PERIOD_SECONDS	21600
+#define DMM_NODES_SCAN_PERIOD_SECONDS	86400
+#endif
 
 #endif /* __MODE_H__ */

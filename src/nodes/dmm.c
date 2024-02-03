@@ -334,6 +334,13 @@ void DMM_init_registers(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	uint32_t unused_mask = 0;
+#ifdef NVM_FACTORY_RESET
+	// Radio monitoring and node scanning periods.
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION_0]), &unused_mask, DINFOX_convert_seconds(DMM_NODES_SCAN_PERIOD_SECONDS), DMM_REG_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION_0]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS),  DMM_REG_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD);
+	DINFOX_write_field(&(DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_CONFIGURATION_0]), &unused_mask, DINFOX_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS),  DMM_REG_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD);
+	_DMM_check_register(DMM_REG_ADDR_CONFIGURATION_0, DINFOX_REG_MASK_ALL);
+#endif
 	// Reset all registers.
 	for (idx=0 ; idx<DMM_REG_ADDR_LAST ; idx++) {
 		DMM_INTERNAL_REGISTERS[idx] = 0;

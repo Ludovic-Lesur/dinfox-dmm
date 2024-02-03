@@ -375,7 +375,7 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
 	// Loop on all addresses.
 	for (node_addr=0 ; node_addr<=DINFOX_NODE_ADDRESS_LBUS_LAST ; node_addr++) {
-		// Uppdate address.
+		// Update address.
 		read_params.node_addr = node_addr;
 		// Read NODE_ID register.
 		status = AT_BUS_read_register(&read_params, &reg_value, &read_status, 0);

@@ -489,7 +489,7 @@ NODE_status_t _NODE_execute_downlink(void) {
 	uint32_t last_bidirectional_mc = 0;
 	NODE_t* node_ptr = NULL;
 	uint32_t previous_reg_value = 0;
-	// Direcly exit in case of NOP.
+	// Directly exit in case of NOP.
 	if (node_ctx.sigfox_dl_payload.op_code == NODE_DOWNLINK_OP_CODE_NOP) goto errors;
 	// Read last message counter.
 	status = UHFM_get_last_bidirectional_mc(((node_ctx.uhfm_node_ptr) -> address), &last_bidirectional_mc, &read_status);
@@ -839,7 +839,6 @@ NODE_status_t _NODE_execute_actions(void) {
 			// Perform node access (status is not checked because action log message must be sent whatever the result).
 			if (node_action.access_status.type == NODE_ACCESS_TYPE_WRITE) {
 				_NODE_write_register(node_action.node, node_action.reg_addr, node_action.reg_value, node_action.reg_mask, &(node_action.access_status));
-
 			}
 			else {
 				_NODE_read_register(node_action.node, node_action.reg_addr, &(node_action.reg_value), &(node_action.access_status));

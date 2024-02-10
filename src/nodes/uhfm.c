@@ -306,7 +306,7 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	SIGFOX_EP_API_message_status_t message_status;
-	uint8_t reg_offset = 0;
+	uint8_t reg_addr = (UHFM_REG_ADDR_SIGFOX_DL_PAYLOAD_0 - 1);
 	uint8_t idx = 0;
 	// Check parameters.
 	if ((dl_payload == NULL) || (read_status == NULL)) {
@@ -324,14 +324,14 @@ NODE_status_t UHFM_get_dl_payload(NODE_address_t node_addr, uint8_t* dl_payload,
 	for (idx=0 ; idx<SIGFOX_DL_PAYLOAD_SIZE_BYTES ; idx++) {
 		// Check index.
 		if ((idx % 4) == 0) {
+			// Go to next register.
+			reg_addr++;
 			// Read register.
-			status = XM_read_register(node_addr, (UHFM_REG_ADDR_SIGFOX_DL_PAYLOAD_0 + reg_offset), (XM_node_registers_t*) &UHFM_NODE_REGISTERS, read_status);
+			status = XM_read_register(node_addr, reg_addr, (XM_node_registers_t*) &UHFM_NODE_REGISTERS, read_status);
 			if ((status != NODE_SUCCESS) || ((read_status -> flags) != 0)) goto errors;
-			// Go to next register and reset value.
-			reg_offset++;
 		}
 		// Convert to byte array.
-		dl_payload[idx] = (uint8_t) ((UHFM_REGISTERS[UHFM_REG_ADDR_STATUS_1 + reg_offset] >> (8 * (idx % 4))) & 0xFF);
+		dl_payload[idx] = (uint8_t) ((UHFM_REGISTERS[reg_addr] >> (8 * (idx % 4))) & 0xFF);
 	}
 errors:
 	return status;

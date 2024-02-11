@@ -848,11 +848,11 @@ NODE_status_t _NODE_execute_actions(void) {
 			node_ul_payload.ul_payload = (uint8_t*) dinfox_ul_payload.node_data;
 			node_ul_payload.size = &node_ul_payload_size;
 			// Build frame.
-			status = DMM_build_sigfox_action_log_ul_payload(&node_ul_payload, &node_action);
+			status = COMMON_build_sigfox_action_log_ul_payload(&node_ul_payload, &node_action);
 			if (status != NODE_SUCCESS) goto errors;
 			// Add board ID and node address.
-			dinfox_ul_payload.board_id = ((node_ctx.dmm_node_ptr) -> board_id);
-			dinfox_ul_payload.node_addr = ((node_ctx.dmm_node_ptr) -> address);
+			dinfox_ul_payload.board_id = ((node_action.node) -> board_id);
+			dinfox_ul_payload.node_addr = ((node_action.node) -> address);
 			// Build Sigfox message structure.
 			sigfox_message.ul_payload = (uint8_t*) dinfox_ul_payload.frame;
 			sigfox_message.ul_payload_size = (NODE_DINFOX_PAYLOAD_HEADER_SIZE + node_ul_payload_size);

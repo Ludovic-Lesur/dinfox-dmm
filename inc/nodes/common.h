@@ -89,4 +89,13 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
  *******************************************************************/
 NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payload, XM_node_registers_t* node_reg);
 
+/*!******************************************************************
+ * \fn NODE_status_t COMMON_build_sigfox_action_log_ul_payload(NODE_ul_payload_t* node_ul_payload, NODE_action_t* node_action)
+ * \brief Build common action log uplink payload.
+ * \param[in]  	node_action: Pointer to the action to log.
+ * \param[out] 	node_ul_payload: Pointer to the Sigfox uplink payload.
+ * \retval		Function execution status.
+ *******************************************************************/
+NODE_status_t COMMON_build_sigfox_action_log_ul_payload(NODE_ul_payload_t* node_ul_payload, NODE_action_t* node_action);
+
 #endif /* __COMMON_H__ */

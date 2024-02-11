@@ -19,10 +19,23 @@
 
 /*** COMMON local macros ***/
 
+#define COMMON_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE	8
 #define COMMON_SIGFOX_UL_PAYLOAD_STARTUP_SIZE		8
 #define COMMON_SIGFOX_UL_PAYLOAD_ERROR_STACK_SIZE	10
 
 /*** COMMON local structures ***/
+
+/*******************************************************************/
+typedef union {
+	uint8_t frame[COMMON_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE];
+	struct {
+		unsigned marker : 4;
+		unsigned downlink_hash : 12;
+		unsigned reg_addr : 8;
+		unsigned reg_value : 32;
+		unsigned node_access_status : 8;
+	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+} COMMON_sigfox_ul_payload_action_log_t;
 
 /*******************************************************************/
 typedef union {
@@ -288,6 +301,40 @@ NODE_status_t COMMON_check_event_driven_payloads(NODE_ul_payload_t* node_ul_payl
 			if (status != NODE_SUCCESS) goto errors;
 		}
 	}
+errors:
+	return status;
+}
+
+/*******************************************************************/
+NODE_status_t COMMON_build_sigfox_action_log_ul_payload(NODE_ul_payload_t* node_ul_payload, NODE_action_t* node_action) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	COMMON_sigfox_ul_payload_action_log_t sigfox_ul_payload_action_log;
+	uint8_t idx = 0;
+	// Check parameters.
+	if ((node_ul_payload == NULL) || (node_action == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if (((node_ul_payload -> node) == NULL) || ((node_ul_payload -> ul_payload) == NULL) || ((node_ul_payload -> size) == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if ((node_action -> node) == NULL) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Build frame.
+	sigfox_ul_payload_action_log.marker = 0b1111;
+	sigfox_ul_payload_action_log.downlink_hash = ((node_action -> downlink_hash) & 0x00000FFF);
+	sigfox_ul_payload_action_log.reg_addr = (node_action -> reg_addr);
+	sigfox_ul_payload_action_log.reg_value = (node_action -> reg_value);
+	sigfox_ul_payload_action_log.node_access_status = ((node_action -> access_status).all);
+	// Copy payload.
+	for (idx=0 ; idx<COMMON_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE ; idx++) {
+		(node_ul_payload -> ul_payload)[idx] = sigfox_ul_payload_action_log.frame[idx];
+	}
+	(*(node_ul_payload -> size)) = COMMON_SIGFOX_UL_PAYLOAD_ACTION_LOG_SIZE;
 errors:
 	return status;
 }

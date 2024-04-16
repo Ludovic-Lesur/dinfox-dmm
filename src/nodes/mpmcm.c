@@ -36,8 +36,8 @@ typedef union {
 	uint8_t frame[MPMCM_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE_SIZE];
 	struct {
 		unsigned unused : 2;
-		unsigned ltd : 1;
 		unsigned mvd : 1;
+		unsigned ticd : 1;
 		unsigned ch4d : 1;
 		unsigned ch3d : 1;
 		unsigned ch2d : 1;
@@ -99,7 +99,7 @@ typedef union {
 static uint32_t MPMCM_REGISTERS[MPMCM_REG_ADDR_LAST];
 static uint8_t mpmcm_por_flag = 1;
 static uint8_t mpmcm_mvd_flag = 0;
-static uint8_t mpmcm_ltd_flag = 0;
+static uint8_t mpmcm_ticd_flag = 0;
 
 #define MPMCM_REG_ERROR_VALUE_CHx \
 	/* Active power */ \
@@ -380,7 +380,7 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	if ((status != NODE_SUCCESS) || (chxs_access_status.flags != 0)) goto errors;
 	// Reset MVD and LTD flags.
 	sigfox_ul_payload_mains_voltage.mvd = 0;
-	sigfox_ul_payload_mains_voltage.ltd = 0;
+	sigfox_ul_payload_mains_voltage.ticd = 0;
 	// Store accumulated data of all channels (synchronization reset in case of POR).
 	reg_control_1 |= MPMCM_REG_CONTROL_1_MASK_CH1S;
 	reg_control_1 |= MPMCM_REG_CONTROL_1_MASK_CH2S;
@@ -403,8 +403,8 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	}
 	// Build mains voltage frame.
 	sigfox_ul_payload_mains_voltage.unused = 0;
-	sigfox_ul_payload_mains_voltage.ltd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_LTD);
 	sigfox_ul_payload_mains_voltage.mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_MVD);
+	sigfox_ul_payload_mains_voltage.ticd = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_TICD);
 	sigfox_ul_payload_mains_voltage.ch4d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH4D);
 	sigfox_ul_payload_mains_voltage.ch3d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH3D);
 	sigfox_ul_payload_mains_voltage.ch2d = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_CH2D);
@@ -524,7 +524,7 @@ tic_interface:
 	// Check if TIC interface is enabled.
 	if ((MPMCM_REGISTERS[MPMCM_REG_ADDR_CONFIGURATION_0] & MPMCM_REG_CONFIGURATION_0_MASK_LTE) != 0) {
 		// Do not send any frame if TIC was not detected 2 consecutive times.
-		if ((sigfox_ul_payload_mains_voltage.ltd == 0) && (mpmcm_ltd_flag == 0)) goto errors;
+		if ((sigfox_ul_payload_mains_voltage.ticd == 0) && (mpmcm_ticd_flag == 0)) goto errors;
 		// Compute data registers offset according to selected channel.
 		channel_idx = MPMCM_TIC_CHANNEL_INDEX;
 		reg_offset = (channel_idx * MPMCM_NUMBER_OF_REG_PER_DATA);
@@ -557,6 +557,6 @@ errors:
 	// Clear POR flag and update MVD flag.
 	mpmcm_por_flag = 0;
 	mpmcm_mvd_flag = sigfox_ul_payload_mains_voltage.mvd;
-	mpmcm_ltd_flag = sigfox_ul_payload_mains_voltage.ltd;
+	mpmcm_ticd_flag = sigfox_ul_payload_mains_voltage.ticd;
 	return status;
 }

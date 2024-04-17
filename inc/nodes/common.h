@@ -55,9 +55,7 @@ typedef enum {
 
 /*** COMMON global variables ***/
 
-static const uint32_t COMMON_REG_WRITE_TIMEOUT_MS[COMMON_REG_ADDR_LAST] = {
-	COMMON_REG_WRITE_TIMEOUT_MS_LIST
-};
+extern const uint32_t COMMON_REG_WRITE_TIMEOUT_MS[COMMON_REG_ADDR_LAST];
 
 /*** COMMON functions ***/
 

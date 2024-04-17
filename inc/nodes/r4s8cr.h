@@ -35,10 +35,9 @@ typedef enum {
 	R4S8CR_LINE_DATA_INDEX_LAST,
 } R4S8CR_line_data_index_t;
 
-static const uint32_t R4S8CR_REG_WRITE_TIMEOUT_MS[R4S8CR_REG_ADDR_LAST] = {
-	R4S8CR_READ_TIMEOUT_MS,
-	R4S8CR_WRITE_TIMEOUT_MS
-};
+/*** R4S8CR global variables ***/
+
+extern const uint32_t R4S8CR_REG_WRITE_TIMEOUT_MS[R4S8CR_REG_ADDR_LAST];
 
 /*** R4S8CR functions ***/
 

@@ -50,6 +50,18 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } DDRM_sigfox_ul_payload_electrical_t;
 
+/*** DDRM global variables ***/
+
+const uint32_t DDRM_REG_WRITE_TIMEOUT_MS[DDRM_REG_ADDR_LAST] = {
+	COMMON_REG_WRITE_TIMEOUT_MS_LIST
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	5000,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS
+};
+
 /*** DDRM local global variables ***/
 
 static uint32_t DDRM_REGISTERS[DDRM_REG_ADDR_LAST];

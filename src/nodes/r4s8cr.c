@@ -69,6 +69,13 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } R4S8CR_sigfox_ul_payload_data_t;
 
+/*** R4S8CR global variables ***/
+
+const uint32_t R4S8CR_REG_WRITE_TIMEOUT_MS[R4S8CR_REG_ADDR_LAST] = {
+	R4S8CR_READ_TIMEOUT_MS,
+	R4S8CR_WRITE_TIMEOUT_MS
+};
+
 /*** R4S8CR local global variables ***/
 
 static uint32_t R4S8CR_REGISTERS[R4S8CR_REG_ADDR_LAST];

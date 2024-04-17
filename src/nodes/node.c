@@ -185,6 +185,10 @@ typedef struct {
 	NODE_t* mpmcm_node_ptr;
 } NODE_context_t;
 
+/*** NODE global variables ***/
+
+const char_t NODE_ERROR_STRING[] = "ERROR";
+
 /*** NODE local global variables ***/
 
 // Note: table is indexed with board ID.

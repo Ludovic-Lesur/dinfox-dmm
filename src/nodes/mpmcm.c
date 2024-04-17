@@ -104,6 +104,47 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } MPMCM_sigfox_ul_payload_mains_energy_t;
 
+/*** MPMCM global variables ***/
+
+/*******************************************************************/
+#define MPMCM_REG_WRITE_TIMEOUT_CHx \
+	/* Active power */ \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	/* RMS voltage */ \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	/* RMS current */ \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	/* Apparent power */ \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	/* Power factor */ \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+	/* Energy */ \
+	AT_BUS_DEFAULT_TIMEOUT_MS, \
+
+const uint32_t MPMCM_REG_WRITE_TIMEOUT_MS[MPMCM_REG_ADDR_LAST] = {
+	COMMON_REG_WRITE_TIMEOUT_MS_LIST
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	5000,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	MPMCM_REG_WRITE_TIMEOUT_CHx
+	MPMCM_REG_WRITE_TIMEOUT_CHx
+	MPMCM_REG_WRITE_TIMEOUT_CHx
+	MPMCM_REG_WRITE_TIMEOUT_CHx
+	MPMCM_REG_WRITE_TIMEOUT_CHx
+};
+
 /*** MPMCM local global variables ***/
 
 static uint32_t MPMCM_REGISTERS[MPMCM_REG_ADDR_LAST];

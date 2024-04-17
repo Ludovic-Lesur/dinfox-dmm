@@ -50,6 +50,17 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } DMM_sigfox_ul_payload_monitoring_t;
 
+/*** DMM global variables ***/
+
+const uint32_t DMM_REG_WRITE_TIMEOUT_MS[DMM_REG_ADDR_LAST] = {
+	COMMON_REG_WRITE_TIMEOUT_MS_LIST
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS
+};
+
 /*** DMM local global variables ***/
 
 static uint32_t DMM_INTERNAL_REGISTERS[DMM_REG_ADDR_LAST];

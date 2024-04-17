@@ -52,6 +52,18 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } BPSM_sigfox_ul_payload_electrical_t;
 
+/*** BPSM global variables ***/
+
+const uint32_t BPSM_REG_WRITE_TIMEOUT_MS[BPSM_REG_ADDR_LAST] = {
+	COMMON_REG_WRITE_TIMEOUT_MS_LIST
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	5000,
+	AT_BUS_DEFAULT_TIMEOUT_MS,
+	AT_BUS_DEFAULT_TIMEOUT_MS
+};
+
 /*** BPSM local global variables ***/
 
 static uint32_t BPSM_REGISTERS[BPSM_REG_ADDR_LAST];

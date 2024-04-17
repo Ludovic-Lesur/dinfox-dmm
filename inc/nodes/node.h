@@ -25,7 +25,6 @@
 
 #define NODE_DINFOX_PAYLOAD_HEADER_SIZE		2
 
-static const char_t NODE_ERROR_STRING[] =	"ERROR";
 #define NODE_ERROR_VALUE_NODE_ADDRESS		0xFF
 #define NODE_ERROR_VALUE_BOARD_ID			0xFF
 #define NODE_ERROR_VALUE_VERSION			0xFF
@@ -39,6 +38,10 @@ static const char_t NODE_ERROR_STRING[] =	"ERROR";
 #define NODE_ERROR_VALUE_TEMPERATURE		0x7F
 #define NODE_ERROR_VALUE_HUMIDITY			0xFF
 #define NODE_ERROR_VALUE_BOOLEAN			0
+
+/*** NODE global variables ***/
+
+extern const char_t NODE_ERROR_STRING[];
 
 /*** NODE structures ***/
 

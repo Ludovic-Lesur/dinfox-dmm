@@ -50,6 +50,12 @@ typedef union {
 	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } COMMON_sigfox_ul_payload_startup_t;
 
+/*** COMMON global variables ***/
+
+const uint32_t COMMON_REG_WRITE_TIMEOUT_MS[COMMON_REG_ADDR_LAST] = {
+	COMMON_REG_WRITE_TIMEOUT_MS_LIST
+};
+
 /*** COMMON local global variables ***/
 
 static const NODE_line_data_t COMMON_LINE_DATA[COMMON_LINE_DATA_INDEX_LAST] = {

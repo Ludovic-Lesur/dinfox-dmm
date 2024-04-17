@@ -59,10 +59,6 @@ SH1106_status_t _SH1106_write(uint8_t i2c_address, SH1106_data_type_t data_type,
 		status = SH1106_ERROR_DATA_TYPE;
 		goto errors;
 	}
-	if (data_size_bytes >= SH1106_I2C_BUFFER_SIZE_BYTES) {
-		status = SH1106_ERROR_I2C_BUFFER_SIZE;
-		goto errors;
-	}
 	// Build TX buffer.
 	sh1106_ctx.i2c_tx_buffer[0] = (data_type == SH1106_DATA_TYPE_COMMAND) ? 0x00 : 0x40;
 	for (idx=0 ; idx<data_size_bytes ; idx++) {

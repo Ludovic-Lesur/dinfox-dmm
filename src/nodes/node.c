@@ -208,10 +208,10 @@ static const NODE_descriptor_t NODES[DINFOX_BOARD_ID_LAST] = {
 		{&AT_BUS_write_register, &AT_BUS_read_register, &SM_write_line_data, &SM_read_line_data, &SM_build_sigfox_ul_payload}
 	},
 	{"DIM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
-		{NULL, NULL, NULL, NULL}
+		{NULL, NULL, NULL, NULL, NULL}
 	},
 	{"RRM", NODE_PROTOCOL_AT_BUS, 0, 0, NULL,
-		{NULL, NULL, NULL, NULL}
+		{NULL, NULL, NULL, NULL, NULL}
 	},
 	{"DMM", NODE_PROTOCOL_AT_BUS, DMM_REG_ADDR_LAST, DMM_LINE_DATA_INDEX_LAST, (uint32_t*) DMM_REG_WRITE_TIMEOUT_MS,
 		{&DMM_write_register, &DMM_read_register, &DMM_write_line_data, &DMM_read_line_data, &DMM_build_sigfox_ul_payload}

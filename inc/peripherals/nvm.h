@@ -8,6 +8,7 @@
 #ifndef __NVM_H__
 #define __NVM_H__
 
+#include "flash_reg.h"
 #include "types.h"
 
 /*** NVM structures ***/
@@ -36,7 +37,7 @@ typedef enum {
 typedef enum {
 	NVM_ADDRESS_SELF_ADDRESS = 0,
 	NVM_ADDRESS_REGISTERS = 0x40,
-	NVM_ADDRESS_LAST = 0xFF
+	NVM_ADDRESS_LAST = (EEPROM_SIZE_BYTES - 1)
 } NVM_address_t;
 
 /*** NVM functions ***/

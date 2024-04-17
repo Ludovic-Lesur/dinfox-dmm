@@ -453,6 +453,9 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 			nodes_list[node_list_idx].address = node_addr;
 			nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_R4S8CR;
 		}
+		// Check index.
+		if ((*nodes_count) >= nodes_list_size) break;
+		IWDG_reload();
 	}
 errors:
 	return status;

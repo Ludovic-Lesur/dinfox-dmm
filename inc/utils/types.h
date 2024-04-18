@@ -28,4 +28,6 @@ typedef unsigned long long	uint64_t;
 
 #define NULL				((void*) 0)
 
+#define UNUSED(x)			((void) x)
+
 #endif /* __TYPES_H__ */

@@ -9,7 +9,6 @@
 #define __MAPPING_H__
 
 #include "gpio.h"
-#include "gpio_reg.h"
 
 // Rotary encoder.
 extern const GPIO_pin_t GPIO_ENC_SW;

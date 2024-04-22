@@ -114,7 +114,6 @@ errors:
 STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, uint8_t print_prefix, char_t* str) {
     // Local variables.
 	STRING_status_t status = STRING_SUCCESS;
-	MATH_status_t math_status = MATH_SUCCESS;
 	uint8_t first_non_zero_found = 0;
 	uint32_t str_idx = 0;
 	uint8_t generic_byte = 0;
@@ -128,8 +127,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
 		str[str_idx++] = STRING_CHAR_MINUS;
 	}
 	// Get absolute value.
-	math_status = MATH_abs(value, &abs_value);
-	MATH_exit_error();
+	MATH_abs(value, abs_value);
 	// Build string according to format.
 	switch (format) {
 	case STRING_FORMAT_BOOLEAN:

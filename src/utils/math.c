@@ -56,9 +56,9 @@ const uint32_t MATH_POWER_10[MATH_DECIMAL_DIGIT_MAX_NUMBER] = {1, 10, 100, 1000,
 	/* Local variables */ \
 	average_type average = 0; \
 	uint8_t idx = 0; \
-	/* Compute moving average */ \
+	/* Compute rolling mean */ \
 	for (idx=0 ; idx<data_size ; idx++) { \
-		average = ((average * ((average_type) idx)) + ((average_type) data[idx])) / ((average_type) (idx + 1)); \
+		MATH_rolling_mean(average, idx, data[idx], average_type); \
 	} \
 	(*result) = (result_type) average; \
 }
@@ -92,8 +92,8 @@ const uint32_t MATH_POWER_10[MATH_DECIMAL_DIGIT_MAX_NUMBER] = {1, 10, 100, 1000,
 		if (average_size > median_size) { \
 			average_size = median_size; \
 		} \
-		start_idx = (median_size / 2) - (average_size / 2); \
-		end_idx = (median_size / 2) + (average_size / 2); \
+		start_idx = (median_size >> 1) - (average_size >> 1); \
+		end_idx =   (median_size >> 1) + (average_size >> 1); \
 		if (end_idx >= median_size) { \
 			end_idx = (median_size - 1); \
 		} \
@@ -324,19 +324,6 @@ errors:
 }
 
 /*******************************************************************/
-MATH_status_t MATH_abs(int32_t x, uint32_t* result) {
-	// Local variables.
-	MATH_status_t status = MATH_SUCCESS;
-	// Check parameters.
-	_MATH_check_pointer(result);
-	// Check sign.
-	if (x >= 0) (*result) = x;
-	if (x < 0) (*result) = (-1) * x;
-errors:
-	return status;
-}
-
-/*******************************************************************/
 MATH_status_t MATH_atan2(int32_t x, int32_t y, uint32_t* alpha) {
 	// Local variables.
 	MATH_status_t status = MATH_SUCCESS;
@@ -349,9 +336,8 @@ MATH_status_t MATH_atan2(int32_t x, int32_t y, uint32_t* alpha) {
 	}
 	_MATH_check_pointer(alpha);
 	// Compute absolute values.
-	status = MATH_abs(x, &abs_x);
-	if (status != MATH_SUCCESS) goto errors;
-	status = MATH_abs(y, &abs_y);
+	MATH_abs(x, abs_x);
+	MATH_abs(y, abs_y);
 	if (status != MATH_SUCCESS) goto errors;
 	// Scale x and y to avoid overflow.
 	while ((abs_x > 10000) || (abs_y > 10000)) {
@@ -447,8 +433,7 @@ MATH_status_t MATH_int32_to_signed_magnitude(int32_t value, uint8_t sign_bit_pos
 	}
 	_MATH_check_pointer(result);
 	// Compute absolute value.
-	status = MATH_abs(value, &absolute_value);
-	if (status != MATH_SUCCESS) goto errors;
+	MATH_abs(value, absolute_value);
 	// Check size.
 	if (absolute_value > absolute_mask) {
 		status = MATH_ERROR_MAGNITUDE_OVERFLOW;

@@ -10,6 +10,8 @@
 #include "gpio.h"
 #include "gpio_reg.h"
 
+/*** MAPPING global variables ***/
+
 // Rotary encoder.
 const GPIO_pin_t GPIO_ENC_SW =				(GPIO_pin_t) {GPIOA, 0, 0, 0};
 const GPIO_pin_t GPIO_ENC_CHA =				(GPIO_pin_t) {GPIOA, 0, 2, 0};

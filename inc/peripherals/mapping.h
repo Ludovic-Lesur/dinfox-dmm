@@ -10,6 +10,8 @@
 
 #include "gpio.h"
 
+/*** MAPPING global variables ***/
+
 // Rotary encoder.
 extern const GPIO_pin_t GPIO_ENC_SW;
 extern const GPIO_pin_t GPIO_ENC_CHA;

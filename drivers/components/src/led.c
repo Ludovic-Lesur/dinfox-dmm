@@ -61,7 +61,7 @@ LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t colo
 	GPIO_configure(&GPIO_LED_GREEN, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LED_BLUE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	// Start blink.
-	TIM3_start(color);
+	TIM3_start((TIM3_channel_mask_t) color);
 	tim22_status = TIM22_start(blink_duration_ms);
 	TIM22_exit_error(LED_ERROR_BASE_TIM22);
 errors:

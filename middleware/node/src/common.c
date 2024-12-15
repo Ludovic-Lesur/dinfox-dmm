@@ -240,7 +240,7 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 		// Check error value.
 		if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 			// Convert to 5 digits string.
-			string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+			string_status = STRING_value_to_5_digits_string((int32_t) (DINFOX_get_mv((DINFOX_voltage_representation_t) field_value)), (char_t*) field_str);
 			STRING_exit_error(NODE_ERROR_BASE_STRING);
 			// Add string.
 			NODE_flush_string_value();
@@ -254,7 +254,7 @@ NODE_status_t COMMON_read_line_data(NODE_line_data_read_t* line_data_read, XM_no
 		// Check error value.
 		if (field_value != DINFOX_TEMPERATURE_ERROR_VALUE) {
 			// Convert to degrees.
-			tmcu = (int32_t) DINFOX_get_degrees(field_value);
+			tmcu = (int32_t) DINFOX_get_degrees((DINFOX_temperature_representation_t) field_value);
 			// Add string.
 			NODE_flush_string_value();
 			NODE_append_value_int32(tmcu, COMMON_LINE_DATA[str_data_idx].print_format, COMMON_LINE_DATA[str_data_idx].print_prefix);

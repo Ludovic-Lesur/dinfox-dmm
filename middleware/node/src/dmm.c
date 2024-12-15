@@ -72,7 +72,7 @@ static const uint32_t DMM_REG_ERROR_VALUE[DMM_REG_ADDR_LAST] = {
 	((DINFOX_TIME_ERROR_VALUE << 16) | (DINFOX_TIME_ERROR_VALUE << 8) | (DINFOX_TIME_ERROR_VALUE << 0)),
 	0x00000000,
 	0x00000000,
-	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	(uint32_t) ((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0)
 };
 
@@ -551,7 +551,7 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 			// Check error value.
 			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 				// Convert to 5 digits string.
-				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+				string_status = STRING_value_to_5_digits_string((int32_t) (DINFOX_get_mv((DINFOX_voltage_representation_t) field_value)), (char_t*) field_str);
 				STRING_exit_error(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
@@ -572,7 +572,7 @@ NODE_status_t DMM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acc
 		case DMM_LINE_DATA_INDEX_SIGFOX_DL_PERIOD:
 			// Convert to seconds.
 			NODE_flush_string_value();
-			NODE_append_value_int32(DINFOX_get_seconds(field_value),  DMM_LINE_DATA[str_data_idx].print_format,  DMM_LINE_DATA[str_data_idx].print_prefix);
+			NODE_append_value_int32((int32_t) (DINFOX_get_seconds((DINFOX_time_representation_t) field_value)),  DMM_LINE_DATA[str_data_idx].print_format,  DMM_LINE_DATA[str_data_idx].print_prefix);
 			// Add unit.
 			NODE_append_value_string((char_t*) DMM_LINE_DATA[str_data_idx].unit);
 			break;

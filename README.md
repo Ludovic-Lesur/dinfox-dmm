@@ -18,7 +18,10 @@ The board was designed on **Circuit Maker V2.0**. Below is the list of hardware 
 
 ## Environment
 
-The embedded software is developed under **Eclipse IDE** version 2023-09 (4.29.0) and **GNU MCU** plugin. The `script` folder contains Eclipse run/debug configuration files and **JLink** scripts to flash the MCU.
+The embedded software is developed under **Eclipse IDE** version 2024-09 (4.33.0) and **GNU MCU** plugin. The `script` folder contains Eclipse run/debug configuration files and **JLink** scripts to flash the MCU.
+
+> [!WARNING]
+> To compile any version under `sw5.0`, the `git_version.sh` script must be patched when `sscanf` function is called: the `SW` prefix must be replaced by `sw` since Git tags have been renamed in this way.
 
 ## Target
 
@@ -28,16 +31,20 @@ The board is based on the **STM32L081CBT6** microcontroller of the STMicroelectr
 
 The project is organized as follow:
 
-* `inc` and `src`: **source code** split in 6 layers:
-    * `registers`: MCU **registers** adress definition.
-    * `peripherals`: internal MCU **peripherals** drivers.
-    * `utils`: **utility** functions.
-    * `components`: external **components** drivers.
-    * `nodes`: **Node interfaces** layer.
-    * `applicative`: high-level **application** layers.
-* `startup`: MCU **startup** code (from ARM).
-* `linker`: MCU **linker** script (from ARM).
+* `startup` : MCU **startup** code (from ARM).
+* `linker` : MCU **linker** script (from ARM).
+* `drivers` :
+    * `registers` : MCU **registers** address definition.
+    * `peripherals` : internal MCU **peripherals** drivers.
+    * `mac` : **medium access control** driver.
+    * `components` : external **components** drivers.
+    * `utils` : **utility** functions.
+* `middleware` :
+    * `analog` : High level **analog measurements** driver.
+    * `node` : **UNA** nodes interface implementation.
+    * `power` : Board **power tree** manager.
+* `application` : Main **application**.
 
 ## Dependencies
 
-The `inc/dinfox` and `src/dinfox` folders of the [XM project](https://github.com/Ludovic-Lesur/xm) must linked to the DMM project, as they contain common data definition related to the DINFox system.
+The `inc/dinfox` and `src/dinfox` folders of the [XM project](https://github.com/Ludovic-Lesur/xm) must be linked to the DMM project, as they contain common data definition related to the DINFox system.

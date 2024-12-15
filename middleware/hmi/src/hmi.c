@@ -254,19 +254,19 @@ static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 	// Build title according to screen.
 	switch (screen) {
 	case HMI_SCREEN_NODES_LIST:
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TITLE_NODES_LIST, &hmi_ctx.text_width);
+	    string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TITLE_NODES_LIST, &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
+		string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
-		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.count, STRING_FORMAT_DECIMAL, 0, &hmi_ctx.text_width);
+		string_status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.count, STRING_FORMAT_DECIMAL, 0, &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
+		string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
 		break;
 	case HMI_SCREEN_NODES_SCAN:
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TITLE_NODES_LIST, &hmi_ctx.text_width);
+	    string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TITLE_NODES_LIST, &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "[-]", &hmi_ctx.text_width);
+		string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "[-]", &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
 		break;
 	case HMI_SCREEN_NODE_DATA:
@@ -274,22 +274,22 @@ static HMI_status_t _HMI_update_and_print_title(HMI_screen_t screen) {
 		switch (node_status) {
 		case NODE_SUCCESS:
 			text_ptr_2 = (text_ptr_1 != NULL) ? text_ptr_1 : (char_t*) HMI_TEXT_NA;
-			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, text_ptr_2, &hmi_ctx.text_width);
+			string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, text_ptr_2, &hmi_ctx.text_width);
 			STRING_exit_error(HMI_ERROR_BASE_STRING);
 			break;
 		case NODE_ERROR_NOT_SUPPORTED:
-			status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TEXT_NA, &hmi_ctx.text_width);
+		    string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, (char_t*) HMI_TEXT_NA, &hmi_ctx.text_width);
 			STRING_exit_error(HMI_ERROR_BASE_STRING);
 			break;
 		default:
 			NODE_exit_error(HMI_ERROR_BASE_NODE);
 			break;
 		}
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
+		string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, " [", &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
-		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.node.address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+		string_status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.node.address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
-		status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
+		string_status = STRING_append_string(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, "]", &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
 		break;
 	default:
@@ -440,7 +440,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 			STRING_exit_error(HMI_ERROR_BASE_STRING);
 			// Print node address.
 			_HMI_text_flush();
-			status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+			string_status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
 			STRING_exit_error(HMI_ERROR_BASE_STRING);
 			string_copy.source = (char_t*) hmi_ctx.text;
 			string_copy.justification = STRING_JUSTIFICATION_RIGHT;
@@ -555,7 +555,7 @@ static HMI_status_t _HMI_update_all_data(HMI_screen_t screen) {
 		string_status = STRING_copy(&string_copy);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
 		// Line 2.
-		status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.status, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
+		string_status = STRING_append_value(hmi_ctx.text, HMI_DATA_ZONE_WIDTH_CHAR, hmi_ctx.status, STRING_FORMAT_HEXADECIMAL, 1, &hmi_ctx.text_width);
 		STRING_exit_error(HMI_ERROR_BASE_STRING);
 		string_copy.source = (char_t*) hmi_ctx.text;
 		string_copy.destination = (char_t*) hmi_ctx.data[1];
@@ -858,7 +858,7 @@ static HMI_status_t _HMI_state_machine(void) {
 			if ((hmi_ctx.irq_flags & (0b1 << idx)) != 0) {
 				// Execute callback and clear flag.
 				status = hmi_ctx.process_functions[idx]();
-				hmi_ctx.irq_flags &= ~(0b1 << idx);
+				hmi_ctx.irq_flags &= (uint8_t) (~(0b1 << idx));
 				// Exit in case of error.
 				if (status != HMI_SUCCESS) goto errors;
 			}

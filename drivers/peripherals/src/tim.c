@@ -214,7 +214,7 @@ static TIM_status_t _TIM2_internal_watchdog(uint32_t time_start, uint32_t* time_
 }
 
 /*******************************************************************/
-void _TIM3_reset_channels(void) {
+static void _TIM3_reset_channels(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Channels loop.

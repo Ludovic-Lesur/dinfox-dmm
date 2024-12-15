@@ -157,11 +157,11 @@ static uint8_t mpmcm_ticd_flag = 0;
 	((DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 16) | (DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 0)), \
 	((DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 16) | (DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 0)), \
 	/* RMS voltage */ \
-	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)), \
-	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)), \
+	(uint32_t) ((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)), \
+	(uint32_t) ((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)), \
 	/* RMS current */ \
-	((DINFOX_CURRENT_ERROR_VALUE << 16) | (DINFOX_CURRENT_ERROR_VALUE << 0)), \
-	((DINFOX_CURRENT_ERROR_VALUE << 16) | (DINFOX_CURRENT_ERROR_VALUE << 0)), \
+    (uint32_t) ((DINFOX_CURRENT_ERROR_VALUE << 16) | (DINFOX_CURRENT_ERROR_VALUE << 0)), \
+    (uint32_t) ((DINFOX_CURRENT_ERROR_VALUE << 16) | (DINFOX_CURRENT_ERROR_VALUE << 0)), \
 	/* Apparent power */ \
 	((DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 16) | (DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 0)), \
 	((DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 16) | (DINFOX_ELECTRICAL_POWER_ERROR_VALUE << 0)), \
@@ -181,8 +181,8 @@ static const uint32_t MPMCM_REG_ERROR_VALUE[MPMCM_REG_ADDR_LAST] = {
 	0x00000000,
 	0x00000000,
 	0x00000000,
-	((DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 16) | (DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 0)),
-	((DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 16) | (DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 0)),
+	(uint32_t) ((DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 16) | (DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 0)),
+	(uint32_t) ((DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 16) | (DINFOX_MAINS_FREQUENCY_ERROR_VALUE << 0)),
 	MPMCM_REG_ERROR_VALUE_CHx
 	MPMCM_REG_ERROR_VALUE_CHx
 	MPMCM_REG_ERROR_VALUE_CHx
@@ -313,10 +313,12 @@ static NODE_status_t _MPMCM_send_mains_voltage_frame(NODE_address_t mpmcm_node_a
 	MPMCM_sigfox_ul_payload_mains_voltage_t sigfox_ul_payload_mains_voltage;
 	UHFM_sigfox_message_t sigfox_message;
 	uint8_t addr_list[sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER)];
-	uint32_t reg_offset = (channel_index * MPMCM_NUMBER_OF_REG_PER_DATA);
+	uint8_t reg_offset = (channel_index * MPMCM_NUMBER_OF_REG_PER_DATA);
 	uint8_t idx = 0;
 	// Build registers list for mains voltage.
-	for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE) ; idx++) addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE[idx] + reg_offset;
+	for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE) ; idx++) {
+	    addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE[idx] + reg_offset;
+	}
 	reg_list.addr_list = (uint8_t*) addr_list;
 	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_VOLTAGE);
 	// Read related registers.
@@ -353,10 +355,12 @@ static NODE_status_t _MPMCM_send_mains_power_frame(NODE_address_t mpmcm_node_add
 	MPMCM_sigfox_ul_payload_mains_power_t sigfox_ul_payload_mains_power;
 	UHFM_sigfox_message_t sigfox_message;
 	uint8_t addr_list[sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER)];
-	uint32_t reg_offset = (channel_index * MPMCM_NUMBER_OF_REG_PER_DATA);
+	uint8_t reg_offset = (channel_index * MPMCM_NUMBER_OF_REG_PER_DATA);
 	uint8_t idx = 0;
 	// Build registers list for mains power frame.
-	for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER) ; idx++) addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER[idx] + reg_offset;
+	for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER) ; idx++) {
+	    addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER[idx] + reg_offset;
+	}
 	reg_list.addr_list = (uint8_t*) addr_list;
 	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER);
 	// Read related registers.
@@ -394,10 +398,12 @@ static NODE_status_t _MPMCM_send_mains_power_factor_frame(NODE_address_t mpmcm_n
 	MPMCM_sigfox_ul_payload_mains_power_factor_t sigfox_ul_payload_mains_power_factor;
 	UHFM_sigfox_message_t sigfox_message;
 	uint8_t addr_list[sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR)];
-	uint32_t reg_offset = (channel_index * MPMCM_NUMBER_OF_REG_PER_DATA);
+	uint8_t reg_offset = (channel_index * MPMCM_NUMBER_OF_REG_PER_DATA);
 	uint8_t idx = 0;
 	// Build registers list for power factor frame.
-	for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR) ; idx++) addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR[idx] + reg_offset;
+	for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR) ; idx++) {
+	    addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR[idx] + reg_offset;
+	}
 	reg_list.addr_list = (uint8_t*) addr_list;
 	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_POWER_FACTOR);
 	// Read related registers.
@@ -434,10 +440,12 @@ static NODE_status_t _MPMCM_send_mains_energy_frame(NODE_address_t mpmcm_node_ad
 	MPMCM_sigfox_ul_payload_mains_energy_t sigfox_ul_payload_mains_energy;
 	UHFM_sigfox_message_t sigfox_message;
 	uint8_t addr_list[sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_ENERGY)];
-	uint32_t reg_offset = (channel_index * MPMCM_NUMBER_OF_REG_PER_DATA);
+	uint8_t reg_offset = (channel_index * MPMCM_NUMBER_OF_REG_PER_DATA);
 	uint8_t idx = 0;
 	// Build registers list for energy frame.
-	for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_ENERGY) ; idx++) addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_ENERGY[idx] + reg_offset;
+	for (idx=0 ; idx<sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_ENERGY) ; idx++) {
+	    addr_list[idx] = MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_ENERGY[idx] + reg_offset;
+	}
 	reg_list.addr_list = (uint8_t*) addr_list;
 	reg_list.size = sizeof(MPMCM_REG_LIST_SIGFOX_UL_PAYLOAD_MAINS_ENERGY);
 	// Read related registers.
@@ -549,7 +557,7 @@ NODE_status_t MPMCM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_a
 			// Check error value.
 			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 				// Convert to 5 digits string.
-				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+				string_status = STRING_value_to_5_digits_string((int32_t) (DINFOX_get_mv((DINFOX_voltage_representation_t) field_value)), (char_t*) field_str);
 				STRING_exit_error(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
@@ -562,7 +570,7 @@ NODE_status_t MPMCM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_a
 			// Check error value.
 			if (field_value != DINFOX_MAINS_FREQUENCY_ERROR_VALUE) {
 				// Convert to mHz then to 5 digits string.
-				string_status = STRING_value_to_5_digits_string((field_value * 10), (char_t*) field_str);
+				string_status = STRING_value_to_5_digits_string((int32_t) (field_value * 10), (char_t*) field_str);
 				STRING_exit_error(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
@@ -584,7 +592,7 @@ NODE_status_t MPMCM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_a
 			// Check error value.
 			if (field_value != DINFOX_ELECTRICAL_POWER_ERROR_VALUE) {
 				// Convert to 5 digits string.
-				string_status = STRING_value_to_5_digits_string(DINFOX_get_mw_mva(field_value), (char_t*) field_str);
+				string_status = STRING_value_to_5_digits_string(DINFOX_get_mw_mva((DINFOX_electrical_power_representation_t) field_value), (char_t*) field_str);
 				STRING_exit_error(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
@@ -660,11 +668,11 @@ NODE_status_t MPMCM_radio_process(NODE_address_t mpmcm_node_addr, NODE_address_t
 	status = XM_read_register(mpmcm_node_addr, MPMCM_REG_ADDR_CONFIGURATION_0, (XM_node_registers_t*) &MPMCM_NODE_REGISTERS, &access_status);
 	if ((status != NODE_SUCCESS) || (access_status.flags != 0)) goto errors;
 	// Update local flags.
-	ame =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CONFIGURATION_0], MPMCM_REG_CONFIGURATION_0_MASK_AME);
-	lte =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CONFIGURATION_0], MPMCM_REG_CONFIGURATION_0_MASK_LTE);
-	ltm =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CONFIGURATION_0], MPMCM_REG_CONFIGURATION_0_MASK_LTM);
-	mvd =  DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_MVD);
-	ticd = DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_TICD);
+	ame =  (uint8_t) DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CONFIGURATION_0], MPMCM_REG_CONFIGURATION_0_MASK_AME);
+	lte =  (uint8_t) DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CONFIGURATION_0], MPMCM_REG_CONFIGURATION_0_MASK_LTE);
+	ltm =  (uint8_t) DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_CONFIGURATION_0], MPMCM_REG_CONFIGURATION_0_MASK_LTM);
+	mvd =  (uint8_t) DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_MVD);
+	ticd = (uint8_t) DINFOX_read_field(MPMCM_REGISTERS[MPMCM_REG_ADDR_STATUS_1], MPMCM_REG_STATUS_1_MASK_TICD);
 	// Check MVD flag.
 	if (mvd != 0) {
 		// Send frequency frame.

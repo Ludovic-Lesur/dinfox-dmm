@@ -185,7 +185,7 @@ typedef union {
 
 /*** NODES global variables ***/
 
-NODE_list_t NODES_LIST;
+extern NODE_list_t NODES_LIST;
 
 /*** NODE functions ***/
 

@@ -120,7 +120,7 @@ static void _R4S8CR_fill_rx_buffer(uint8_t rx_byte) {
 	// Store incoming byte.
 	r4s8cr_ctx.reply[r4s8cr_ctx.reply_size] = rx_byte;
 	// Manage index.
-	r4s8cr_ctx.reply_size = (r4s8cr_ctx.reply_size + 1) % R4S8CR_BUFFER_SIZE_BYTES;
+	r4s8cr_ctx.reply_size = (uint8_t) ((r4s8cr_ctx.reply_size + 1) % R4S8CR_BUFFER_SIZE_BYTES);
 }
 
 /*******************************************************************/
@@ -297,11 +297,11 @@ static NODE_status_t _R4S8CR_check_register(NODE_address_t node_addr, uint8_t re
 		// Relay loop.
 		for (idx=0 ; idx<R4S8CR_NUMBER_OF_RELAYS ; idx++) {
 			// Compute relay id.
-			relay_id = ((relay_box_id - 1) * 8) + idx + 1;
+			relay_id = (uint8_t) (((relay_box_id - 1) * 8) + idx + 1);
 			// Check bit mask.
 			if ((reg_mask & (0b1 << idx)) != 0) {
 				// Set relay state
-				status = _R4S8CR_write_relay_state(relay_id, (reg_value & (0b1 << idx)), write_status);
+				status = _R4S8CR_write_relay_state(relay_id, (uint8_t) (reg_value & (0b1 << idx)), write_status);
 				if ((status != NODE_SUCCESS) || ((write_status -> flags) != 0)) goto errors;
 			}
 		}

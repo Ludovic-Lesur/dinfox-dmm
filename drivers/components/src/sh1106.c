@@ -49,7 +49,7 @@ static SH1106_context_t sh1106_ctx;
 /*** SH1106 local functions ***/
 
 /*******************************************************************/
-SH1106_status_t _SH1106_write(uint8_t i2c_address, SH1106_data_type_t data_type, uint8_t* data, uint8_t data_size_bytes) {
+static SH1106_status_t _SH1106_write(uint8_t i2c_address, SH1106_data_type_t data_type, uint8_t* data, uint8_t data_size_bytes) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
 	I2C_status_t i2c1_status = I2C_SUCCESS;
@@ -72,19 +72,7 @@ errors:
 }
 
 /*******************************************************************/
-SH1106_status_t _SH1106_read(uint8_t i2c_address, uint8_t* data, uint8_t data_size_bytes) {
-	// Local variables.
-	SH1106_status_t status = SH1106_SUCCESS;
-	I2C_status_t i2c1_status = I2C_SUCCESS;
-	// Read data.
-	i2c1_status = I2C1_read(i2c_address, data, data_size_bytes);
-	I2C1_exit_error(SH1106_ERROR_BASE_I2C1);
-errors:
-	return status;
-}
-
-/*******************************************************************/
-SH1106_status_t _SH1106_setup(uint8_t i2c_address) {
+static SH1106_status_t _SH1106_setup(uint8_t i2c_address) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
 	const uint8_t command_list_size = 2;
@@ -100,7 +88,7 @@ errors:
 }
 
 /*******************************************************************/
-SH1106_status_t _SH1106_set_address(uint8_t i2c_address, uint8_t page, uint8_t column, uint8_t line) {
+static SH1106_status_t _SH1106_set_address(uint8_t i2c_address, uint8_t page, uint8_t column, uint8_t line) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
 	const uint8_t command_list_size = 4;
@@ -130,7 +118,7 @@ errors:
 }
 
 /*******************************************************************/
-SH1106_status_t _SH1106_clear_ram(uint8_t i2c_address) {
+static SH1106_status_t _SH1106_clear_ram(uint8_t i2c_address) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
 	uint8_t idx = 0;
@@ -149,7 +137,7 @@ errors:
 }
 
 /*******************************************************************/
-SH1106_status_t _SH1106_on_off(uint8_t i2c_address, uint8_t on_off_flag) {
+static SH1106_status_t _SH1106_on_off(uint8_t i2c_address, uint8_t on_off_flag) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
 	uint8_t command = 0;
@@ -242,8 +230,8 @@ SH1106_status_t SH1106_print_text(uint8_t i2c_address, SH1106_text_t* text) {
 		flush_column = 0;
 		break;
 	case STRING_JUSTIFICATION_CENTER:
-		text_column = (SH1106_SCREEN_WIDTH_PIXELS - text_width_pixels) / (2);
-		flush_column = (SH1106_SCREEN_WIDTH_PIXELS - (text -> flush_width_pixels)) / (2);
+		text_column = (uint8_t) ((SH1106_SCREEN_WIDTH_PIXELS - text_width_pixels) / (2));
+		flush_column = (uint8_t) ((SH1106_SCREEN_WIDTH_PIXELS - (text -> flush_width_pixels)) / (2));
 		break;
 	case STRING_JUSTIFICATION_RIGHT:
 		text_column = (SH1106_SCREEN_WIDTH_PIXELS - text_width_pixels);
@@ -330,10 +318,10 @@ SH1106_status_t SH1106_print_horizontal_line(uint8_t i2c_address, SH1106_horizon
 		line_column = 0;
 		break;
 	case STRING_JUSTIFICATION_CENTER:
-		line_column = (SH1106_SCREEN_WIDTH_PIXELS - (horizontal_line -> width_pixels)) / (2);
+		line_column = (uint8_t) ((SH1106_SCREEN_WIDTH_PIXELS - (horizontal_line -> width_pixels)) / (2));
 		break;
 	case STRING_JUSTIFICATION_RIGHT:
-		line_column = (SH1106_SCREEN_WIDTH_PIXELS - (horizontal_line -> width_pixels));
+		line_column = (uint8_t) ((SH1106_SCREEN_WIDTH_PIXELS - (horizontal_line -> width_pixels)));
 		break;
 	default:
 		status = (HMI_ERROR_BASE_STRING + STRING_ERROR_TEXT_JUSTIFICATION);

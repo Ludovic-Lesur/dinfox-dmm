@@ -89,9 +89,9 @@ static const uint32_t SM_REG_ERROR_VALUE[SM_REG_ADDR_LAST] = {
 	0x00000000,
 	0x00000000,
 	0x00000000,
-	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
-	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
-	((DINFOX_HUMIDITY_ERROR_VALUE << 8) | (DINFOX_TEMPERATURE_ERROR_VALUE << 0)),
+	(uint32_t) ((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	(uint32_t) ((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	(uint32_t) ((DINFOX_HUMIDITY_ERROR_VALUE << 8) | (DINFOX_TEMPERATURE_ERROR_VALUE << 0)),
 	((DINFOX_BIT_ERROR << 6) | (DINFOX_BIT_ERROR << 4) | (DINFOX_BIT_ERROR << 2) | (DINFOX_BIT_ERROR << 0)),
 };
 
@@ -259,7 +259,7 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 			// Check error value.
 			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 				// Convert to 5 digits string.
-				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+				string_status = STRING_value_to_5_digits_string((int32_t) (DINFOX_get_mv((DINFOX_voltage_representation_t) field_value)), (char_t*) field_str);
 				STRING_exit_error(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
@@ -272,7 +272,7 @@ NODE_status_t SM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_acce
 			// Check error value.
 			if (field_value != DINFOX_TEMPERATURE_ERROR_VALUE) {
 				// Convert temperature.
-				tamb = (int32_t) DINFOX_get_degrees(field_value);
+				tamb = (int32_t) DINFOX_get_degrees((DINFOX_temperature_representation_t) field_value);
 				// Add string.
 				NODE_flush_string_value();
 				NODE_append_value_int32(tamb, SM_LINE_DATA[str_data_idx].print_format, SM_LINE_DATA[str_data_idx].print_prefix);
@@ -407,7 +407,7 @@ NODE_status_t SM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 			goto errors;
 		}
 		// Increment transmission count.
-		(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(SM_SIGFOX_UL_PAYLOAD_PATTERN));
+		(node_ul_payload -> node -> radio_transmission_count) = (uint8_t) (((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(SM_SIGFOX_UL_PAYLOAD_PATTERN)));
 		// Exit in case of loop error.
 		loop_count++;
 		if (loop_count > SM_SIGFOX_UL_PAYLOAD_LOOP_MAX) goto errors;

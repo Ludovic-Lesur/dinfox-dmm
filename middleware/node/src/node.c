@@ -189,6 +189,8 @@ typedef struct {
 
 const char_t NODE_ERROR_STRING[] = "ERROR";
 
+NODE_list_t NODES_LIST;
+
 /*** NODE local global variables ***/
 
 // Note: table is indexed with board ID.
@@ -267,7 +269,7 @@ static void _NODE_flush_line_data_value(uint8_t line_data_index) {
 }
 
 /*******************************************************************/
-void _NODE_flush_all_data_value(void) {
+static void _NODE_flush_all_data_value(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Reset string data.
@@ -275,7 +277,7 @@ void _NODE_flush_all_data_value(void) {
 }
 
 /*******************************************************************/
-void _NODE_flush_list(void) {
+static void _NODE_flush_list(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	// Reset node list.
@@ -288,7 +290,7 @@ void _NODE_flush_list(void) {
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
+static NODE_status_t _NODE_write_register(NODE_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t write_input;
@@ -307,7 +309,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_value, NODE_access_status_t* read_status) {
+static NODE_status_t _NODE_read_register(NODE_t* node, uint8_t reg_addr, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_parameters_t read_input;
@@ -326,7 +328,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag, uint8_t* message_sent) {
+static NODE_status_t _NODE_radio_send(NODE_t* node, uint8_t bidirectional_flag, uint8_t* message_sent) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_ul_payload_t node_ul_payload;
@@ -377,7 +379,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_radio_read(void) {
+static NODE_status_t _NODE_radio_read(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t read_status;
@@ -401,7 +403,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_search(NODE_address_t node_addr, NODE_t** node_ptr) {
+static NODE_status_t _NODE_search(NODE_address_t node_addr, NODE_t** node_ptr) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t address_match = 0;
@@ -428,7 +430,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_record_action(NODE_action_t* action) {
+static NODE_status_t _NODE_record_action(NODE_action_t* action) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	uint8_t idx = 0;
@@ -465,7 +467,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_remove_action(uint8_t action_index) {
+static NODE_status_t _NODE_remove_action(uint8_t action_index) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check parameter.
@@ -485,7 +487,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_execute_downlink(void) {
+static NODE_status_t _NODE_execute_downlink(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_access_status_t read_status;
@@ -720,7 +722,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_scan_process(void) {
+static NODE_status_t _NODE_scan_process(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	// Check scan period.
@@ -734,7 +736,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_radio_process(void) {
+static NODE_status_t _NODE_radio_process(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;
@@ -811,7 +813,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t _NODE_execute_actions(void) {
+static NODE_status_t _NODE_execute_actions(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;
@@ -918,7 +920,7 @@ void NODE_de_init(void) {
 NODE_status_t NODE_scan(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	POWER_status_t power_status = LPUART_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
 	NODE_access_parameters_t read_params;
 	NODE_access_status_t read_status;
 	uint32_t reg_value = 0;

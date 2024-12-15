@@ -43,6 +43,11 @@
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.allwarn.1662878071" name="Enable all common warnings (-Wall)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.allwarn" useByScannerDiscovery="true" value="true" valueType="boolean"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id.1007870022" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id" useByScannerDiscovery="false" value="962691777" valueType="string"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.extrawarn.1955312341" name="Enable extra warnings (-Wextra)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.extrawarn" value="true" valueType="boolean"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.other.1374906560" name="Other warning flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.other" value="-Wno-scalar-storage-order" valueType="string"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.missingdeclaration.1122959064" name="Warn on undeclared global function (-Wmissing-declaration)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.missingdeclaration" value="true" valueType="boolean"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.conversion.59574203" name="Warn on implicit conversions (-Wconversion)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.conversion" value="false" valueType="boolean"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.uninitialized.541943799" name="Warn on uninitialized variables (-Wuninitialised)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.uninitialized" value="true" valueType="boolean"/>
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.unused.1470560154" name="Warn on various unused elements (-Wunused)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.warnings.unused" value="true" valueType="boolean"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform.913897832" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
 							<builder buildPath="${workspace_loc:/DMM}/Release" id="ilg.gnuarmeclipse.managedbuild.cross.builder.1749766193" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="ilg.gnuarmeclipse.managedbuild.cross.builder"/>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1368524664" name="GNU Arm Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler">
@@ -57,15 +62,16 @@
 									<listOptionValue builtIn="false" value="USE_SIGFOX_EP_FLAGS_H"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.include.paths.1389865145" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.include.paths" useByScannerDiscovery="true" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/registers&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/peripherals&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/utils&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/components&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/nodes&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/applicative&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../xm/inc/dinfox&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../xm/lib/sigfox-ep-lib/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/registers/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/peripherals/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/components/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/utils/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/node/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/hmi/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/power/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/application/inc&quot;"/>
 								</option>
 								<inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.1776136565" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
 							</tool>
@@ -80,15 +86,16 @@
 									<listOptionValue builtIn="false" value="USE_SIGFOX_EP_FLAGS_H"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.1016127743" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="true" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/registers&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/peripherals&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/utils&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/components&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/nodes&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/applicative&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../xm/inc/dinfox&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../xm/lib/sigfox-ep-lib/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/registers/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/peripherals/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/components/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/utils/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/node/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/hmi/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/power/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/application/inc&quot;"/>
 								</option>
 								<inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.857236989" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
 							</tool>

@@ -76,7 +76,7 @@ static const uint32_t LVRM_REG_ERROR_VALUE[LVRM_REG_ADDR_LAST] = {
 	0x00000000,
 	(DINFOX_BIT_ERROR << 0),
 	0x00000000,
-	((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
+	(uint32_t) ((DINFOX_VOLTAGE_ERROR_VALUE << 16) | (DINFOX_VOLTAGE_ERROR_VALUE << 0)),
 	(DINFOX_VOLTAGE_ERROR_VALUE << 0)
 };
 
@@ -223,7 +223,7 @@ NODE_status_t LVRM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 			// Check error value.
 			if (field_value != DINFOX_VOLTAGE_ERROR_VALUE) {
 				// Convert to 5 digits string.
-				string_status = STRING_value_to_5_digits_string(DINFOX_get_mv(field_value), (char_t*) field_str);
+				string_status = STRING_value_to_5_digits_string((int32_t) (DINFOX_get_mv((DINFOX_voltage_representation_t) field_value)), (char_t*) field_str);
 				STRING_exit_error(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
@@ -236,7 +236,7 @@ NODE_status_t LVRM_read_line_data(NODE_line_data_read_t* line_data_read, NODE_ac
 			// Check error value.
 			if (field_value != DINFOX_CURRENT_ERROR_VALUE) {
 				// Convert to 5 digits string.
-				string_status = STRING_value_to_5_digits_string(DINFOX_get_ua(field_value), (char_t*) field_str);
+				string_status = STRING_value_to_5_digits_string((int32_t) (DINFOX_get_ua((DINFOX_current_representation_t) field_value)), (char_t*) field_str);
 				STRING_exit_error(NODE_ERROR_BASE_STRING);
 				// Add string.
 				NODE_flush_string_value();
@@ -334,7 +334,7 @@ NODE_status_t LVRM_build_sigfox_ul_payload(NODE_ul_payload_t* node_ul_payload) {
 		goto errors;
 	}
 	// Increment transmission count.
-	(node_ul_payload -> node -> radio_transmission_count) = ((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(LVRM_SIGFOX_UL_PAYLOAD_PATTERN));
+	(node_ul_payload -> node -> radio_transmission_count) = (uint8_t) (((node_ul_payload -> node -> radio_transmission_count) + 1) % (sizeof(LVRM_SIGFOX_UL_PAYLOAD_PATTERN)));
 errors:
 	return status;
 }

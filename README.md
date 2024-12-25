@@ -41,10 +41,8 @@ The project is organized as follow:
     * `utils` : **utility** functions.
 * `middleware` :
     * `analog` : High level **analog measurements** driver.
+    * `hmi` : Nodes access through HMI.
     * `node` : **UNA** nodes interface implementation.
     * `power` : Board **power tree** manager.
+    * `radio` : Nodes access through radio.
 * `application` : Main **application**.
-
-## Dependencies
-
-The `inc/dinfox` and `src/dinfox` folders of the [XM project](https://github.com/Ludovic-Lesur/xm) must be linked to the DMM project, as they contain common data definition related to the DINFox system.

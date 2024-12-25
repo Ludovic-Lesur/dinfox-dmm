@@ -15,8 +15,6 @@
 
 /*** SH1106 macros ***/
 
-#define SH1106_HMI_I2C_ADDRESS			0x3C
-
 #define SH1106_SCREEN_WIDTH_PIXELS		128
 #define SH1106_SCREEN_WIDTH_CHAR		(SH1106_SCREEN_WIDTH_PIXELS / FONT_CHAR_WIDTH_PIXELS)
 #define SH1106_SCREEN_HEIGHT_PIXELS		64
@@ -40,11 +38,12 @@ typedef enum {
 	SH1106_ERROR_CONTRAST,
 	SH1106_ERROR_VERTICAL_POSITION,
 	SH1106_ERROR_FLUSH_WIDTH_OVERFLOW,
+	SH1106_ERROR_TEXT_JUSTIFICATION,
 	SH1106_ERROR_TEXT_WIDTH_OVERFLOW,
 	SH1106_ERROR_HORIZONTAL_LINE_WIDTH,
 	// Low level drivers errors.
-	SH1106_ERROR_BASE_I2C1 = 0x0100,
-	SH1106_ERROR_BASE_STRING = (SH1106_ERROR_BASE_I2C1 + I2C_ERROR_BASE_LAST),
+	SH1106_ERROR_BASE_I2C = 0x0100,
+	SH1106_ERROR_BASE_STRING = (SH1106_ERROR_BASE_I2C + I2C_ERROR_BASE_LAST),
 	// Last base value.
 	SH1106_ERROR_BASE_LAST = (SH1106_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } SH1106_status_t;
@@ -95,6 +94,24 @@ typedef struct {
 } SH1106_horizontal_line_t;
 
 /*** SH1106 functions ***/
+
+/*!******************************************************************
+ * \fn SH1106_status_t SH1106_init(void)
+ * \brief Init OLED screen driver.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
+ *******************************************************************/
+SH1106_status_t SH1106_init(void);
+
+/*!******************************************************************
+ * \fn SH1106_status_t SH1106_init(void)
+ * \brief Init OLED screen driver.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
+ *******************************************************************/
+SH1106_status_t SH1106_de_init(void);
 
 /*!******************************************************************
  * \fn SH1106_status_t SH1106_setup(uint8_t i2c_address)

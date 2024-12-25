@@ -9,11 +9,15 @@
 
 #include "error.h"
 #include "font.h"
+#include "gpio.h"
+#include "gpio_mapping.h"
 #include "i2c.h"
 #include "lptim.h"
 #include "types.h"
 
 /*** SH1106 local macros ***/
+
+#define SH1106_I2C_INSTANCE             I2C_INSTANCE_I2C1
 
 #define SH1106_COLUMN_ADDRESS_LAST		131
 #define SH1106_LINE_ADDRESS_LAST		63
@@ -52,7 +56,7 @@ static SH1106_context_t sh1106_ctx;
 static SH1106_status_t _SH1106_write(uint8_t i2c_address, SH1106_data_type_t data_type, uint8_t* data, uint8_t data_size_bytes) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
-	I2C_status_t i2c1_status = I2C_SUCCESS;
+	I2C_status_t i2c_status = I2C_SUCCESS;
 	uint8_t idx = 0;
 	// Check parameters.
 	if (data_type >= SH1106_DATA_TYPE_LAST) {
@@ -65,8 +69,8 @@ static SH1106_status_t _SH1106_write(uint8_t i2c_address, SH1106_data_type_t dat
 		sh1106_ctx.i2c_tx_buffer[idx + 1] = data[idx];
 	}
 	// Burst write with C0='0'.
-	i2c1_status = I2C1_write(i2c_address, sh1106_ctx.i2c_tx_buffer, (data_size_bytes + 1), 1);
-	I2C1_exit_error(SH1106_ERROR_BASE_I2C1);
+	i2c_status = I2C_write(SH1106_I2C_INSTANCE, i2c_address, sh1106_ctx.i2c_tx_buffer, (data_size_bytes + 1), 1);
+	I2C_exit_error(SH1106_ERROR_BASE_I2C);
 errors:
 	return status;
 }
@@ -153,6 +157,30 @@ errors:
 /*** SH1106 functions ***/
 
 /*******************************************************************/
+SH1106_status_t SH1106_init(void) {
+    // Local variables.
+    SH1106_status_t status = SH1106_SUCCESS;
+    I2C_status_t i2c_status = I2C_SUCCESS;
+    // Init I2C.
+    i2c_status = I2C_init(SH1106_I2C_INSTANCE, &GPIO_HMI_I2C);
+    I2C_exit_error(SH1106_ERROR_BASE_I2C);
+errors:
+    return status;
+}
+
+/*******************************************************************/
+SH1106_status_t SH1106_de_init(void) {
+    // Local variables.
+   SH1106_status_t status = SH1106_SUCCESS;
+   I2C_status_t i2c_status = I2C_SUCCESS;
+   // Release I2C.
+   i2c_status = I2C_de_init(SH1106_I2C_INSTANCE, &GPIO_HMI_I2C);
+   I2C_exit_error(SH1106_ERROR_BASE_I2C);
+errors:
+   return status;
+}
+
+/*******************************************************************/
 SH1106_status_t SH1106_setup(uint8_t i2c_address) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
@@ -185,8 +213,8 @@ SH1106_status_t SH1106_print_text(uint8_t i2c_address, SH1106_text_t* text) {
 	// Local variables.
 	SH1106_status_t status = SH1106_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
+	uint32_t text_size = 0;
 	uint8_t ram_idx = 0;
-	uint8_t text_size = 0;
 	uint8_t text_width_pixels = 0;
 	uint8_t text_column = 0;
 	uint8_t flush_column = 0;
@@ -238,7 +266,7 @@ SH1106_status_t SH1106_print_text(uint8_t i2c_address, SH1106_text_t* text) {
 		flush_column = (SH1106_SCREEN_WIDTH_PIXELS - (text -> flush_width_pixels));
 		break;
 	default:
-		status = (HMI_ERROR_BASE_STRING + STRING_ERROR_TEXT_JUSTIFICATION);
+		status = SH1106_ERROR_TEXT_JUSTIFICATION;
 		goto errors;
 	}
 	// Reset RAM data.
@@ -324,7 +352,7 @@ SH1106_status_t SH1106_print_horizontal_line(uint8_t i2c_address, SH1106_horizon
 		line_column = (uint8_t) ((SH1106_SCREEN_WIDTH_PIXELS - (horizontal_line -> width_pixels)));
 		break;
 	default:
-		status = (HMI_ERROR_BASE_STRING + STRING_ERROR_TEXT_JUSTIFICATION);
+		status = SH1106_ERROR_TEXT_JUSTIFICATION;
 		goto errors;
 	}
 	// Build RAM data.

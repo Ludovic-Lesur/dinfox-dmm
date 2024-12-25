@@ -1,0 +1,24 @@
+[submodule "stm32l0xx-registers"]
+    path = drivers/registers/stm32l0xx-registers
+    url = https://github.com/Ludovic-Lesur/stm32l0xx-registers.git
+[submodule "stm32l0xx-drivers"]
+    path = drivers/peripherals/stm32l0xx-drivers
+    url = https://github.com/Ludovic-Lesur/stm32l0xx-drivers.git
+[submodule "embedded-utils"]
+    path = drivers/utils/embedded-utils
+    url = https://github.com/Ludovic-Lesur/embedded-utils.git
+[submodule "r4s8cr-driver"]
+    path = drivers/components/r4s8cr-driver
+    url = https://github.com/Ludovic-Lesur/r4s8cr-driver.git
+[submodule "lmac-driver"]
+    path = drivers/mac/lmac-driver
+    url = https://github.com/Ludovic-Lesur/lmac-driver.git
+[submodule "una-lib"]
+    path = middleware/node/una-lib
+    url = https://github.com/Ludovic-Lesur/una-lib.git
+[submodule "una-at"]
+    path = middleware/node/una-at
+    url = https://github.com/Ludovic-Lesur/una-at.git
+[submodule "una-r4s8cr"]
+    path = middleware/node/una-r4s8cr
+    url = https://github.com/Ludovic-Lesur/una-r4s8cr.git

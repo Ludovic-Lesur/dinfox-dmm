@@ -18,11 +18,11 @@
 
 /*******************************************************************/
 typedef enum {
-    GPIO_ADC_CHANNEL_VRS_MEASURE = 0,
-    GPIO_ADC_CHANNEL_VHMI_MEASURE,
-    GPIO_ADC_CHANNEL_VUSB_MEASURE,
-    GPIO_ADC_CHANNEL_LAST
-} GPIO_adc_channel_t;
+    GPIO_ADC_CHANNEL_INDEX_VRS_MEASURE = 0,
+    GPIO_ADC_CHANNEL_INDEX_VHMI_MEASURE,
+    GPIO_ADC_CHANNEL_INDEX_VUSB_MEASURE,
+    GPIO_ADC_CHANNEL_INDEX_LAST
+} GPIO_adc_channel_index_t;
 
 /*** GPIO MAPPING local global variables ***/
 
@@ -31,7 +31,7 @@ static const GPIO_pin_t GPIO_ADC_VRS_MEASURE = (GPIO_pin_t) { GPIOA, 0, 6, 0 };
 static const GPIO_pin_t GPIO_ADC_VHMI_MEASURE = (GPIO_pin_t) { GPIOA, 0, 4, 0 };
 static const GPIO_pin_t GPIO_ADC_VUSB_MEASURE = (GPIO_pin_t) { GPIOA, 0, 1, 0 };
 // Analog inputs list.
-static const GPIO_pin_t* GPIO_ADC_PINS_LIST[GPIO_ADC_CHANNEL_LAST] = { &GPIO_ADC_VRS_MEASURE, &GPIO_ADC_VHMI_MEASURE, &GPIO_ADC_VUSB_MEASURE };
+static const GPIO_pin_t* GPIO_ADC_PINS_LIST[GPIO_ADC_CHANNEL_INDEX_LAST] = { &GPIO_ADC_VRS_MEASURE, &GPIO_ADC_VHMI_MEASURE, &GPIO_ADC_VUSB_MEASURE };
 // LPUART1.
 static const GPIO_pin_t GPIO_LPUART1_TX = (GPIO_pin_t) { GPIOB, 1, 10, 4 };
 static const GPIO_pin_t GPIO_LPUART1_RX = (GPIO_pin_t) { GPIOB, 1, 11, 4 };
@@ -55,7 +55,7 @@ static const TIM_channel_gpio_t* GPIO_TIM_PINS_LIST[GPIO_TIM_CHANNEL_INDEX_LAST]
 
 // Analog inputs.
 const GPIO_pin_t GPIO_MNTR_EN = (GPIO_pin_t) { GPIOA, 0, 5, 0 };
-const ADC_gpio_t GPIO_ADC = { (const GPIO_pin_t**) &GPIO_ADC_PINS_LIST, GPIO_ADC_CHANNEL_LAST };
+const ADC_gpio_t GPIO_ADC = { (const GPIO_pin_t**) &GPIO_ADC_PINS_LIST, GPIO_ADC_CHANNEL_INDEX_LAST };
 // RS485 interface.
 const GPIO_pin_t GPIO_RS485_POWER_ENABLE = (GPIO_pin_t) { GPIOA, 0, 8, 0 };
 const LPUART_gpio_t GPIO_RS485_LPUART = { &GPIO_LPUART1_TX, &GPIO_LPUART1_RX, &GPIO_LPUART1_DE, &GPIO_LPUART1_NRE };

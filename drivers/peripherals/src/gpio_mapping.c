@@ -40,16 +40,16 @@ static const GPIO_pin_t GPIO_LPUART1_NRE = (GPIO_pin_t) { GPIOB, 1, 2, 0 };
 // I2C1.
 static const GPIO_pin_t GPIO_I2C1_SCL = (GPIO_pin_t) { GPIOB, 1, 6, 1 };
 static const GPIO_pin_t GPIO_I2C1_SDA = (GPIO_pin_t) { GPIOB, 1, 7, 1 };
-// RGB LED. // TODO static
-const GPIO_pin_t GPIO_LED_RED = (GPIO_pin_t) { GPIOA, 0, 7, 2 };
-const GPIO_pin_t GPIO_LED_GREEN = (GPIO_pin_t) { GPIOB, 1, 0, 2 };
-const GPIO_pin_t GPIO_LED_BLUE = (GPIO_pin_t) { GPIOB, 1, 1, 2 };
+// RGB LED.
+static const GPIO_pin_t GPIO_LED_RED = (GPIO_pin_t) { GPIOA, 0, 7, 2 };
+static const GPIO_pin_t GPIO_LED_GREEN = (GPIO_pin_t) { GPIOB, 1, 0, 2 };
+static const GPIO_pin_t GPIO_LED_BLUE = (GPIO_pin_t) { GPIOB, 1, 1, 2 };
 // Timer channels.
 static const TIM_channel_gpio_t GPIO_TIM_CHANNEL_RED = { TIM_CHANNEL_2, &GPIO_LED_RED, TIM_POLARITY_ACTIVE_LOW };
 static const TIM_channel_gpio_t GPIO_TIM_CHANNEL_GREEN = { TIM_CHANNEL_3, &GPIO_LED_GREEN, TIM_POLARITY_ACTIVE_LOW };
 static const TIM_channel_gpio_t GPIO_TIM_CHANNEL_BLUE = { TIM_CHANNEL_4, &GPIO_LED_BLUE, TIM_POLARITY_ACTIVE_LOW };
 // Timer pins list.
-static const TIM_channel_gpio_t* GPIO_TIM_PINS_LIST[GPIO_TIM_CHANNEL_LAST] = { &GPIO_TIM_CHANNEL_RED, &GPIO_TIM_CHANNEL_GREEN, &GPIO_TIM_CHANNEL_BLUE };
+static const TIM_channel_gpio_t* GPIO_TIM_PINS_LIST[GPIO_TIM_CHANNEL_INDEX_LAST] = { &GPIO_TIM_CHANNEL_RED, &GPIO_TIM_CHANNEL_GREEN, &GPIO_TIM_CHANNEL_BLUE };
 
 /*** GPIO MAPPING global variables ***/
 
@@ -74,7 +74,7 @@ const GPIO_pin_t GPIO_ENC_SW = (GPIO_pin_t) { GPIOA, 0, 0, 0 };
 const GPIO_pin_t GPIO_ENC_CHA = (GPIO_pin_t) { GPIOA, 0, 2, 0 };
 const GPIO_pin_t GPIO_ENC_CHB = (GPIO_pin_t) { GPIOA, 0, 3, 0 };
 // RGB LED.
-const TIM_gpio_t GPIO_LED_TIM = { (const TIM_channel_gpio_t**) &GPIO_TIM_PINS_LIST, GPIO_TIM_CHANNEL_LAST };
+const TIM_gpio_t GPIO_LED_TIM = { (const TIM_channel_gpio_t**) &GPIO_TIM_PINS_LIST, GPIO_TIM_CHANNEL_INDEX_LAST };
 // Test points.
 const GPIO_pin_t GPIO_TP1 = (GPIO_pin_t) { GPIOB, 1, 4, 0 };
 const GPIO_pin_t GPIO_TP2 = (GPIO_pin_t) { GPIOB, 1, 5, 0 };

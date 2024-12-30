@@ -18,10 +18,10 @@
 
 /*******************************************************************/
 typedef enum {
-    GPIO_TIM_CHANNEL_LED_RED = 0,
-    GPIO_TIM_CHANNEL_LED_GREEN,
-    GPIO_TIM_CHANNEL_LED_BLUE,
-    GPIO_TIM_CHANNEL_LAST
+    GPIO_TIM_CHANNEL_INDEX_LED_RED = 0,
+    GPIO_TIM_CHANNEL_INDEX_LED_GREEN,
+    GPIO_TIM_CHANNEL_INDEX_LED_BLUE,
+    GPIO_TIM_CHANNEL_INDEX_LAST
 } GPIO_tim_channel_t;
 
 /*** GPIO MAPPING global variables ***/
@@ -52,9 +52,5 @@ extern const TIM_gpio_t GPIO_LED_TIM;
 extern const GPIO_pin_t GPIO_TP1;
 extern const GPIO_pin_t GPIO_TP2;
 extern const GPIO_pin_t GPIO_TP3;
-
-extern const GPIO_pin_t GPIO_LED_RED;
-extern const GPIO_pin_t GPIO_LED_GREEN;
-extern const GPIO_pin_t GPIO_LED_BLUE;
 
 #endif /* __GPIO_MAPPING_H__ */

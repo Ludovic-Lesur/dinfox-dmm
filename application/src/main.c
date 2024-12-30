@@ -109,14 +109,6 @@ int main(void) {
 	// Perform first nodes scan.
 	node_status = NODE_scan();
 	NODE_stack_error(ERROR_BASE_NODE);
-
-	GPIO_configure(&GPIO_LED_RED, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	GPIO_write(&GPIO_LED_RED, 1);
-	GPIO_configure(&GPIO_LED_GREEN, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	GPIO_write(&GPIO_LED_GREEN, 1);
-	GPIO_configure(&GPIO_LED_BLUE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	GPIO_write(&GPIO_LED_BLUE, 1);
-
 	// Main loop.
 	while (1) {
 		// Enter sleep mode.

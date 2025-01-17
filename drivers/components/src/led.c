@@ -78,7 +78,7 @@ static void _LED_dimming_timer_irq_callback(void) {
     // Update duty cycles.
     for (idx = 0; idx < GPIO_TIM_CHANNEL_INDEX_LAST; idx++) {
         // Apply color mask.
-        duty_cycle_percent = ((idx & led_ctx.color) != 0) ? LED_DIMMING_LUT[led_ctx.dimming_lut_index] : 0;
+        duty_cycle_percent = ((led_ctx.color & (0b1 << idx)) != 0) ? LED_DIMMING_LUT[led_ctx.dimming_lut_index] : 0;
         // Set duty cycle.
         tim_status = TIM_PWM_set_waveform(LED_PWM_TIM_INSTANCE, (GPIO_LED_TIM.list[idx])->channel, (LED_PWM_FREQUENCY_HZ * 1000), duty_cycle_percent);
         TIM_stack_error(ERROR_BASE_TIM_LED_PWM);
@@ -101,7 +101,7 @@ static void _LED_dimming_timer_irq_callback(void) {
             led_status = _LED_turn_off();
             LED_stack_error(ERROR_BASE_LED);
             tim_status = TIM_STD_stop(LED_DIMMING_TIM_INSTANCE);
-            TIM_stack_error(ERROR_BASE_TIM_LED_PWM);
+            TIM_stack_error(LED_ERROR_BASE_TIM_DIMMING);
             // Single blink done.
             led_ctx.dimming_lut_direction = 0;
             led_ctx.single_blink_done = 1;
@@ -166,9 +166,11 @@ LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t colo
 	}
 	// Update context.
 	led_ctx.color = color;
+	led_ctx.dimming_lut_direction = 0;
+	led_ctx.dimming_lut_index = 0;
 	led_ctx.single_blink_done = 0;
 	// Start blink.
-	tim_status = TIM_STD_start(LED_DIMMING_TIM_INSTANCE, (blink_duration_ms / LED_DIMMING_LUT_SIZE), TIM_UNIT_MS, &_LED_dimming_timer_irq_callback);
+	tim_status = TIM_STD_start(LED_DIMMING_TIM_INSTANCE, ((blink_duration_ms) / (LED_DIMMING_LUT_SIZE << 1)), TIM_UNIT_MS, &_LED_dimming_timer_irq_callback);
 	TIM_exit_error(LED_ERROR_BASE_TIM_DIMMING);
 errors:
 	return status;

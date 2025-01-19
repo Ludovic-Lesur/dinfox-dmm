@@ -32,7 +32,7 @@
 #define HMI_NODE_LINE_WIDTH_CHAR    SH1106_SCREEN_WIDTH_CHAR
 
 #define HMI_NODE_LINE_INDEX_MAX     32
-#define HMI_NODE_FIELD_SIZE_CHAR    4
+#define HMI_NODE_FIELD_SIZE_CHAR    5
 
 /*** HMI NODE local structures ***/
 

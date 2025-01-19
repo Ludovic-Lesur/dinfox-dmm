@@ -8,8 +8,6 @@
 #ifndef __NVM_ADDRESS_H__
 #define __NVM_ADDRESS_H__
 
-#include "flash_reg.h"
-
 /*!******************************************************************
  * \enum NVM_address_mapping_t
  * \brief NVM address mapping.

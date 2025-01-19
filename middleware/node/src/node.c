@@ -131,6 +131,7 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     UNA_DMM_status_t una_dmm_status = UNA_DMM_SUCCESS;
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
+    UNA_AT_configuration_t una_at_config;
     UNA_access_parameters_t write_params;
     uint8_t una_at_init = 0;
     uint8_t una_r4s8cr_init = 0;
@@ -151,7 +152,8 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     case NODE_PROTOCOL_UNA_AT:
         // Write UNA AT node register.
         una_at_init = 1;
-        una_at_status = UNA_AT_init(NODE_UNA_AT_BAUD_RATE);
+        una_at_config.baud_rate = NODE_UNA_AT_BAUD_RATE;
+        una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_status = UNA_AT_write_register(&write_params, reg_value, reg_mask, write_status);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
@@ -216,6 +218,7 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     UNA_DMM_status_t una_dmm_status = UNA_DMM_SUCCESS;
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
+    UNA_AT_configuration_t una_at_config;
     UNA_access_parameters_t read_params;
     uint8_t una_at_init = 0;
     uint8_t una_r4s8cr_init = 0;
@@ -236,7 +239,8 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     case NODE_PROTOCOL_UNA_AT:
         // Write UNA AT node register.
         una_at_init = 1;
-        una_at_status = UNA_AT_init(NODE_UNA_AT_BAUD_RATE);
+        una_at_config.baud_rate = NODE_UNA_AT_BAUD_RATE;
+        una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_status = UNA_AT_read_register(&read_params, reg_value, read_status);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
@@ -312,6 +316,7 @@ NODE_status_t NODE_scan(void) {
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
     UNA_DMM_status_t una_dmm_status = UNA_DMM_SUCCESS;
+    UNA_AT_configuration_t una_at_config;
     UNA_access_parameters_t read_params;
     UNA_access_status_t read_status;
     uint32_t reg_value = 0;
@@ -330,7 +335,8 @@ NODE_status_t NODE_scan(void) {
     POWER_exit_error(NODE_ERROR_BASE_POWER);
     // Scan LBUS nodes.
     una_at_init = 1;
-    una_at_status = UNA_AT_init(NODE_UNA_AT_BAUD_RATE);
+    una_at_config.baud_rate = NODE_UNA_AT_BAUD_RATE;
+    una_at_status = UNA_AT_init(&una_at_config);
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
     una_at_status = UNA_AT_scan(&(NODE_LIST.list[NODE_LIST.count]), (NODE_LIST_SIZE - NODE_LIST.count), &nodes_count);
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);

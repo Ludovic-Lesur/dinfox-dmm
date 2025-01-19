@@ -10,7 +10,7 @@
 #include "common_registers.h"
 #include "node.h"
 #include "radio.h"
-#include "rcc_reg.h"
+#include "rcc_registers.h"
 #include "string.h"
 #include "swreg.h"
 #include "types.h"

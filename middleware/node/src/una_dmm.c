@@ -17,7 +17,7 @@
 #include "nvm_address.h"
 #include "power.h"
 #include "pwr.h"
-#include "rcc_reg.h"
+#include "rcc_registers.h"
 #include "swreg.h"
 #include "version.h"
 #include "una.h"

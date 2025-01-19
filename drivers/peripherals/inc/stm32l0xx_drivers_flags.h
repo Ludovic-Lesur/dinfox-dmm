@@ -8,8 +8,6 @@
 #ifndef __STM32L0XX_DRIVERS_FLAGS_H__
 #define __STM32L0XX_DRIVERS_FLAGS_H__
 
-#include "mode.h"
-
 /*** STM32L0XX DRIVERS compilation flags ***/
 
 #define STM32L0XX_DRIVERS_DMA_CHANNEL_MASK              0x00

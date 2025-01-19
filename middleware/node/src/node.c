@@ -9,6 +9,7 @@
 
 #include "bpsm_registers.h"
 #include "ddrm_registers.h"
+#include "dmm_flags.h"
 #include "dmm_registers.h"
 #include "error.h"
 #include "error_base.h"
@@ -17,7 +18,6 @@
 #include "gpsm_registers.h"
 #include "lpuart.h"
 #include "lvrm_registers.h"
-#include "mode.h"
 #include "mpmcm_registers.h"
 #include "r4s8cr_registers.h"
 #include "rrm_registers.h"

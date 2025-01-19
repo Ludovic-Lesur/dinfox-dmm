@@ -27,9 +27,9 @@
 #include "hmi.h"
 #include "radio.h"
 // Applicative.
+#include "dmm_flags.h"
 #include "error.h"
 #include "error_base.h"
-#include "mode.h"
 
 /*** MAIN local macros ***/
 
@@ -46,7 +46,7 @@ static void _DMM_init_hw(void) {
     NODE_status_t node_status = NODE_SUCCESS;
     HMI_status_t hmi_status = HMI_SUCCESS;
     RADIO_status_t radio_status = RADIO_SUCCESS;
-#ifndef DEBUG
+#ifndef DMM_DEBUG
 	IWDG_status_t iwdg_status = IWDG_SUCCESS;
 #endif
 	// Init error stack
@@ -60,7 +60,7 @@ static void _DMM_init_hw(void) {
 	// Init GPIOs.
 	GPIO_init();
 	EXTI_init();
-#ifndef DEBUG
+#ifndef DMM_DEBUG
 	// Start independent watchdog.
 	iwdg_status = IWDG_init();
 	IWDG_stack_error(ERROR_BASE_IWDG);

@@ -7,11 +7,11 @@
 
 #include "una_dmm.h"
 
+#include "dmm_flags.h"
 #include "dmm_registers.h"
 #include "common_registers.h"
 #include "error.h"
 #include "error_base.h"
-#include "mode.h"
 #include "node.h"
 #include "nvm.h"
 #include "nvm_address.h"
@@ -282,7 +282,7 @@ UNA_DMM_status_t UNA_DMM_init(void) {
     UNA_DMM_status_t status = UNA_DMM_SUCCESS;
 	uint8_t idx = 0;
 	uint32_t unused_mask = 0;
-#ifdef NVM_FACTORY_RESET
+#ifdef DMM_NVM_FACTORY_RESET
 	// Radio monitoring and node scanning periods.
 	SWREG_write_field(&(UNA_DMM_REGISTERS[DMM_REGISTER_ADDRESS_CONFIGURATION_0]), &unused_mask, UNA_convert_seconds(DMM_NODES_SCAN_PERIOD_SECONDS), DMM_REGISTER_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD);
 	SWREG_write_field(&(UNA_DMM_REGISTERS[DMM_REGISTER_ADDRESS_CONFIGURATION_0]), &unused_mask, UNA_convert_seconds(DMM_RADIO_UL_PERIOD_SECONDS), DMM_REGISTER_CONFIGURATION_0_MASK_UL_PERIOD);

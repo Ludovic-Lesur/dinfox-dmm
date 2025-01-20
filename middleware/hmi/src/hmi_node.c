@@ -46,6 +46,7 @@ typedef struct {
     STRING_format_t print_format;
     uint8_t print_prefix;
     char_t* unit;
+    uint32_t error_value;
 } HMI_NODE_data_format_t;
 
 /*******************************************************************/
@@ -63,25 +64,25 @@ typedef struct {
 /*** HMI NODE local global variables ***/
 
 static const HMI_NODE_data_format_t HMI_NODE_DATA_FORMAT[HMI_NODE_DATA_TYPE_LAST] = {
-    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL },
-    { NULL, NULL, STRING_FORMAT_HEXADECIMAL, 1, NULL },
-    { NULL, NULL, STRING_FORMAT_HEXADECIMAL, 0, NULL },
-    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL },
-    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL },
-    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL },
-    { &UNA_convert_seconds, &UNA_get_seconds, STRING_FORMAT_DECIMAL, 0, "s" },
-    { &UNA_convert_year, &UNA_get_year, STRING_FORMAT_DECIMAL, 0, NULL },
-    { &UNA_convert_degrees, &UNA_get_degrees, STRING_FORMAT_DECIMAL, 0, "|C" },
-    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, "%" },
-    { &UNA_convert_mv, &UNA_get_mv, STRING_FORMAT_DECIMAL, 0, "V" },
-    { &UNA_convert_ua, &UNA_get_ua, STRING_FORMAT_DECIMAL, 0, "mA" },
-    { &UNA_convert_mw_mva, &UNA_get_mw_mva, STRING_FORMAT_DECIMAL, 0, "W" },
-    { &UNA_convert_mw_mva, &UNA_get_mw_mva, STRING_FORMAT_DECIMAL, 0, "VA" },
-    { &UNA_convert_mwh_mvah, &UNA_get_mwh_mvah, STRING_FORMAT_DECIMAL, 0, "Wh" },
-    { &UNA_convert_mwh_mvah, &UNA_get_mwh_mvah, STRING_FORMAT_DECIMAL, 0, "VAh" },
-    { &UNA_convert_power_factor, &UNA_get_power_factor, STRING_FORMAT_DECIMAL, 0, NULL },
-    { &UNA_convert_dbm, &UNA_get_dbm, STRING_FORMAT_DECIMAL, 0, "dBm" },
-    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, "Hz" },
+    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL, UNA_REGISTER_MASK_ALL },
+    { NULL, NULL, STRING_FORMAT_HEXADECIMAL, 1, NULL, UNA_REGISTER_MASK_ALL },
+    { NULL, NULL, STRING_FORMAT_HEXADECIMAL, 0, NULL, UNA_REGISTER_MASK_ALL },
+    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL, UNA_VERSION_ERROR_VALUE },
+    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL, UNA_VERSION_ERROR_VALUE },
+    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL, UNA_BIT_ERROR },
+    { &UNA_convert_seconds, &UNA_get_seconds, STRING_FORMAT_DECIMAL, 0, "s", UNA_TIME_ERROR_VALUE },
+    { &UNA_convert_year, &UNA_get_year, STRING_FORMAT_DECIMAL, 0, NULL, UNA_YEAR_ERROR_VALUE },
+    { &UNA_convert_degrees, &UNA_get_degrees, STRING_FORMAT_DECIMAL, 0, "|C", UNA_TEMPERATURE_ERROR_VALUE },
+    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, "%", UNA_HUMIDITY_ERROR_VALUE },
+    { &UNA_convert_mv, &UNA_get_mv, STRING_FORMAT_DECIMAL, 0, "V", UNA_VOLTAGE_ERROR_VALUE },
+    { &UNA_convert_ua, &UNA_get_ua, STRING_FORMAT_DECIMAL, 0, "mA", UNA_CURRENT_ERROR_VALUE },
+    { &UNA_convert_mw_mva, &UNA_get_mw_mva, STRING_FORMAT_DECIMAL, 0, "W", UNA_ELECTRICAL_POWER_ERROR_VALUE },
+    { &UNA_convert_mw_mva, &UNA_get_mw_mva, STRING_FORMAT_DECIMAL, 0, "VA", UNA_ELECTRICAL_ENERGY_ERROR_VALUE },
+    { &UNA_convert_mwh_mvah, &UNA_get_mwh_mvah, STRING_FORMAT_DECIMAL, 0, "Wh", UNA_ELECTRICAL_POWER_ERROR_VALUE },
+    { &UNA_convert_mwh_mvah, &UNA_get_mwh_mvah, STRING_FORMAT_DECIMAL, 0, "VAh", UNA_ELECTRICAL_ENERGY_ERROR_VALUE },
+    { &UNA_convert_power_factor, &UNA_get_power_factor, STRING_FORMAT_DECIMAL, 0, NULL, UNA_POWER_FACTOR_ERROR_VALUE },
+    { &UNA_convert_dbm, &UNA_get_dbm, STRING_FORMAT_DECIMAL, 0, "dBm", UNA_RF_POWER_ERROR_VALUE },
+    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, "Hz", UNA_MAINS_FREQUENCY_ERROR_VALUE },
 };
 
 static const HMI_NODE_descriptor_t HMI_NODE_DESCRIPTOR[UNA_BOARD_ID_LAST] = {
@@ -175,10 +176,14 @@ static HMI_status_t _HMI_build_line(uint8_t line_index, char_t* name, HMI_NODE_d
     uint8_t print_prefix = 0;
     char_t* unit = NULL;
     int32_t physical_data = 0;
-    char_t physical_data_str[HMI_NODE_FIELD_SIZE_CHAR];
+    char_t physical_data_str[HMI_NODE_FIELD_SIZE_CHAR + 1];
     uint32_t tmp_u32 = 0;
     uint32_t buffer_size = 0;
     uint8_t idx = 0;
+    // Reset string.
+    for (idx = 0; idx < (HMI_NODE_FIELD_SIZE_CHAR + 1); idx++) {
+        physical_data_str[idx] = STRING_CHAR_NULL;
+    }
     // Check data type.
     if (data_type >= HMI_NODE_DATA_TYPE_LAST) {
         status = HMI_ERROR_NODE_HMI_NODE_DATA_TYPE;
@@ -191,7 +196,11 @@ static HMI_status_t _HMI_build_line(uint8_t line_index, char_t* name, HMI_NODE_d
     // Print field name.
     _HMI_NODE_line_name_add_string(name);
     _HMI_NODE_line_value_flush();
+    _HMI_NODE_line_value_add_string("ERROR");
+    // Check error value.
+    if (field_value == HMI_NODE_DATA_FORMAT[data_type].error_value) goto errors;
     // Specific print according to data type.
+    _HMI_NODE_line_value_flush();
     switch (data_type) {
     case HMI_NODE_DATA_TYPE_EP_ID:
         // Print ID in reverse order.

@@ -113,8 +113,10 @@ int main(void) {
 	while (1) {
 		// Enter sleep mode.
 		IWDG_reload();
+#ifndef DMM_DEBUG
 		PWR_enter_stop_mode();
 		IWDG_reload();
+#endif
 		// Process nodes.
         node_status = NODE_process();
         NODE_stack_error(ERROR_BASE_NODE);

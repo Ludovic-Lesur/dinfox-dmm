@@ -703,13 +703,8 @@ static RADIO_status_t _RADIO_execute_actions(void) {
                 node_status = NODE_read_register(node_action.node, node_action.reg_addr, &(node_action.reg_value), &(node_action.access_status));
                 NODE_exit_error(RADIO_ERROR_BASE_NODE);
             }
-            // Check master node pointer.
-            if (radio_ctx.master_node_ptr == NULL) {
-                status = RADIO_ERROR_MASTER_NODE_NOT_FOUND;
-                goto errors;
-            }
             // Build payload structure.
-            node_payload.node = radio_ctx.master_node_ptr;
+            node_payload.node = node_action.node;
             node_payload.payload = (uint8_t*) node_payload_bytes;
             node_payload.payload_size = 0;
             node_payload.payload_type_counter = 0;

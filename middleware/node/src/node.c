@@ -193,6 +193,13 @@ NODE_status_t NODE_perform_measurements(UNA_node_t* node, UNA_access_status_t* w
     NODE_status_t status = NODE_SUCCESS;
     // Check node and board ID.
     _NODE_check_node_and_board_id();
+    // Check parameter.
+    if (write_status == NULL) {
+        status = NODE_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
+    // Reset access status.
+    write_status->all = 0;
     // Check protocol.
     switch (NODES[node->board_id].protocol) {
     case NODE_PROTOCOL_UNA_DMM:

@@ -135,12 +135,19 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     UNA_access_parameters_t write_params;
     uint8_t una_at_init = 0;
     uint8_t una_r4s8cr_init = 0;
-    // Check node and board ID.
+    // Check parameters.
     _NODE_check_node_and_board_id();
+    if (write_status == NULL) {
+        status = NODE_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
+    // Reset status.
+    write_status->type = UNA_ACCESS_TYPE_WRITE;
+    write_status->flags = 0;
     // Common write parameters.
-    write_params.node_addr = (node -> address);
+    write_params.node_addr = (node->address);
     write_params.reg_addr = reg_addr;
-    write_params.reply_params.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[reg_addr];
+    write_params.reply_params.timeout_ms = NODES[node->board_id].register_write_timeout_ms[reg_addr];
     write_params.reply_params.type = UNA_REPLY_TYPE_OK;
     // Check protocol.
     switch (NODES[node->board_id].protocol) {
@@ -183,6 +190,11 @@ errors:
     }
     if (una_r4s8cr_init != 0) {
         UNA_R4S8CR_de_init();
+    }
+    // Store eventual access status error.
+    if ((write_status->flags) != 0){
+        ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status->all));
+        ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node->address));
     }
     return status;
 }
@@ -229,12 +241,19 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     UNA_access_parameters_t read_params;
     uint8_t una_at_init = 0;
     uint8_t una_r4s8cr_init = 0;
-    // Check node and board ID.
+    // Check parameters.
     _NODE_check_node_and_board_id();
+    if (read_status == NULL) {
+        status = NODE_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
+    // Reset status.
+    read_status->type = UNA_ACCESS_TYPE_READ;
+    read_status->flags = 0;
     // Write parameters.
-    read_params.node_addr = (node -> address);
+    read_params.node_addr = (node->address);
     read_params.reg_addr = reg_addr;
-    read_params.reply_params.timeout_ms = NODES[node -> board_id].register_write_timeout_ms[reg_addr];
+    read_params.reply_params.timeout_ms = NODES[node->board_id].register_write_timeout_ms[reg_addr];
     read_params.reply_params.type = UNA_REPLY_TYPE_VALUE;
     // Check protocol.
     switch (NODES[node->board_id].protocol) {
@@ -280,7 +299,7 @@ errors:
     }
     // Store eventual access status error.
     if ((read_status->flags) != 0){
-        ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status -> all));
+        ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status->all));
         ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node->address));
     }
     return status;

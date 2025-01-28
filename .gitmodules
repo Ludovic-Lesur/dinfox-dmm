@@ -13,6 +13,9 @@
 [submodule "r4s8cr-driver"]
     path = drivers/components/r4s8cr-driver
     url = https://github.com/Ludovic-Lesur/r4s8cr-driver.git
+[submodule "sh1106-driver"]
+    path = drivers/components/sh1106-driver
+    url = https://github.com/Ludovic-Lesur/sh1106-driver.git
 [submodule "lmac-driver"]
     path = drivers/mac/lmac-driver
     url = https://github.com/Ludovic-Lesur/lmac-driver.git

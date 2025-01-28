@@ -9,7 +9,6 @@
 
 #include "error.h"
 #include "exti.h"
-#include "font.h"
 #include "gpio.h"
 #include "gpio_mapping.h"
 #include "hmi_node.h"
@@ -24,6 +23,7 @@
 #include "power.h"
 #include "pwr.h"
 #include "sh1106.h"
+#include "sh1106_font.h"
 #include "string.h"
 #include "tim.h"
 #include "types.h"
@@ -41,10 +41,10 @@
 #define HMI_STRING_VALUE_BUFFER_SIZE        16
 
 #define HMI_NAVIGATION_ZONE_WIDTH_CHAR      1
-#define HMI_NAVIGATION_ZONE_WIDTH_PIXELS    (HMI_NAVIGATION_ZONE_WIDTH_CHAR * FONT_CHAR_WIDTH_PIXELS)
+#define HMI_NAVIGATION_ZONE_WIDTH_PIXELS    (HMI_NAVIGATION_ZONE_WIDTH_CHAR * SH1106_FONT_CHAR_WIDTH_PIXELS)
 
 #define HMI_DATA_ZONE_WIDTH_CHAR            (SH1106_SCREEN_WIDTH_CHAR - (2 * (HMI_NAVIGATION_ZONE_WIDTH_CHAR + 1)))
-#define HMI_DATA_ZONE_WIDTH_PIXELS          (HMI_DATA_ZONE_WIDTH_CHAR * FONT_CHAR_WIDTH_PIXELS)
+#define HMI_DATA_ZONE_WIDTH_PIXELS          (HMI_DATA_ZONE_WIDTH_CHAR * SH1106_FONT_CHAR_WIDTH_PIXELS)
 
 #define HMI_SYMBOL_SELECT                   '>'
 #define HMI_SYMBOL_TOP                      '\''

@@ -31,9 +31,8 @@ The board is based on the **STM32L081CBT6** microcontroller of the STMicroelectr
 
 The project is organized as follow:
 
-* `startup` : MCU **startup** code (from ARM).
-* `linker` : MCU **linker** script (from ARM).
 * `drivers` :
+    * `device` : MCU **startup** code and **linker** script.
     * `registers` : MCU **registers** address definition.
     * `peripherals` : internal MCU **peripherals** drivers.
     * `mac` : **medium access control** driver.

@@ -338,7 +338,6 @@ errors:
 NODE_status_t NODE_scan(void) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
-    POWER_status_t power_status = POWER_SUCCESS;
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
     UNA_DMM_status_t una_dmm_status = UNA_DMM_SUCCESS;
@@ -357,8 +356,7 @@ NODE_status_t NODE_scan(void) {
     NODE_LIST.list[NODE_LIST_DMM_NODE_INDEX].address = UNA_NODE_ADDRESS_MASTER;
     NODE_LIST.count++;
     // Turn bus interface on.
-    power_status = POWER_enable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
-    POWER_exit_error(NODE_ERROR_BASE_POWER);
+    POWER_enable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
     // Scan LBUS nodes.
     una_at_init = 1;
     una_at_config.baud_rate = NODE_UNA_AT_BAUD_RATE;
@@ -391,8 +389,7 @@ errors:
         UNA_R4S8CR_de_init();
     }
     // Turn bus interface off.
-    power_status = POWER_disable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_RS485);
-    POWER_stack_error(ERROR_BASE_POWER);
+    POWER_disable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_RS485);
     // Read scan period.
     read_params.node_addr = UNA_NODE_ADDRESS_MASTER;
     read_params.reg_addr = DMM_REGISTER_ADDRESS_CONFIGURATION_0;

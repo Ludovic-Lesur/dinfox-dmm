@@ -940,19 +940,15 @@ errors:
 HMI_status_t HMI_process(void) {
 	// Local variables.
 	HMI_status_t status = HMI_SUCCESS;
-	POWER_status_t power_status = POWER_SUCCESS;
 	TIM_status_t tim_status = TIM_SUCCESS;
 	// Check flag.
 	if ((hmi_ctx.irq_flags & (0b1 << HMI_IRQ_ENCODER_SWITCH)) == 0) goto end;
 	// Init context.
 	hmi_ctx.screen = HMI_SCREEN_OFF;
 	hmi_ctx.state = HMI_STATE_INIT;
-	// Turn bus interface on.
-	power_status = POWER_enable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
-	POWER_exit_error(NODE_ERROR_BASE_POWER);
-	// Turn HMI on.
-	power_status = POWER_enable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_HMI, LPTIM_DELAY_MODE_STOP);
-	POWER_exit_error(HMI_ERROR_BASE_POWER);
+	// Turn bus interface and HMI on.
+	POWER_enable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+	POWER_enable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_HMI, LPTIM_DELAY_MODE_STOP);
 	// Process HMI while it is used.
 	while (hmi_ctx.state != HMI_STATE_UNUSED) {
 		// Perform state machine.
@@ -975,13 +971,10 @@ HMI_status_t HMI_process(void) {
 		tim_status = TIM_STD_stop(HMI_TIMER_INSTANCE);
 		TIM_exit_error(HMI_ERROR_BASE_TIM);
 	}
-	// Turn HMI off.
-	power_status = POWER_disable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_HMI);
-	POWER_exit_error(NODE_ERROR_BASE_POWER);
-	// Turn bus interface off.
-	power_status = POWER_disable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_RS485);
-	POWER_exit_error(NODE_ERROR_BASE_POWER);
-	// Disable interrupts.
+	// Turn bus interface and HMI off.
+    POWER_disable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_HMI);
+    POWER_disable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_RS485);
+    // Disable interrupts.
 	_HMI_disable_irq();
 	return status;
 errors:
@@ -992,9 +985,8 @@ errors:
     LPTIM_delay_milliseconds(HMI_UNUSED_DURATION_THRESHOLD_MS, LPTIM_DELAY_MODE_STOP);
 	// Stop timer.
     TIM_STD_stop(HMI_TIMER_INSTANCE);
-	// Turn HMI off.
+	// Turn bus interface and HMI off.
 	POWER_disable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_HMI);
-	// Turn bus interface off.
 	POWER_disable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_RS485);
 	// Disable interrupts.
 	_HMI_disable_irq();

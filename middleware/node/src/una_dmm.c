@@ -102,17 +102,14 @@ static void _UNA_DMM_reset_analog_data(void) {
 static UNA_DMM_status_t _UNA_DMM_mtrg_callback(void) {
 	// Local variables.
 	UNA_DMM_status_t status = UNA_DMM_SUCCESS;
-	POWER_status_t power_status = POWER_SUCCESS;
 	ANALOG_status_t analog_status = ANALOG_SUCCESS;
 	int32_t adc_data = 0;
 	uint32_t unused_mask = 0;
 	// Reset results.
 	_UNA_DMM_reset_analog_data();
 	// Turn ADC and HMI on.
-	power_status = POWER_enable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_HMI, LPTIM_DELAY_MODE_STOP);
-	POWER_exit_error(NODE_ERROR_BASE_POWER);
-	power_status = POWER_enable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
-	POWER_exit_error(NODE_ERROR_BASE_POWER);
+	POWER_enable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_HMI, LPTIM_DELAY_MODE_STOP);
+	POWER_enable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
 	// VMCU.
 	analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VMCU_MV, &adc_data);
 	ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);
@@ -133,11 +130,6 @@ static UNA_DMM_status_t _UNA_DMM_mtrg_callback(void) {
 	analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VUSB_MV, &adc_data);
 	ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);
 	SWREG_write_field(&(UNA_DMM_REGISTERS[DMM_REGISTER_ADDRESS_ANALOG_DATA_2]), &unused_mask, UNA_convert_mv(adc_data), DMM_REGISTER_ANALOG_DATA_2_MASK_VUSB);
-	// Release ADC and HMI.
-    power_status = POWER_disable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_ANALOG);
-    POWER_exit_error(NODE_ERROR_BASE_POWER);
-    power_status = POWER_disable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_HMI);
-    POWER_exit_error(NODE_ERROR_BASE_POWER);
 errors:
 	// Turn power block off.
     POWER_disable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_HMI);

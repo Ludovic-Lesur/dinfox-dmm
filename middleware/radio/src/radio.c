@@ -671,7 +671,6 @@ static RADIO_status_t _RADIO_execute_actions(void) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
-    POWER_status_t power_status = POWER_SUCCESS;
     uint8_t node_payload_bytes[RADIO_UL_NODE_PAYLOAD_MAX_SIZE_BYTES];
     RADIO_ul_node_payload_t node_payload;
     RADIO_node_action_t node_action;
@@ -692,8 +691,7 @@ static RADIO_status_t _RADIO_execute_actions(void) {
             status = _RADIO_remove_action(idx);
             if (status != RADIO_SUCCESS) goto errors;
             // Turn bus interface on.
-            power_status = POWER_enable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
-            POWER_exit_error(NODE_ERROR_BASE_POWER);
+            POWER_enable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
             // Perform node access (status is not checked because action log message must be sent whatever the result).
             if (node_action.access_status.type == UNA_ACCESS_TYPE_WRITE) {
                 node_status = NODE_write_register(node_action.node, node_action.reg_addr, node_action.reg_value, node_action.reg_mask, &(node_action.access_status));
@@ -761,7 +759,6 @@ RADIO_status_t RADIO_process(void) {
     RADIO_status_t status = RADIO_SUCCESS;
     RADIO_status_t radio_status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
-    POWER_status_t power_status = POWER_SUCCESS;
     UNA_access_status_t read_status;
     uint8_t message_sent = 0;
     uint32_t reg_value = 0;
@@ -784,8 +781,7 @@ RADIO_status_t RADIO_process(void) {
             bidirectional_flag = 1;
         }
         // Turn bus interface on.
-        power_status = POWER_enable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
-        POWER_exit_error(NODE_ERROR_BASE_POWER);
+        POWER_enable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
         // Set radio times to now to compensate node update duration.
         if (ul_next_time_update_required != 0) {
             radio_ctx.ul_next_time_seconds = RTC_get_uptime_seconds();
@@ -840,7 +836,6 @@ errors:
         radio_ctx.dl_next_time_seconds += UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_DL_PERIOD));
     }
     // Turn bus interface off.
-    power_status = POWER_disable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485);
-    POWER_stack_error(ERROR_BASE_POWER);
+    POWER_disable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485);
     return status;
 }

@@ -5,12 +5,12 @@
  *      Author: Ludo
  */
 
+#ifndef __UNA_AT_FLAGS_H__
+#define __UNA_AT_FLAGS_H__
+
 #include "lmac.h"
 #include "lptim.h"
 #include "terminal_instance.h"
-
-#ifndef __UNA_AT_FLAGS_H__
-#define __UNA_AT_FLAGS_H__
 
 /*** UNA AT compilation flags ***/
 
@@ -24,5 +24,7 @@
 #define UNA_AT_USE_REGISTER_ERROR_VALUE
 
 #define UNA_AT_TERMINAL_INSTANCE            TERMINAL_INSTANCE_LMAC
+
+//#define UNA_AT_CUSTOM_COMMANDS
 
 #endif /* __UNA_AT_FLAGS_H__ */

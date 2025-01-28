@@ -21,9 +21,9 @@
  *******************************************************************/
 typedef enum {
     HMI_COMMON_LINE_INDEX(GPSM)
-	HMI_GPSM_LINE_INDEX_VGPS,
-	HMI_GPSM_LINE_INDEX_VANT,
-	HMI_GPSM_LINE_INDEX_LAST,
+    HMI_GPSM_LINE_INDEX_VGPS,
+    HMI_GPSM_LINE_INDEX_VANT,
+    HMI_GPSM_LINE_INDEX_LAST,
 } HMI_GPSM_line_index_t;
 
 /*** HMI GPSM global variables ***/

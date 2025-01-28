@@ -28,24 +28,24 @@
  * \brief NODE driver error codes.
  *******************************************************************/
 typedef enum {
-	// Driver errors.
-	NODE_SUCCESS = 0,
-	NODE_ERROR_NULL_PARAMETER,
-	NODE_ERROR_NOT_SUPPORTED,
-	NODE_ERROR_PROTOCOL,
-	NODE_ERROR_REGISTER_ADDRESS_LIST_SIZE,
-	NODE_ERROR_SCAN_PERIOD_READ,
-	// Low level drivers errors.
-	NODE_ERROR_BASE_ACCESS_STATUS_CODE = 0x0100,
-	NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS = 0x0200,
-	NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + 0x0100),
-	NODE_ERROR_BASE_POWER = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_ANALOG = (NODE_ERROR_BASE_POWER + POWER_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_UNA_DMM = (NODE_ERROR_BASE_ANALOG + ANALOG_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_UNA_AT = (NODE_ERROR_BASE_UNA_DMM + UNA_DMM_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_UNA_R4S8CR = (NODE_ERROR_BASE_UNA_AT + UNA_AT_ERROR_BASE_LAST),
-	// Last base value.
-	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_UNA_R4S8CR + UNA_R4S8CR_ERROR_BASE_LAST),
+    // Driver errors.
+    NODE_SUCCESS = 0,
+    NODE_ERROR_NULL_PARAMETER,
+    NODE_ERROR_NOT_SUPPORTED,
+    NODE_ERROR_PROTOCOL,
+    NODE_ERROR_REGISTER_ADDRESS_LIST_SIZE,
+    NODE_ERROR_SCAN_PERIOD_READ,
+    // Low level drivers errors.
+    NODE_ERROR_BASE_ACCESS_STATUS_CODE = 0x0100,
+    NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS = 0x0200,
+    NODE_ERROR_BASE_LPTIM = (NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + 0x0100),
+    NODE_ERROR_BASE_POWER = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_ANALOG = (NODE_ERROR_BASE_POWER + POWER_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_UNA_DMM = (NODE_ERROR_BASE_ANALOG + ANALOG_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_UNA_AT = (NODE_ERROR_BASE_UNA_DMM + UNA_DMM_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_UNA_R4S8CR = (NODE_ERROR_BASE_UNA_AT + UNA_AT_ERROR_BASE_LAST),
+    // Last base value.
+    NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_UNA_R4S8CR + UNA_R4S8CR_ERROR_BASE_LAST),
 } NODE_status_t;
 
 /*** NODES global variables ***/
@@ -57,18 +57,18 @@ extern UNA_node_list_t NODE_LIST;
 /*!******************************************************************
  * \fn NODE_status_t NODE_init(void)
  * \brief Init node interface.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 NODE_status_t NODE_init(void);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_de_init(void)
  * \brief Release node interface.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 NODE_status_t NODE_de_init(void);
 
@@ -128,9 +128,9 @@ NODE_status_t NODE_read_registers(UNA_node_t* node, uint8_t* reg_addr_list, uint
 /*!******************************************************************
  * \fn NODE_status_t NODE_scan(void)
  * \brief Scan all nodes connected to the RS485 bus.
- * \param[in]  	none
- * \param[out]	none
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 NODE_status_t NODE_scan(void);
 

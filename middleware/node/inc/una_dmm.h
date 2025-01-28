@@ -29,30 +29,30 @@ typedef enum {
 /*!******************************************************************
  * \fn UNA_DMM_status_t UNA_DMM_init(void)
  * \brief Init DMM registers.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 UNA_DMM_status_t UNA_DMM_init(void);
 
 /*!******************************************************************
  * \fn UNA_DMM_status_t UNA_DMM_write_register(UNA_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, UNA_access_status_t* write_status)
  * \brief Write DMM node register.
- * \param[in]  	write_params: Pointer to the write operation parameters.
- * \param[in]	reg_value: Register value to write.
- * \param[in]	reg_mask: Writing operation mask.
- * \param[out] 	write_status: Pointer to the writing operation status.
- * \retval		Function execution status.
+ * \param[in]   write_params: Pointer to the write operation parameters.
+ * \param[in]   reg_value: Register value to write.
+ * \param[in]   reg_mask: Writing operation mask.
+ * \param[out]  write_status: Pointer to the writing operation status.
+ * \retval      Function execution status.
  *******************************************************************/
 UNA_DMM_status_t UNA_DMM_write_register(UNA_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, UNA_access_status_t* write_status);
 
 /*!******************************************************************
  * \fn UNA_DMM_status_t UNA_DMM_read_register(UNA_access_parameters_t* read_params, uint32_t* reg_value, UNA_access_status_t* read_status)
  * \brief Read DMM node register.
- * \param[in]  	read_params: Pointer to the read operation parameters.
- * \param[out]	reg_value: Pointer to the read register value.
- * \param[out] 	read_status: Pointer to the read operation status.
- * \retval		Function execution status.
+ * \param[in]   read_params: Pointer to the read operation parameters.
+ * \param[out]  reg_value: Pointer to the read register value.
+ * \param[out]  read_status: Pointer to the read operation status.
+ * \retval      Function execution status.
  *******************************************************************/
 UNA_DMM_status_t UNA_DMM_read_register(UNA_access_parameters_t* read_params, uint32_t* reg_value, UNA_access_status_t* read_status);
 

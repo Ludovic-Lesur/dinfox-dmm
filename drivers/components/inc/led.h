@@ -18,15 +18,15 @@
  * \brief LED driver error codes.
  *******************************************************************/
 typedef enum {
-	// Driver errors.
-	LED_SUCCESS,
-	LED_ERROR_NULL_DURATION,
-	LED_ERROR_COLOR,
-	// Low level drivers errors.
-	LED_ERROR_BASE_TIM_PWM = 0x0100,
-	LED_ERROR_BASE_TIM_DIMMING = (LED_ERROR_BASE_TIM_PWM + TIM_ERROR_BASE_LAST),
-	// Last base value.
-	LED_ERROR_BASE_LAST = (LED_ERROR_BASE_TIM_DIMMING + TIM_ERROR_BASE_LAST)
+    // Driver errors.
+    LED_SUCCESS,
+    LED_ERROR_NULL_DURATION,
+    LED_ERROR_COLOR,
+    // Low level drivers errors.
+    LED_ERROR_BASE_TIM_PWM = 0x0100,
+    LED_ERROR_BASE_TIM_DIMMING = (LED_ERROR_BASE_TIM_PWM + TIM_ERROR_BASE_LAST),
+    // Last base value.
+    LED_ERROR_BASE_LAST = (LED_ERROR_BASE_TIM_DIMMING + TIM_ERROR_BASE_LAST)
 } LED_status_t;
 
 /*!******************************************************************
@@ -34,15 +34,15 @@ typedef enum {
  * \brief LED colors list.
  *******************************************************************/
 typedef enum {
-	LED_COLOR_OFF = 0,
-	LED_COLOR_RED,
-	LED_COLOR_GREEN,
-	LED_COLOR_YELLOW,
-	LED_COLOR_BLUE,
-	LED_COLOR_MAGENTA,
-	LED_COLOR_CYAN,
-	LED_COLOR_WHITE,
-	LED_COLOR_LAST
+    LED_COLOR_OFF = 0,
+    LED_COLOR_RED,
+    LED_COLOR_GREEN,
+    LED_COLOR_YELLOW,
+    LED_COLOR_BLUE,
+    LED_COLOR_MAGENTA,
+    LED_COLOR_CYAN,
+    LED_COLOR_WHITE,
+    LED_COLOR_LAST
 } LED_color_t;
 
 /*** LED functions ***/
@@ -50,9 +50,9 @@ typedef enum {
 /*!******************************************************************
  * \fn LED_status_t LED_init(void)
  * \brief Init LED driver.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 LED_status_t LED_init(void);
 
@@ -68,10 +68,10 @@ LED_status_t LED_de_init(void);
 /*!******************************************************************
  * \fn LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t color)
  * \brief Start single blink.
- * \param[in]  	blink_duration_ms: Blink duration in ms.
- * \param[in]	color: LED color.
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   blink_duration_ms: Blink duration in ms.
+ * \param[in]   color: LED color.
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t color);
 
@@ -87,10 +87,10 @@ LED_status_t LED_stop_blink(void);
 /*!******************************************************************
  * \fn uint8_t LED_is_single_blink_done(void)
  * \brief Get blink status.
- * \param[in]  	none
- * \param[in]	none
- * \param[out] 	none
- * \retval		1 of the LED blink is complete, 0 otherwise.
+ * \param[in]   none
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      1 of the LED blink is complete, 0 otherwise.
  *******************************************************************/
 uint8_t LED_is_single_blink_done(void);
 

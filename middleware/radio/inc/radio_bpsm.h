@@ -14,12 +14,12 @@
 /*** RADIO BPSM functions ***/
 
 /*!******************************************************************
- * \fn RADIO_status_t RADIO_BPRADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload)
+ * \fn RADIO_status_t RADIO_BPSM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload)
  * \brief Build BPSM node uplink payload.
- * \param[in]  	none
- * \param[out] 	node_payload: Pointer to the node uplink payload.
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  node_payload: Pointer to the node uplink payload.
+ * \retval      Function execution status.
  *******************************************************************/
-RADIO_status_t RADIO_BPRADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload);
+RADIO_status_t RADIO_BPSM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload);
 
 #endif /* __RADIO_BPSM_H__ */

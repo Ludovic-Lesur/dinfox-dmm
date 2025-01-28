@@ -21,11 +21,11 @@
  *******************************************************************/
 typedef enum {
     HMI_COMMON_LINE_INDEX(LVRM)
-	HMI_LVRM_LINE_INDEX_VCOM,
-	HMI_LVRM_LINE_INDEX_VOUT,
-	HMI_LVRM_LINE_INDEX_IOUT,
-	HMI_LVRM_LINE_INDEX_RLST,
-	HMI_LVRM_LINE_INDEX_LAST,
+    HMI_LVRM_LINE_INDEX_VCOM,
+    HMI_LVRM_LINE_INDEX_VOUT,
+    HMI_LVRM_LINE_INDEX_IOUT,
+    HMI_LVRM_LINE_INDEX_RLST,
+    HMI_LVRM_LINE_INDEX_LAST,
 } HMI_LVRM_line_index_t;
 
 /*** HMI LVRM global variables ***/

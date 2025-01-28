@@ -22,92 +22,92 @@
 
 /*******************************************************************/
 typedef enum {
-	RADIO_GPSM_UL_PAYLOAD_TYPE_MONITORING = 0,
-	RADIO_GPSM_UL_PAYLOAD_TYPE_LAST
+    RADIO_GPSM_UL_PAYLOAD_TYPE_MONITORING = 0,
+    RADIO_GPSM_UL_PAYLOAD_TYPE_LAST
 } RADIO_GPSM_ul_payload_type_t;
 
 /*******************************************************************/
 typedef union {
-	uint8_t frame[RADIO_GPSM_UL_PAYLOAD_MONITORING_SIZE];
-	struct {
-		unsigned vmcu : 16;
-		unsigned tmcu : 8;
-		unsigned vgps : 16;
-		unsigned vant : 16;
-	} __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+    uint8_t frame[RADIO_GPSM_UL_PAYLOAD_MONITORING_SIZE];
+    struct {
+        unsigned vmcu :16;
+        unsigned tmcu :8;
+        unsigned vgps :16;
+        unsigned vant :16;
+    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
 } RADIO_GPSM_ul_payload_monitoring_t;
 
 /*** GPSM local global variables ***/
 
 static const uint8_t RADIO_GPSM_REGISTERS_MONITORING[] = {
-	COMMON_REGISTER_ADDRESS_ANALOG_DATA_0,
-	GPSM_REGISTER_ADDRESS_ANALOG_DATA_1,
+    COMMON_REGISTER_ADDRESS_ANALOG_DATA_0,
+    GPSM_REGISTER_ADDRESS_ANALOG_DATA_1
 };
 
 static const RADIO_GPSM_ul_payload_type_t RADIO_GPSM_UL_PAYLOAD_PATTERN[] = {
-	RADIO_GPSM_UL_PAYLOAD_TYPE_MONITORING
+    RADIO_GPSM_UL_PAYLOAD_TYPE_MONITORING
 };
 
 /*** GPSM functions ***/
 
 /*******************************************************************/
-RADIO_status_t RADIO_GPRADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload) {
-	// Local variables.
-	RADIO_status_t status = RADIO_SUCCESS;
-	NODE_status_t node_status = NODE_SUCCESS;
-	UNA_access_status_t access_status;
-	uint32_t gpsm_registers[GPSM_REGISTER_ADDRESS_LAST];
-	RADIO_GPSM_ul_payload_monitoring_t ul_payload_monitoring;
-	uint8_t idx = 0;
-	// Check parameters.
-	if (node_payload == NULL) {
-		status = RADIO_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	if (((node_payload->node) == NULL) || ((node_payload->payload) == NULL)) {
-		status = RADIO_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	// Reset registers.
+RADIO_status_t RADIO_GPSM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload) {
+    // Local variables.
+    RADIO_status_t status = RADIO_SUCCESS;
+    NODE_status_t node_status = NODE_SUCCESS;
+    UNA_access_status_t access_status;
+    uint32_t gpsm_registers[GPSM_REGISTER_ADDRESS_LAST];
+    RADIO_GPSM_ul_payload_monitoring_t ul_payload_monitoring;
+    uint8_t idx = 0;
+    // Check parameters.
+    if (node_payload == NULL) {
+        status = RADIO_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
+    if (((node_payload->node) == NULL) || ((node_payload->payload) == NULL)) {
+        status = RADIO_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
+    // Reset registers.
     for (idx = 0; idx < GPSM_REGISTER_ADDRESS_LAST; idx++) {
         gpsm_registers[idx] = GPSM_REGISTER_ERROR_VALUE[idx];
     }
-	// Reset payload size.
-	node_payload->payload_size = 0;
-	// Check event driven payloads.
-	status = RADIO_COMMON_check_event_driven_payloads(node_payload, (uint32_t*) gpsm_registers);
-	if (status != RADIO_SUCCESS) goto errors;
-	// Directly exits if a common payload was computed.
-	if ((node_payload->payload_size) > 0) goto errors;
-	// Else use specific pattern of the node.
-	switch (RADIO_GPSM_UL_PAYLOAD_PATTERN[node_payload->payload_type_counter]) {
-	case RADIO_GPSM_UL_PAYLOAD_TYPE_MONITORING:
-	    // Perform measurements.
+    // Reset payload size.
+    node_payload->payload_size = 0;
+    // Check event driven payloads.
+    status = RADIO_COMMON_check_event_driven_payloads(node_payload, (uint32_t*) gpsm_registers);
+    if (status != RADIO_SUCCESS) goto errors;
+    // Directly exits if a common payload was computed.
+    if ((node_payload->payload_size) > 0) goto errors;
+    // Else use specific pattern of the node.
+    switch (RADIO_GPSM_UL_PAYLOAD_PATTERN[node_payload->payload_type_counter]) {
+    case RADIO_GPSM_UL_PAYLOAD_TYPE_MONITORING:
+        // Perform measurements.
         node_status = NODE_perform_measurements((node_payload->node), &access_status);
         NODE_exit_error(RADIO_ERROR_BASE_NODE);
-		// Check write status.
-		if (access_status.flags == 0) {
-			// Read related registers.
-			node_status = NODE_read_registers((node_payload->node), (uint8_t*) RADIO_GPSM_REGISTERS_MONITORING, sizeof(RADIO_GPSM_REGISTERS_MONITORING), (uint32_t*) gpsm_registers, &access_status);
-			NODE_exit_error(RADIO_ERROR_BASE_NODE);
-		}
-		// Build monitoring payload.
-		ul_payload_monitoring.vmcu = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-		ul_payload_monitoring.tmcu = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
-		ul_payload_monitoring.vgps = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_VGPS);
-		ul_payload_monitoring.vant = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_VANT);
-		// Copy payload.
-		for (idx=0 ; idx<RADIO_GPSM_UL_PAYLOAD_MONITORING_SIZE ; idx++) {
-			(node_payload->payload)[idx] = ul_payload_monitoring.frame[idx];
-		}
-		node_payload->payload_size = RADIO_GPSM_UL_PAYLOAD_MONITORING_SIZE;
-		break;
-	default:
-		status = RADIO_ERROR_UL_NODE_PAYLOAD_TYPE;
-		goto errors;
-	}
-	// Increment payload type counter.
-	node_payload->payload_type_counter = (((node_payload->payload_type_counter) + 1) % sizeof(RADIO_GPSM_UL_PAYLOAD_PATTERN));
+        // Check write status.
+        if (access_status.flags == 0) {
+            // Read related registers.
+            node_status = NODE_read_registers((node_payload->node), (uint8_t*) RADIO_GPSM_REGISTERS_MONITORING, sizeof(RADIO_GPSM_REGISTERS_MONITORING), (uint32_t*) gpsm_registers, &access_status);
+            NODE_exit_error(RADIO_ERROR_BASE_NODE);
+        }
+        // Build monitoring payload.
+        ul_payload_monitoring.vmcu = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
+        ul_payload_monitoring.tmcu = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
+        ul_payload_monitoring.vgps = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_VGPS);
+        ul_payload_monitoring.vant = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_VANT);
+        // Copy payload.
+        for (idx = 0; idx < RADIO_GPSM_UL_PAYLOAD_MONITORING_SIZE; idx++) {
+            (node_payload->payload)[idx] = ul_payload_monitoring.frame[idx];
+        }
+        node_payload->payload_size = RADIO_GPSM_UL_PAYLOAD_MONITORING_SIZE;
+        break;
+    default:
+        status = RADIO_ERROR_UL_NODE_PAYLOAD_TYPE;
+        goto errors;
+    }
+    // Increment payload type counter.
+    node_payload->payload_type_counter = (((node_payload->payload_type_counter) + 1) % sizeof(RADIO_GPSM_UL_PAYLOAD_PATTERN));
 errors:
-	return status;
+    return status;
 }

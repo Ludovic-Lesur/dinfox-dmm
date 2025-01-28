@@ -17,18 +17,18 @@
  * \fn RADIO_status_t RADIO_COMMON_check_event_driven_payloads(RADIO_ul_node_payload_t* node_payload, uint32_t* node_registers)
  * \brief Check common flags and build associated payloads.
  * \param[in]   none
- * \param[out]	node_registers: Pointer to the node registers.
- * \param[out] 	node_payload: Pointer to the node uplink payload.
- * \retval		Function execution status.
+ * \param[out]  node_registers: Pointer to the node registers.
+ * \param[out]  node_payload: Pointer to the node uplink payload.
+ * \retval      Function execution status.
  *******************************************************************/
 RADIO_status_t RADIO_COMMON_check_event_driven_payloads(RADIO_ul_node_payload_t* node_payload, uint32_t* node_registers);
 
 /*!******************************************************************
  * \fn RADIO_status_t RADIO_COMMON_build_ul_node_payload_action_log(RADIO_ul_node_payload_t* node_payload, RADIO_node_action_t* node_action)
  * \brief Build common action log uplink payload.
- * \param[in]  	node_action: Pointer to the action to log.
- * \param[out] 	node_payload: Pointer to the node uplink payload.
- * \retval		Function execution status.
+ * \param[in]   node_action: Pointer to the action to log.
+ * \param[out]  node_payload: Pointer to the node uplink payload.
+ * \retval      Function execution status.
  *******************************************************************/
 RADIO_status_t RADIO_COMMON_build_ul_node_payload_action_log(RADIO_ul_node_payload_t* node_payload, RADIO_node_action_t* node_action);
 

@@ -46,10 +46,10 @@
 typedef union {
     uint8_t frame[UHFM_UL_PAYLOAD_MAX_SIZE_BYTES];
     struct {
-        unsigned node_addr : 8;
-        unsigned board_id : 8;
+        unsigned node_addr :8;
+        unsigned board_id :8;
         uint8_t node_payload[RADIO_UL_NODE_PAYLOAD_MAX_SIZE_BYTES];
-    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
 } RADIO_ul_payload_t;
 
 /*******************************************************************/
@@ -81,70 +81,70 @@ typedef enum {
 typedef union {
     uint8_t frame[UHFM_DL_PAYLOAD_SIZE_BYTES];
     struct {
-        unsigned op_code : 8;
+        unsigned op_code :8;
         union {
             struct {
-                unsigned node_addr : 8;
-                unsigned reg_addr : 8;
-                unsigned unused_0 : 32;
-                unsigned unused_1 : 8;
-            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) single_full_read;
+                unsigned node_addr :8;
+                unsigned reg_addr :8;
+                unsigned unused_0 :32;
+                unsigned unused_1 :8;
+            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) single_full_read;
             struct {
-                unsigned node_addr : 8;
-                unsigned reg_addr : 8;
-                unsigned reg_value : 32;
-                unsigned duration : 8; // Unused in single.
-            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) full_write;
+                unsigned node_addr :8;
+                unsigned reg_addr :8;
+                unsigned reg_value :32;
+                unsigned duration :8; // Unused in single.
+            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) full_write;
             struct {
-                unsigned node_addr : 8;
-                unsigned reg_addr : 8;
-                unsigned reg_mask : 16;
-                unsigned reg_value : 16;
-                unsigned duration : 8; // Unused in single.
-            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) masked_write;
+                unsigned node_addr :8;
+                unsigned reg_addr :8;
+                unsigned reg_mask :16;
+                unsigned reg_value :16;
+                unsigned duration :8; // Unused in single.
+            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) masked_write;
             struct {
-                unsigned node_addr : 8;
-                unsigned reg_addr : 8;
-                unsigned reg_value_1 : 16;
-                unsigned reg_value_2 : 16;
-                unsigned duration : 8;
-            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) successive_full_write;
+                unsigned node_addr :8;
+                unsigned reg_addr :8;
+                unsigned reg_value_1 :16;
+                unsigned reg_value_2 :16;
+                unsigned duration :8;
+            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) successive_full_write;
             struct {
-                unsigned node_addr : 8;
-                unsigned reg_addr : 8;
-                unsigned reg_mask : 8;
-                unsigned reg_value_1 : 8;
-                unsigned reg_value_2 : 8;
-                unsigned duration : 8;
-                unsigned unused : 8;
-            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) successive_masked_write;
+                unsigned node_addr :8;
+                unsigned reg_addr :8;
+                unsigned reg_mask :8;
+                unsigned reg_value_1 :8;
+                unsigned reg_value_2 :8;
+                unsigned duration :8;
+                unsigned unused :8;
+            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) successive_masked_write;
             struct {
-                unsigned node_addr : 8;
-                unsigned reg_1_addr : 8;
-                unsigned reg_1_value : 16;
-                unsigned reg_2_addr : 8;
-                unsigned reg_2_value : 16;
-            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) dual_full_write;
+                unsigned node_addr :8;
+                unsigned reg_1_addr :8;
+                unsigned reg_1_value :16;
+                unsigned reg_2_addr :8;
+                unsigned reg_2_value :16;
+            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) dual_full_write;
             struct {
-                unsigned node_addr : 8;
-                unsigned reg_1_addr : 8;
-                unsigned reg_1_value : 8;
-                unsigned reg_2_addr : 8;
-                unsigned reg_2_value : 8;
-                unsigned reg_3_addr : 8;
-                unsigned reg_3_value : 8;
-            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) triple_full_write;
+                unsigned node_addr :8;
+                unsigned reg_1_addr :8;
+                unsigned reg_1_value :8;
+                unsigned reg_2_addr :8;
+                unsigned reg_2_value :8;
+                unsigned reg_3_addr :8;
+                unsigned reg_3_value :8;
+            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) triple_full_write;
             struct {
-                unsigned node_1_addr : 8;
-                unsigned reg_1_addr : 8;
-                unsigned reg_1_value : 8;
-                unsigned node_2_addr : 8;
-                unsigned reg_2_addr : 8;
-                unsigned reg_2_value : 8;
-                unsigned unused : 8;
-            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) dual_node_write;
+                unsigned node_1_addr :8;
+                unsigned reg_1_addr :8;
+                unsigned reg_1_value :8;
+                unsigned node_2_addr :8;
+                unsigned reg_2_addr :8;
+                unsigned reg_2_value :8;
+                unsigned unused :8;
+            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) dual_node_write;
         };
-    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
 } RADIO_dl_payload_t;
 
 /*******************************************************************/
@@ -168,16 +168,16 @@ typedef struct {
 
 static const RADIO_build_ul_node_payload_t RADIO_NODE_DESCRIPTOR[UNA_BOARD_ID_LAST] = {
     &RADIO_LVRM_build_ul_node_payload,
-    &RADIO_BPRADIO_SM_build_ul_node_payload,
+    &RADIO_BPSM_build_ul_node_payload,
     &RADIO_DDRM_build_ul_node_payload,
     &RADIO_UHFM_build_ul_node_payload,
-    &RADIO_GPRADIO_SM_build_ul_node_payload,
+    &RADIO_GPSM_build_ul_node_payload,
     &RADIO_SM_build_ul_node_payload,
     NULL,
     NULL,
     &RADIO_DMM_build_ul_node_payload,
     &RADIO_MPMCM_build_ul_node_payload,
-    &RADIO_R4S8CR_build_ul_node_payload,
+    &RADIO_R4S8CR_build_ul_node_payload
 };
 
 static RADIO_context_t radio_ctx;
@@ -292,8 +292,8 @@ static RADIO_status_t _RADIO_transmit(RADIO_ul_node_payload_t* node_payload, uin
     }
     // Check UHFM board availability.
     if (radio_ctx.modem_node_ptr == NULL) {
-       status = RADIO_ERROR_MODEM_NODE_NOT_FOUND;
-       goto errors;
+        status = RADIO_ERROR_MODEM_NODE_NOT_FOUND;
+        goto errors;
     }
     // Reset payload.
     for (idx = 0; idx < UHFM_UL_PAYLOAD_MAX_SIZE_BYTES; idx++) {
@@ -303,7 +303,7 @@ static RADIO_status_t _RADIO_transmit(RADIO_ul_node_payload_t* node_payload, uin
     ul_payload.board_id = (node_payload->node->board_id);
     ul_payload.node_addr = (node_payload->node->address);
     // Add node payload.
-    for (idx = 0; idx < (node_payload->payload_size) ; idx++) {
+    for (idx = 0; idx < (node_payload->payload_size); idx++) {
         ul_payload.node_payload[idx] = (node_payload->payload)[idx];
     }
     // Build Sigfox message structure.
@@ -390,17 +390,17 @@ static RADIO_status_t _RADIO_record_action(RADIO_node_action_t* action) {
         goto errors;
     }
     // Search available slot.
-    for (idx=0 ; idx<RADIO_ACTION_LIST_SIZE ; idx++) {
+    for (idx = 0; idx < RADIO_ACTION_LIST_SIZE; idx++) {
         // Check node address.
         if (radio_ctx.action[idx].node == NULL) {
             // Store action.
-            radio_ctx.action[idx].node = (action -> node);
-            radio_ctx.action[idx].downlink_hash = (action -> downlink_hash);
-            radio_ctx.action[idx].reg_addr = (action -> reg_addr);
-            radio_ctx.action[idx].reg_value = (action -> reg_value);
-            radio_ctx.action[idx].reg_mask = (action -> reg_mask);
-            radio_ctx.action[idx].timestamp_seconds = (action -> timestamp_seconds);
-            radio_ctx.action[idx].access_status = (action -> access_status);
+            radio_ctx.action[idx].node = (action->node);
+            radio_ctx.action[idx].downlink_hash = (action->downlink_hash);
+            radio_ctx.action[idx].reg_addr = (action->reg_addr);
+            radio_ctx.action[idx].reg_value = (action->reg_value);
+            radio_ctx.action[idx].reg_mask = (action->reg_mask);
+            radio_ctx.action[idx].timestamp_seconds = (action->timestamp_seconds);
+            radio_ctx.action[idx].access_status = (action->access_status);
             // Update flag.
             slot_found = 1;
             break;

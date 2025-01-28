@@ -21,19 +21,19 @@ typedef RADIO_status_t (*RADIO_MPMCM_radio_transmit_t)(RADIO_ul_node_payload_t* 
 /*!******************************************************************
  * \fn RADIO_status_t RADIO_MPMCM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload)
  * \brief Build node node uplink payload.
- * \param[in]  	none
- * \param[out] 	node_payload: Pointer to the node uplink payload.
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  node_payload: Pointer to the node uplink payload.
+ * \retval      Function execution status.
  *******************************************************************/
 RADIO_status_t RADIO_MPMCM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload);
 
 /*!******************************************************************
  * \fn RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_transmit_t radio_transmit_pfn)
  * \brief Build and send specific MPMCM node uplink payloads which has to be sent at fixed period.
- * \param[in]  	mpmcm_node: Pointer to the MPMCM node address.
- * \param[in]	radio_transmit_pfn: Pointer to the radio transmission function.
- * \param[out]	none
- * \retval		Function execution status.
+ * \param[in]   mpmcm_node: Pointer to the MPMCM node address.
+ * \param[in]   radio_transmit_pfn: Pointer to the radio transmission function.
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_transmit_t radio_transmit_pfn);
 

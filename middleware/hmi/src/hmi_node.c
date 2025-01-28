@@ -82,7 +82,7 @@ static const HMI_NODE_data_format_t HMI_NODE_DATA_FORMAT[HMI_NODE_DATA_TYPE_LAST
     { &UNA_convert_mwh_mvah, &UNA_get_mwh_mvah, STRING_FORMAT_DECIMAL, 0, "VAh", UNA_ELECTRICAL_ENERGY_ERROR_VALUE },
     { &UNA_convert_power_factor, &UNA_get_power_factor, STRING_FORMAT_DECIMAL, 0, NULL, UNA_POWER_FACTOR_ERROR_VALUE },
     { &UNA_convert_dbm, &UNA_get_dbm, STRING_FORMAT_DECIMAL, 0, "dBm", UNA_RF_POWER_ERROR_VALUE },
-    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, "Hz", UNA_MAINS_FREQUENCY_ERROR_VALUE },
+    { NULL, NULL, STRING_FORMAT_DECIMAL, 0, "Hz", UNA_MAINS_FREQUENCY_ERROR_VALUE }
 };
 
 static const HMI_NODE_descriptor_t HMI_NODE_DESCRIPTOR[UNA_BOARD_ID_LAST] = {
@@ -92,8 +92,7 @@ static const HMI_NODE_descriptor_t HMI_NODE_DESCRIPTOR[UNA_BOARD_ID_LAST] = {
     { (HMI_NODE_line_t*) HMI_UHFM_LINE, HMI_UHFM_LINE_INDEX_LAST },
     { (HMI_NODE_line_t*) HMI_GPSM_LINE, HMI_GPSM_LINE_INDEX_LAST },
     { (HMI_NODE_line_t*) HMI_SM_LINE, HMI_SM_LINE_INDEX_LAST },
-    { NULL, 0 },
-    { NULL, 0 },
+    { NULL, 0 }, { NULL, 0 },
     { (HMI_NODE_line_t*) HMI_DMM_LINE, HMI_DMM_LINE_INDEX_LAST },
     { (HMI_NODE_line_t*) HMI_MPMCM_LINE, HMI_MPMCM_LINE_INDEX_LAST },
     { (HMI_NODE_line_t*) HMI_R4S8CR_LINE, HMI_R4S8CR_LINE_INDEX_LAST }
@@ -151,7 +150,7 @@ static void _HMI_NODE_flush_line(uint8_t line_index) {
     // Local variables.
     uint8_t idx = 0;
     // Char loop.
-    for (idx=0 ; idx<HMI_NODE_LINE_WIDTH_CHAR ; idx++) {
+    for (idx = 0; idx < HMI_NODE_LINE_WIDTH_CHAR; idx++) {
         hmi_node_ctx.lines_name[line_index][idx] = STRING_CHAR_NULL;
         hmi_node_ctx.lines_value[line_index][idx] = STRING_CHAR_NULL;
     }
@@ -162,7 +161,7 @@ static void _HMI_NODE_flush_all_data_value(void) {
     // Local variables.
     uint8_t idx = 0;
     // Reset string data.
-    for (idx=0 ; idx<HMI_NODE_LINE_INDEX_MAX ; idx++) {
+    for (idx = 0; idx < HMI_NODE_LINE_INDEX_MAX; idx++) {
         _HMI_NODE_flush_line(idx);
     }
 }
@@ -204,7 +203,7 @@ static HMI_status_t _HMI_build_line(uint8_t line_index, char_t* name, HMI_NODE_d
     switch (data_type) {
     case HMI_NODE_DATA_TYPE_EP_ID:
         // Print ID in reverse order.
-        for (idx=0 ; idx<UHFM_EP_ID_SIZE_BYTES ; idx++) {
+        for (idx = 0; idx < UHFM_EP_ID_SIZE_BYTES; idx++) {
             _HMI_NODE_line_value_add_integer(((field_value >> (idx << 3)) & 0xFF), STRING_FORMAT_HEXADECIMAL, ((idx == 0) ? 1 : 0));
         }
         break;
@@ -315,8 +314,8 @@ HMI_status_t HMI_NODE_write_line(UNA_node_t* node, uint8_t line_index, int32_t f
     NODE_exit_error(HMI_ERROR_BASE_NODE);
     // Check node access status.
     if (write_status.flags != 0) {
-       status = HMI_ERROR_NODE_WRITE_ACCESS;
-       goto errors;
+        status = HMI_ERROR_NODE_WRITE_ACCESS;
+        goto errors;
     }
 errors:
     return status;
@@ -380,7 +379,7 @@ HMI_status_t HMI_NODE_read_line_all(UNA_node_t* node) {
         goto errors;
     }
     // String data loop.
-    for (idx=0 ; idx<(HMI_NODE_DESCRIPTOR[node -> board_id].number_of_lines) ; idx++) {
+    for (idx = 0; idx < (HMI_NODE_DESCRIPTOR[node->board_id].number_of_lines); idx++) {
         status = HMI_NODE_read_line(node, idx);
         if (status != HMI_SUCCESS) goto errors;
     }
@@ -395,7 +394,7 @@ HMI_status_t HMI_NODE_get_line_data(UNA_node_t* node, uint8_t line_index, char_t
     // Check parameters.
     _HMI_NODE_check_node();
     // Check index.
-    if (line_index >= (HMI_NODE_DESCRIPTOR[node -> board_id].number_of_lines)) { \
+    if (line_index >= (HMI_NODE_DESCRIPTOR[node->board_id].number_of_lines)) {
         status = HMI_ERROR_NODE_LINE_INDEX;
         goto errors;
     }

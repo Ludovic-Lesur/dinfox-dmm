@@ -50,13 +50,13 @@ typedef enum {
 /*******************************************************************/
 typedef struct {
     NODE_protocol_t protocol;
-	uint8_t register_address_last;
-	uint32_t* register_write_timeout_ms;
+    uint8_t register_address_last;
+    uint32_t* register_write_timeout_ms;
 } NODE_descriptor_t;
 
 /*******************************************************************/
 typedef struct {
-	uint32_t scan_next_time_seconds;
+    uint32_t scan_next_time_seconds;
 } NODE_context_t;
 
 /*** NODE global variables ***/
@@ -66,17 +66,17 @@ UNA_node_list_t NODE_LIST;
 /*** NODE local global variables ***/
 
 static const NODE_descriptor_t NODES[UNA_BOARD_ID_LAST] = {
-	{ NODE_PROTOCOL_UNA_AT, LVRM_REGISTER_ADDRESS_LAST, (uint32_t*) LVRM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_AT, BPSM_REGISTER_ADDRESS_LAST, (uint32_t*) BPSM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_AT, DDRM_REGISTER_ADDRESS_LAST, (uint32_t*) DDRM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_AT, UHFM_REGISTER_ADDRESS_LAST, (uint32_t*) UHFM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_AT, GPSM_REGISTER_ADDRESS_LAST, (uint32_t*) GPSM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_AT, SM_REGISTER_ADDRESS_LAST, (uint32_t*) SM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_AT, 0, NULL },
-	{ NODE_PROTOCOL_UNA_AT, RRM_REGISTER_ADDRESS_LAST, (uint32_t*) RRM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_DMM, DMM_REGISTER_ADDRESS_LAST, (uint32_t*) DMM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_AT, MPMCM_REGISTER_ADDRESS_LAST, (uint32_t*) MPMCM_REGISTER_ACCESS_TIMEOUT_MS },
-	{ NODE_PROTOCOL_UNA_R4S8CR, R4S8CR_REGISTER_ADDRESS_LAST, (uint32_t*) R4S8CR_REGISTER_ACCESS_TIMEOUT_MS }
+    { NODE_PROTOCOL_UNA_AT, LVRM_REGISTER_ADDRESS_LAST, (uint32_t*) LVRM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, BPSM_REGISTER_ADDRESS_LAST, (uint32_t*) BPSM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, DDRM_REGISTER_ADDRESS_LAST, (uint32_t*) DDRM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, UHFM_REGISTER_ADDRESS_LAST, (uint32_t*) UHFM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, GPSM_REGISTER_ADDRESS_LAST, (uint32_t*) GPSM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, SM_REGISTER_ADDRESS_LAST, (uint32_t*) SM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, 0, NULL },
+    { NODE_PROTOCOL_UNA_AT, RRM_REGISTER_ADDRESS_LAST, (uint32_t*) RRM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_DMM, DMM_REGISTER_ADDRESS_LAST, (uint32_t*) DMM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, MPMCM_REGISTER_ADDRESS_LAST, (uint32_t*) MPMCM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_R4S8CR, R4S8CR_REGISTER_ADDRESS_LAST, (uint32_t*) R4S8CR_REGISTER_ACCESS_TIMEOUT_MS }
 };
 
 static NODE_context_t node_ctx;
@@ -85,36 +85,36 @@ static NODE_context_t node_ctx;
 
 /*******************************************************************/
 #define _NODE_check_node_and_board_id(void) { \
-	if (node == NULL) { \
-		status = NODE_ERROR_NULL_PARAMETER; \
-		goto errors; \
-	} \
-	if ((node->board_id) >= UNA_BOARD_ID_LAST) { \
-		status = NODE_ERROR_NOT_SUPPORTED; \
-		goto errors; \
-	} \
-	if (NODES[node->board_id].register_address_last == 0) { \
-		status = NODE_ERROR_NOT_SUPPORTED; \
-		goto errors; \
-	} \
+    if (node == NULL) { \
+        status = NODE_ERROR_NULL_PARAMETER; \
+        goto errors; \
+    } \
+    if ((node->board_id) >= UNA_BOARD_ID_LAST) { \
+        status = NODE_ERROR_NOT_SUPPORTED; \
+        goto errors; \
+    } \
+    if (NODES[node->board_id].register_address_last == 0) { \
+        status = NODE_ERROR_NOT_SUPPORTED; \
+        goto errors; \
+    } \
 }
 
 /*** NODE functions ***/
 
 /*******************************************************************/
 NODE_status_t NODE_init(void) {
-	// Local variables.
+    // Local variables.
     NODE_status_t status = NODE_SUCCESS;
     UNA_DMM_status_t una_dmm_status = UNA_DMM_SUCCESS;
     // Init context.
     node_ctx.scan_next_time_seconds = 0;
-	// Reset node list.
-	UNA_reset_node_list(&NODE_LIST);
-	// Init self registers.
-	una_dmm_status = UNA_DMM_init();
-	UNA_DMM_exit_error(NODE_ERROR_BASE_UNA_DMM);
+    // Reset node list.
+    UNA_reset_node_list(&NODE_LIST);
+    // Init self registers.
+    una_dmm_status = UNA_DMM_init();
+    UNA_DMM_exit_error(NODE_ERROR_BASE_UNA_DMM);
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/
@@ -192,7 +192,7 @@ errors:
         UNA_R4S8CR_de_init();
     }
     // Store eventual access status error.
-    if ((write_status->flags) != 0){
+    if ((write_status->flags) != 0) {
         ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status->all));
         ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node->address));
     }
@@ -298,7 +298,7 @@ errors:
         UNA_R4S8CR_de_init();
     }
     // Store eventual access status error.
-    if ((read_status->flags) != 0){
+    if ((read_status->flags) != 0) {
         ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status->all));
         ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (node->address));
     }

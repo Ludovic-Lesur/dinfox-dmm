@@ -21,11 +21,11 @@
  *******************************************************************/
 typedef enum {
     HMI_COMMON_LINE_INDEX(DDRM)
-	HMI_DDRM_LINE_INDEX_VIN,
-	HMI_DDRM_LINE_INDEX_VOUT,
-	HMI_DDRM_LINE_INDEX_IOUT,
-	HMI_DDRM_LINE_INDEX_DDEN,
-	HMI_DDRM_LINE_INDEX_LAST,
+    HMI_DDRM_LINE_INDEX_VIN,
+    HMI_DDRM_LINE_INDEX_VOUT,
+    HMI_DDRM_LINE_INDEX_IOUT,
+    HMI_DDRM_LINE_INDEX_DDEN,
+    HMI_DDRM_LINE_INDEX_LAST,
 } HMI_DDRM_line_index_t;
 
 /*** HMI DDRM global variables ***/

@@ -229,6 +229,9 @@ static void _RADIO_synchronize_node_list(void) {
         if (NODE_LIST.list[new_idx].board_id == UNA_BOARD_ID_UHFM) {
             radio_ctx.modem_node_ptr = &(NODE_LIST.list[new_idx]);
         }
+        if (NODE_LIST.list[new_idx].board_id == UNA_BOARD_ID_MPMCM) {
+            radio_ctx.mpmcm_node_ptr = &(NODE_LIST.list[new_idx]);
+        }
     }
     // Reset old list.
     _RADIO_reset_node_list((RADIO_node_t*) radio_ctx.node_list);

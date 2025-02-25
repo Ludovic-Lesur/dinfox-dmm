@@ -16,12 +16,6 @@ The board was designed on **Circuit Maker V2.0**. Below is the list of hardware 
 
 # Embedded software
 
-## Architecture
-
-<p align="center">
-<img src="https://github.com/Ludovic-Lesur/dmm/wiki/images/dmm_sw_architecture.drawio.png" width="600"/>
-</p>
-
 ## Environment
 
 The embedded software is developed under **Eclipse IDE** version 2024-09 (4.33.0) and **GNU MCU** plugin. The `script` folder contains Eclipse run/debug configuration files and **JLink** scripts to flash the MCU.
@@ -32,6 +26,12 @@ The embedded software is developed under **Eclipse IDE** version 2024-09 (4.33.0
 ## Target
 
 The board is based on the **STM32L081CBT6** microcontroller of the STMicroelectronics L0 family. Each hardware revision has a corresponding **build configuration** in the Eclipse project, which sets up the code for the selected board version.
+
+## Architecture
+
+<p align="center">
+<img src="https://github.com/Ludovic-Lesur/dmm/wiki/images/dmm_sw_architecture.drawio.png" width="600"/>
+</p>
 
 ## Structure
 

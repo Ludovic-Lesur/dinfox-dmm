@@ -435,7 +435,7 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
             }
         }
         else {
-            // Mains voltage is only available only TIC standard interface.
+            // Mains voltage is only available on TIC standard interface.
             if (ltm != 0) {
                 // Send voltage frame.
                 status = _RADIO_MPMCM_build_ul_node_payload_voltage(mpmcm_node, &node_payload, channel_idx);

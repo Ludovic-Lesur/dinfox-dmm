@@ -10,7 +10,7 @@
 #include "error.h"
 #include "error_base.h"
 #include "gpio.h"
-#include "math.h"
+#include "maths.h"
 #include "mcu_mapping.h"
 #include "nvic_priority.h"
 #include "tim.h"

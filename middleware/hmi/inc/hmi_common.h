@@ -9,7 +9,7 @@
 #define __HMI_COMMON_H__
 
 #include "hmi_node.h"
-#include "string.h"
+#include "strings.h"
 #include "types.h"
 #include "una.h"
 

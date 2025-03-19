@@ -21,7 +21,7 @@
 #include "hmi_uhfm.h"
 #include "node.h"
 #include "sh1106.h"
-#include "string.h"
+#include "strings.h"
 #include "swreg.h"
 #include "types.h"
 #include "uhfm_registers.h"

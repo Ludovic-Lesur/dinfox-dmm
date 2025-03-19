@@ -17,7 +17,7 @@
 #include "iwdg.h"
 #include "led.h"
 #include "logo.h"
-#include "math.h"
+#include "maths.h"
 #include "mcu_mapping.h"
 #include "node.h"
 #include "nvic_priority.h"
@@ -25,7 +25,7 @@
 #include "pwr.h"
 #include "sh1106.h"
 #include "sh1106_font.h"
-#include "string.h"
+#include "strings.h"
 #include "tim.h"
 #include "types.h"
 #include "una.h"
@@ -972,7 +972,7 @@ HMI_status_t HMI_process(void) {
         tim_status = TIM_STD_start(TIM_INSTANCE_HMI, HMI_UNUSED_DURATION_THRESHOLD_MS, TIM_UNIT_MS, &_HMI_irq_callback_auto_power_off_timer);
         TIM_exit_error(HMI_ERROR_BASE_TIM);
         // Enter stop mode.
-        PWR_enter_sleep_mode();
+        PWR_enter_sleep_mode(PWR_SLEEP_MODE_NORMAL);
         // Wake-up.
         IWDG_reload();
         // Check flags.

@@ -14,7 +14,7 @@
 #include "node.h"
 #include "rtc.h"
 #include "sh1106.h"
-#include "string.h"
+#include "strings.h"
 #include "tim.h"
 
 /*** HMI structures ***/

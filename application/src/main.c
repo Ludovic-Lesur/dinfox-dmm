@@ -42,6 +42,7 @@ static void _DMM_init_hw(void) {
     // Local variables.
     RCC_status_t rcc_status = RCC_SUCCESS;
     RTC_status_t rtc_status = RTC_SUCCESS;
+    LPTIM_status_t lptim_status = LPTIM_SUCCESS;
     LED_status_t led_status = LED_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
     HMI_status_t hmi_status = HMI_SUCCESS;
@@ -77,7 +78,8 @@ static void _DMM_init_hw(void) {
     rtc_status = RTC_init(NULL, NVIC_PRIORITY_RTC);
     RTC_stack_error(ERROR_BASE_RTC);
     // Init delay timer.
-    LPTIM_init(NVIC_PRIORITY_DELAY);
+    lptim_status = LPTIM_init(NVIC_PRIORITY_DELAY);
+    LPTIM_stack_error(ERROR_BASE_LPTIM);
     // Init components.
     led_status = LED_init();
     LED_stack_error(ERROR_BASE_LED);
@@ -114,7 +116,7 @@ int main(void) {
         // Enter sleep mode.
         IWDG_reload();
 #ifndef DMM_DEBUG
-        PWR_enter_stop_mode();
+        PWR_enter_deepsleep_mode(PWR_DEEPSLEEP_MODE_STOP);
         IWDG_reload();
 #endif
         // Process nodes.

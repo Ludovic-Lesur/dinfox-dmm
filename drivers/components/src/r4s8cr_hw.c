@@ -33,9 +33,9 @@ R4S8CR_status_t R4S8CR_HW_init(R4S8CR_HW_configuration_t* configuration) {
     // Init LPUART.
     lpuart_config.baud_rate = (configuration->uart_baud_rate);
     lpuart_config.nvic_priority = NVIC_PRIORITY_RS485;
-    lpuart_config.rxne_callback = (configuration->rx_irq_callback);
+    lpuart_config.rxne_irq_callback = (configuration->rx_irq_callback);
     lpuart_config.self_address = UNA_NODE_ADDRESS_MASTER;
-    lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
+    lpuart_config.rs485_mode = LPUART_RS485_MODE_DIRECT;
     lpuart_status = LPUART_init(&LPUART_GPIO_RS485, &lpuart_config);
     LPUART_exit_error(R4S8CR_ERROR_BASE_RS485);
 errors:

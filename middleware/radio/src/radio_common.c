@@ -11,7 +11,7 @@
 #include "node.h"
 #include "radio.h"
 #include "rcc_registers.h"
-#include "string.h"
+#include "strings.h"
 #include "swreg.h"
 #include "types.h"
 #include "una.h"

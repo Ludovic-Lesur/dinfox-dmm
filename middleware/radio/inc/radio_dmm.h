@@ -8,12 +8,8 @@
 #ifndef __RADIO_DMM_H__
 #define __RADIO_DMM_H__
 
-#include "node.h"
 #include "radio.h"
-#include "radio_common.h"
-#include "string.h"
 #include "types.h"
-#include "una.h"
 
 /*** RADIO DMM functions ***/
 

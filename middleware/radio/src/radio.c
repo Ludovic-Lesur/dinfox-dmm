@@ -837,7 +837,7 @@ RADIO_status_t RADIO_process(void) {
 errors:
     // Update next radio times.
     node_status = NODE_read_register(radio_ctx.master_node_ptr, DMM_REGISTER_ADDRESS_CONFIGURATION_0, &reg_value, &read_status);
-    NODE_stack_error(ERROR_BASE_NODE);
+    NODE_stack_error(ERROR_BASE_RADIO + RADIO_ERROR_BASE_NODE);
     // This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
     if (ul_next_time_update_required != 0) {
         radio_ctx.ul_next_time_seconds += UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_UL_PERIOD));

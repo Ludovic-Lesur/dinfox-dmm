@@ -29,7 +29,7 @@
 
 /*** UNA DMM local global variables ***/
 
-static uint32_t UNA_DMM_REGISTERS[DMM_REGISTER_ADDRESS_LAST];
+static uint32_t UNA_DMM_REGISTERS[DMM_REGISTER_ADDRESS_LAST] = { [0 ... (DMM_REGISTER_ADDRESS_LAST - 1)] = 0x00000000 };
 
 /*** UNA DMM local functions ***/
 
@@ -45,7 +45,7 @@ static void _UNA_DMM_write_nvm_register(uint8_t reg_addr, uint32_t reg_value) {
         nvm_byte = (uint8_t) (((reg_value) >> (idx << 3)) & 0x000000FF);
         // Write NVM.
         nvm_status = NVM_write_byte((NVM_ADDRESS_UNA_REGISTERS + (reg_addr << 2) + idx), nvm_byte);
-        NVM_stack_error(ERROR_BASE_NVM);
+        NVM_stack_error(ERROR_BASE_UNA_DMM + UNA_DMM_ERROR_BASE_NVM);
         if (nvm_status != NVM_SUCCESS) break;
     }
 }
@@ -61,7 +61,7 @@ static uint32_t _UNA_DMM_read_nvm_register(uint8_t reg_addr) {
     for (idx = 0; idx < UNA_REGISTER_SIZE_BYTES; idx++) {
         // Read NVM.
         nvm_status = NVM_read_byte((NVM_ADDRESS_UNA_REGISTERS + (reg_addr << 2) + idx), &nvm_byte);
-        NVM_stack_error(ERROR_BASE_NVM);
+        NVM_stack_error(ERROR_BASE_UNA_DMM + UNA_DMM_ERROR_BASE_NVM);
         if (nvm_status != NVM_SUCCESS) {
             reg_value = 0;
             break;

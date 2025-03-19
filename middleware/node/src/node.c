@@ -398,7 +398,7 @@ errors:
     read_params.reply_params.type = UNA_REPLY_TYPE_OK;
     read_params.reply_params.timeout_ms = 0;
     una_dmm_status = UNA_DMM_read_register(&read_params, &reg_value, &read_status);
-    UNA_DMM_stack_error(ERROR_BASE_UNA_DMM);
+    UNA_DMM_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_UNA_DMM);
     // Check access status.
     if ((una_dmm_status == UNA_DMM_SUCCESS) && (read_status.all == 0)) {
         scan_period_seconds = UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD));

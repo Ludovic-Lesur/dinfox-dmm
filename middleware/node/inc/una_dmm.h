@@ -8,6 +8,7 @@
 #ifndef __UNA_DMM_H__
 #define __UNA_DMM_H__
 
+#include "nvm.h"
 #include "types.h"
 #include "una.h"
 
@@ -20,8 +21,10 @@ typedef enum {
     UNA_DMM_ERROR_SCAN_PERIOD_UNDERFLOW,
     UNA_DMM_ERROR_UPLINK_PERIOD_UNDERFLOW,
     UNA_DMM_ERROR_DOWNLINK_PERIOD_UNDERFLOW,
+    // Low level drivers errors.s
+    UNA_DMM_ERROR_BASE_NVM = 0x0100,
     // Last base value.
-    UNA_DMM_ERROR_BASE_LAST = 0x0100
+    UNA_DMM_ERROR_BASE_LAST = (UNA_DMM_ERROR_BASE_NVM + NVM_ERROR_BASE_LAST),
 } UNA_DMM_status_t;
 
 /*** DMM functions ***/

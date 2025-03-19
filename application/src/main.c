@@ -8,9 +8,9 @@
 // Peripherals.
 #include "exti.h"
 #include "gpio.h"
-#include "gpio_mapping.h"
 #include "iwdg.h"
 #include "lptim.h"
+#include "mcu_mapping.h"
 #include "nvic.h"
 #include "nvic_priority.h"
 #include "pwr.h"

@@ -10,19 +10,16 @@
 #include "error.h"
 #include "error_base.h"
 #include "gpio.h"
-#include "gpio_mapping.h"
 #include "math.h"
+#include "mcu_mapping.h"
 #include "nvic_priority.h"
 #include "tim.h"
 #include "types.h"
 
 /*** LED local macros ***/
 
-#define LED_PWM_TIM_INSTANCE        TIM_INSTANCE_TIM3
-#define LED_PWM_FREQUENCY_HZ        10000
-
-#define LED_DIMMING_TIM_INSTANCE    TIM_INSTANCE_TIM22
-#define LED_DIMMING_LUT_SIZE        100
+#define LED_PWM_FREQUENCY_HZ    10000
+#define LED_DIMMING_LUT_SIZE    100
 
 /*** LED local structures ***/
 
@@ -60,8 +57,8 @@ static LED_status_t _LED_turn_off(void) {
     TIM_status_t tim_status = TIM_SUCCESS;
     uint8_t idx = 0;
     // Stop timers.
-    for (idx = 0; idx < GPIO_TIM_CHANNEL_INDEX_LAST; idx++) {
-        tim_status = TIM_PWM_set_waveform(LED_PWM_TIM_INSTANCE, (GPIO_LED_TIM.list[idx])->channel, (LED_PWM_FREQUENCY_HZ * 1000), 0);
+    for (idx = 0; idx < TIM_CHANNEL_INDEX_LED_LAST; idx++) {
+        tim_status = TIM_PWM_set_waveform(TIM_INSTANCE_LED, (TIM_GPIO_LED.list[idx])->channel, (LED_PWM_FREQUENCY_HZ * 1000), 0);
         TIM_exit_error(ERROR_BASE_TIM_LED_PWM);
     }
 errors:
@@ -76,11 +73,11 @@ static void _LED_dimming_timer_irq_callback(void) {
     uint8_t duty_cycle_percent = 0;
     uint8_t idx = 0;
     // Update duty cycles.
-    for (idx = 0; idx < GPIO_TIM_CHANNEL_INDEX_LAST; idx++) {
+    for (idx = 0; idx < TIM_CHANNEL_INDEX_LED_LAST; idx++) {
         // Apply color mask.
         duty_cycle_percent = ((led_ctx.color & (0b1 << idx)) != 0) ? LED_DIMMING_LUT[led_ctx.dimming_lut_index] : 0;
         // Set duty cycle.
-        tim_status = TIM_PWM_set_waveform(LED_PWM_TIM_INSTANCE, (GPIO_LED_TIM.list[idx])->channel, (LED_PWM_FREQUENCY_HZ * 1000), duty_cycle_percent);
+        tim_status = TIM_PWM_set_waveform(TIM_INSTANCE_LED, (TIM_GPIO_LED.list[idx])->channel, (LED_PWM_FREQUENCY_HZ * 1000), duty_cycle_percent);
         TIM_stack_error(ERROR_BASE_TIM_LED_PWM);
     }
     // Manage index and direction.
@@ -100,7 +97,7 @@ static void _LED_dimming_timer_irq_callback(void) {
             // Stop timers.
             led_status = _LED_turn_off();
             LED_stack_error(ERROR_BASE_LED);
-            tim_status = TIM_STD_stop(LED_DIMMING_TIM_INSTANCE);
+            tim_status = TIM_STD_stop(TIM_INSTANCE_LED_DIMMING);
             TIM_stack_error(ERROR_BASE_TIM_LED_DIMMING);
             // Single blink done.
             led_ctx.dimming_lut_direction = 0;
@@ -122,9 +119,9 @@ LED_status_t LED_init(void) {
     led_ctx.dimming_lut_index = 0;
     led_ctx.single_blink_done = 1;
     // Init timers.
-    tim_status = TIM_PWM_init(LED_PWM_TIM_INSTANCE, (TIM_gpio_t*) &GPIO_LED_TIM);
+    tim_status = TIM_PWM_init(TIM_INSTANCE_LED, (TIM_gpio_t*) &TIM_GPIO_LED);
     TIM_exit_error(LED_ERROR_BASE_TIM_PWM);
-    tim_status = TIM_STD_init(LED_DIMMING_TIM_INSTANCE, NVIC_PRIORITY_LED);
+    tim_status = TIM_STD_init(TIM_INSTANCE_LED_DIMMING, NVIC_PRIORITY_LED);
     TIM_exit_error(LED_ERROR_BASE_TIM_DIMMING);
     // Turn LED off.
     status = _LED_turn_off();
@@ -142,9 +139,9 @@ LED_status_t LED_de_init(void) {
     status = LED_stop_blink();
     if (status != LED_SUCCESS) goto errors;
     // Release timers.
-    tim_status = TIM_PWM_de_init(LED_PWM_TIM_INSTANCE, (TIM_gpio_t*) &GPIO_LED_TIM);
+    tim_status = TIM_PWM_de_init(TIM_INSTANCE_LED, (TIM_gpio_t*) &TIM_GPIO_LED);
     TIM_exit_error(LED_ERROR_BASE_TIM_PWM);
-    tim_status = TIM_STD_de_init(LED_DIMMING_TIM_INSTANCE);
+    tim_status = TIM_STD_de_init(TIM_INSTANCE_LED_DIMMING);
     TIM_exit_error(LED_ERROR_BASE_TIM_DIMMING);
 errors:
     return status;
@@ -170,7 +167,7 @@ LED_status_t LED_start_single_blink(uint32_t blink_duration_ms, LED_color_t colo
     led_ctx.dimming_lut_index = 0;
     led_ctx.single_blink_done = 0;
     // Start blink.
-    tim_status = TIM_STD_start(LED_DIMMING_TIM_INSTANCE, ((blink_duration_ms) / (LED_DIMMING_LUT_SIZE << 1)), TIM_UNIT_MS, &_LED_dimming_timer_irq_callback);
+    tim_status = TIM_STD_start(TIM_INSTANCE_LED_DIMMING, ((blink_duration_ms) / (LED_DIMMING_LUT_SIZE << 1)), TIM_UNIT_MS, &_LED_dimming_timer_irq_callback);
     TIM_exit_error(LED_ERROR_BASE_TIM_DIMMING);
 errors:
     return status;
@@ -185,7 +182,7 @@ LED_status_t LED_stop_blink(void) {
     status = _LED_turn_off();
     if (status != LED_SUCCESS) goto errors;
     // Stop dimming timer.
-    tim_status = TIM_STD_stop(LED_DIMMING_TIM_INSTANCE);
+    tim_status = TIM_STD_stop(TIM_INSTANCE_LED_DIMMING);
     TIM_exit_error(LED_ERROR_BASE_TIM_DIMMING);
 errors:
     return status;

@@ -10,7 +10,6 @@
 #include "error.h"
 #include "exti.h"
 #include "gpio.h"
-#include "gpio_mapping.h"
 #include "hmi_node.h"
 #include "i2c.h"
 #include "i2c_address.h"
@@ -18,6 +17,7 @@
 #include "led.h"
 #include "logo.h"
 #include "math.h"
+#include "mcu_mapping.h"
 #include "node.h"
 #include "nvic_priority.h"
 #include "power.h"
@@ -30,8 +30,6 @@
 #include "una.h"
 
 /*** HMI macros ***/
-
-#define HMI_TIMER_INSTANCE                  TIM_INSTANCE_TIM2
 
 #define HMI_DATA_PAGES_DISPLAYED            3
 #define HMI_DATA_PAGES_DEPTH                32
@@ -897,7 +895,7 @@ HMI_status_t HMI_init(void) {
     sh1106_status = SH1106_init();
     SH1106_exit_error(HMI_ERROR_BASE_SH1106);
     // Init auto-power off timer.
-    tim_status = TIM_STD_init(HMI_TIMER_INSTANCE, NVIC_PRIORITY_HMI_TIMER);
+    tim_status = TIM_STD_init(TIM_INSTANCE_HMI, NVIC_PRIORITY_HMI_TIMER);
     TIM_exit_error(HMI_ERROR_BASE_TIM);
     // Init buttons.
     EXTI_configure_gpio(&GPIO_BP1, GPIO_PULL_NONE, EXTI_TRIGGER_RISING_EDGE, &_HMI_irq_callback_bp1, NVIC_PRIORITY_HMI_INPUTS);
@@ -928,7 +926,7 @@ HMI_status_t HMI_de_init(void) {
     EXTI_release_gpio(&GPIO_ENC_CHA, GPIO_MODE_ANALOG);
     EXTI_release_gpio(&GPIO_ENC_CHB, GPIO_MODE_ANALOG);
     // Release timer.
-    tim_status = TIM_STD_de_init(HMI_TIMER_INSTANCE);
+    tim_status = TIM_STD_de_init(TIM_INSTANCE_HMI);
     TIM_exit_error(HMI_ERROR_BASE_TIM);
     // Release OLED screen.
     sh1106_status = SH1106_de_init();
@@ -956,7 +954,7 @@ HMI_status_t HMI_process(void) {
         status = _HMI_state_machine();
         if (status != HMI_SUCCESS) goto errors;
         // Start auto power-off timer.
-        tim_status = TIM_STD_start(HMI_TIMER_INSTANCE, HMI_UNUSED_DURATION_THRESHOLD_MS, TIM_UNIT_MS, &_HMI_irq_callback_auto_power_off_timer);
+        tim_status = TIM_STD_start(TIM_INSTANCE_HMI, HMI_UNUSED_DURATION_THRESHOLD_MS, TIM_UNIT_MS, &_HMI_irq_callback_auto_power_off_timer);
         TIM_exit_error(HMI_ERROR_BASE_TIM);
         // Enter stop mode.
         PWR_enter_sleep_mode();
@@ -969,7 +967,7 @@ HMI_status_t HMI_process(void) {
             // Auto power-off.
             hmi_ctx.state = HMI_STATE_UNUSED;
         }
-        tim_status = TIM_STD_stop(HMI_TIMER_INSTANCE);
+        tim_status = TIM_STD_stop(TIM_INSTANCE_HMI);
         TIM_exit_error(HMI_ERROR_BASE_TIM);
     }
     // Turn bus interface and HMI off.
@@ -985,7 +983,7 @@ errors:
     // Delay and exit.
     LPTIM_delay_milliseconds(HMI_UNUSED_DURATION_THRESHOLD_MS, LPTIM_DELAY_MODE_STOP);
     // Stop timer.
-    TIM_STD_stop(HMI_TIMER_INSTANCE);
+    TIM_STD_stop(TIM_INSTANCE_HMI);
     // Turn bus interface and HMI off.
     POWER_disable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_HMI);
     POWER_disable(POWER_REQUESTER_ID_HMI, POWER_DOMAIN_RS485);

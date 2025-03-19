@@ -11,9 +11,9 @@
 #include "r4s8cr_driver_flags.h"
 #endif
 #include "error.h"
-#include "lpuart.h"
-#include "gpio_mapping.h"
 #include "iwdg.h"
+#include "lpuart.h"
+#include "mcu_mapping.h"
 #include "nvic_priority.h"
 #include "r4s8cr.h"
 #include "types.h"
@@ -35,7 +35,7 @@ R4S8CR_status_t R4S8CR_HW_init(R4S8CR_HW_configuration_t* configuration) {
     lpuart_config.rxne_callback = (configuration->rx_irq_callback);
     lpuart_config.self_address = UNA_NODE_ADDRESS_MASTER;
     lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
-    lpuart_status = LPUART_init(&GPIO_RS485_LPUART, &lpuart_config);
+    lpuart_status = LPUART_init(&LPUART_GPIO_RS485, &lpuart_config);
     LPUART_exit_error(R4S8CR_ERROR_BASE_RS485);
 errors:
     return status;
@@ -47,7 +47,7 @@ R4S8CR_status_t R4S8CR_HW_de_init(void) {
     R4S8CR_status_t status = R4S8CR_SUCCESS;
     LPUART_status_t lpuart_status = LPUART_SUCCESS;
     // Release LPUART.
-    lpuart_status = LPUART_de_init(&GPIO_RS485_LPUART);
+    lpuart_status = LPUART_de_init(&LPUART_GPIO_RS485);
     LPUART_exit_error(R4S8CR_ERROR_BASE_RS485);
 errors:
     return status;

@@ -11,8 +11,8 @@
 #include "lmac_driver_flags.h"
 #endif
 #include "error.h"
-#include "gpio_mapping.h"
 #include "lmac.h"
+#include "mcu_mapping.h"
 #include "nvic_priority.h"
 #include "rtc.h"
 #include "types.h"
@@ -36,7 +36,7 @@ LMAC_status_t LMAC_HW_init(uint32_t baud_rate, LMAC_rx_irq_cb_t rx_irq_callback,
     lpuart_config.rxne_callback = rx_irq_callback;
     lpuart_config.self_address = UNA_NODE_ADDRESS_MASTER;
     lpuart_config.rx_mode = LPUART_RX_MODE_ADDRESSED;
-    lpuart_status = LPUART_init(&GPIO_RS485_LPUART, &lpuart_config);
+    lpuart_status = LPUART_init(&LPUART_GPIO_RS485, &lpuart_config);
     LPUART_exit_error(LMAC_ERROR_BASE_HW_INTERFACE);
 errors:
     return status;
@@ -48,7 +48,7 @@ LMAC_status_t LMAC_HW_de_init(void) {
     LMAC_status_t status = LMAC_SUCCESS;
     LPUART_status_t lpuart_status = LPUART_SUCCESS;
     // Release LPUART.
-    lpuart_status = LPUART_de_init(&GPIO_RS485_LPUART);
+    lpuart_status = LPUART_de_init(&LPUART_GPIO_RS485);
     LPUART_exit_error(LMAC_ERROR_BASE_HW_INTERFACE);
 errors:
     return status;

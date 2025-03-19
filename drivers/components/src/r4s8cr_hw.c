@@ -11,6 +11,7 @@
 #include "r4s8cr_driver_flags.h"
 #endif
 #include "error.h"
+#include "error_base.h"
 #include "iwdg.h"
 #include "lpuart.h"
 #include "mcu_mapping.h"
@@ -48,8 +49,7 @@ R4S8CR_status_t R4S8CR_HW_de_init(void) {
     LPUART_status_t lpuart_status = LPUART_SUCCESS;
     // Release LPUART.
     lpuart_status = LPUART_de_init(&LPUART_GPIO_RS485);
-    LPUART_exit_error(R4S8CR_ERROR_BASE_RS485);
-errors:
+    LPUART_stack_error(ERROR_BASE_R4S8CR + R4S8CR_ERROR_BASE_RS485);
     return status;
 }
 

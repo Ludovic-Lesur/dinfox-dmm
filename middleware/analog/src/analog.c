@@ -9,6 +9,7 @@
 
 #include "adc.h"
 #include "error.h"
+#include "error_base.h"
 #include "mcu_mapping.h"
 #include "types.h"
 
@@ -59,8 +60,7 @@ ANALOG_status_t ANALOG_de_init(void) {
     ADC_status_t adc_status = ADC_SUCCESS;
     // Release internal ADC.
     adc_status = ADC_de_init();
-    ADC_exit_error(ANALOG_ERROR_BASE_ADC);
-errors:
+    ADC_stack_error(ERROR_BASE_ANALOG + ANALOG_ERROR_BASE_ADC);
     return status;
 }
 

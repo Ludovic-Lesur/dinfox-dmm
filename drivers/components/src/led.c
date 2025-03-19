@@ -139,16 +139,16 @@ errors:
 LED_status_t LED_de_init(void) {
     // Local variables.
     LED_status_t status = LED_SUCCESS;
+    LED_status_t led_status = LED_SUCCESS;
     TIM_status_t tim_status = TIM_SUCCESS;
     // Turn LED off.
-    status = LED_stop_blink();
-    if (status != LED_SUCCESS) goto errors;
+    led_status = LED_stop_blink();
+    LED_stack_error(ERROR_BASE_LED);
     // Release timers.
     tim_status = TIM_PWM_de_init(TIM_INSTANCE_LED, (TIM_gpio_t*) &TIM_GPIO_LED);
-    TIM_exit_error(LED_ERROR_BASE_TIM_PWM);
+    TIM_stack_error(ERROR_BASE_LED + LED_ERROR_BASE_TIM_PWM);
     tim_status = TIM_STD_de_init(TIM_INSTANCE_LED_DIMMING);
-    TIM_exit_error(LED_ERROR_BASE_TIM_DIMMING);
-errors:
+    TIM_stack_error(ERROR_BASE_LED + LED_ERROR_BASE_TIM_DIMMING);
     return status;
 }
 

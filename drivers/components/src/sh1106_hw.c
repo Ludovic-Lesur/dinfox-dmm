@@ -11,6 +11,7 @@
 #include "sh1106_driver_flags.h"
 #endif
 #include "error.h"
+#include "error_base.h"
 #include "i2c.h"
 #include "i2c_address.h"
 #include "mcu_mapping.h"
@@ -40,8 +41,7 @@ SH1106_status_t SH1106_HW_de_init(void) {
     I2C_status_t i2c_status = I2C_SUCCESS;
     // Release I2C.
     i2c_status = I2C_de_init(I2C_INSTANCE_HMI, &I2C_GPIO_HMI);
-    I2C_exit_error(SH1106_ERROR_BASE_I2C);
-errors:
+    I2C_stack_error(ERROR_BASE_SH1106 + SH1106_ERROR_BASE_I2C);
     return status;
 }
 

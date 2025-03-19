@@ -8,6 +8,7 @@
 #include "hmi.h"
 
 #include "error.h"
+#include "error_base.h"
 #include "exti.h"
 #include "gpio.h"
 #include "hmi_node.h"
@@ -942,11 +943,10 @@ HMI_status_t HMI_de_init(void) {
     EXTI_release_gpio(&GPIO_ENC_CHB, GPIO_MODE_ANALOG);
     // Release timer.
     tim_status = TIM_STD_de_init(TIM_INSTANCE_HMI);
-    TIM_exit_error(HMI_ERROR_BASE_TIM);
+    TIM_stack_error(ERROR_BASE_HMI + HMI_ERROR_BASE_TIM);
     // Release OLED screen.
     sh1106_status = SH1106_de_init();
-    SH1106_exit_error(HMI_ERROR_BASE_SH1106);
-errors:
+    SH1106_stack_error(ERROR_BASE_HMI + HMI_ERROR_BASE_SH1106);
     return status;
 }
 

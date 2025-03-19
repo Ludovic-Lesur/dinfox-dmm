@@ -8,6 +8,7 @@
 #ifndef __RADIO_H__
 #define __RADIO_H__
 
+#include "error.h"
 #include "node.h"
 #include "types.h"
 #include "una.h"
@@ -40,7 +41,7 @@ typedef enum {
     RADIO_ERROR_ACTION_NODE_ADDRESS,
     RADIO_ERROR_ACTION_READ_ACCESS,
     // Low level drivers errors.
-    RADIO_ERROR_BASE_NODE = 0x0100,
+    RADIO_ERROR_BASE_NODE = ERROR_BASE_STEP,
     // Last base value.
     RADIO_ERROR_BASE_LAST = (RADIO_ERROR_BASE_NODE + NODE_ERROR_BASE_LAST)
 } RADIO_status_t;

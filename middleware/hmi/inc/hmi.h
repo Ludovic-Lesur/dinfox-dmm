@@ -8,6 +8,7 @@
 #ifndef __HMI_H__
 #define __HMI_H__
 
+#include "error.h"
 #include "i2c.h"
 #include "lptim.h"
 #include "power.h"
@@ -38,8 +39,7 @@ typedef enum {
     HMI_ERROR_DATA_DEPTH_OVERFLOW,
     HMI_ERROR_SCREEN,
     // Low level drivers errors.
-    HMI_ERROR_BASE_I2C1 = 0x0100,
-    HMI_ERROR_BASE_LPTIM = (HMI_ERROR_BASE_I2C1 + I2C_ERROR_BASE_LAST),
+    HMI_ERROR_BASE_LPTIM = ERROR_BASE_STEP,
     HMI_ERROR_BASE_TIM = (HMI_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
     HMI_ERROR_BASE_STRING = (HMI_ERROR_BASE_TIM + TIM_ERROR_BASE_LAST),
     HMI_ERROR_BASE_POWER = (HMI_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),

@@ -8,6 +8,7 @@
 #ifndef LED_H
 #define LED_H
 
+#include "error.h"
 #include "tim.h"
 #include "types.h"
 
@@ -23,7 +24,7 @@ typedef enum {
     LED_ERROR_NULL_DURATION,
     LED_ERROR_COLOR,
     // Low level drivers errors.
-    LED_ERROR_BASE_TIM_PWM = 0x0100,
+    LED_ERROR_BASE_TIM_PWM = ERROR_BASE_STEP,
     LED_ERROR_BASE_TIM_DIMMING = (LED_ERROR_BASE_TIM_PWM + TIM_ERROR_BASE_LAST),
     // Last base value.
     LED_ERROR_BASE_LAST = (LED_ERROR_BASE_TIM_DIMMING + TIM_ERROR_BASE_LAST)

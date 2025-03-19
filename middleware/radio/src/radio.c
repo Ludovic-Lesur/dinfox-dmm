@@ -180,7 +180,14 @@ static const RADIO_build_ul_node_payload_t RADIO_NODE_DESCRIPTOR[UNA_BOARD_ID_LA
     &RADIO_R4S8CR_build_ul_node_payload
 };
 
-static RADIO_context_t radio_ctx;
+static RADIO_context_t radio_ctx = {
+    .ul_next_time_seconds = 0,
+    .ul_node_list_index = 0,
+    .dl_next_time_seconds = 0,
+    .master_node_ptr = NULL,
+    .modem_node_ptr = NULL,
+    .mpmcm_node_ptr = NULL
+};
 
 /*** RADIO local functions ***/
 

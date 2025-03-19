@@ -46,7 +46,12 @@ static const uint8_t LED_DIMMING_LUT[LED_DIMMING_LUT_SIZE] = {
     65, 69, 72, 75, 79, 83, 87, 91, 95, 100
 };
 
-static LED_context_t led_ctx;
+static LED_context_t led_ctx = {
+    .color = LED_COLOR_OFF,
+    .dimming_lut_direction = 0,
+    .dimming_lut_index = 0,
+    .single_blink_done = 1
+};
 
 /*** LED local functions ***/
 

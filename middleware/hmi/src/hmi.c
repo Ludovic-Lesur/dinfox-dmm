@@ -144,19 +144,34 @@ static const HMI_process_function_t HMI_PROCESS_FUNCTION[HMI_IRQ_LAST] = {
     &_HMI_process_bp3
 };
 
-static const char_t* HMI_TITLE_NODE_LIST = "NODES LIST";
+static const char_t* const HMI_TITLE_NODE_LIST = "NODES LIST";
 
-static const char_t* HMI_TEXT_ERROR = "ERROR";
-static const char_t* HMI_TEXT_NA = "N/A";
+static const char_t* const HMI_TEXT_ERROR = "ERROR";
+static const char_t* const HMI_TEXT_NA = "N/A";
 
-static const char_t* HMI_MESSAGE_NODES_SCAN_RUNNING[HMI_DATA_PAGES_DISPLAYED] = {"NODES SCAN", "RUNNING", "..." };
-static const char_t* HMI_MESSAGE_UNSUPPORTED_NODE[HMI_DATA_PAGES_DISPLAYED] = { "UNSUPPORTED", "NODE", STRING_NULL };
-static const char_t* HMI_MESSAGE_NONE_MEASUREMENT[HMI_DATA_PAGES_DISPLAYED] = { "NONE", "MEASUREMENT", "ON THIS NODE" };
-static const char_t* HMI_MESSAGE_READING_DATA[HMI_DATA_PAGES_DISPLAYED] = { "READING DATA", "...", STRING_NULL };
+static const char_t* const HMI_MESSAGE_NODES_SCAN_RUNNING[HMI_DATA_PAGES_DISPLAYED] = {"NODES SCAN", "RUNNING", "..." };
+static const char_t* const HMI_MESSAGE_UNSUPPORTED_NODE[HMI_DATA_PAGES_DISPLAYED] = { "UNSUPPORTED", "NODE", STRING_NULL };
+static const char_t* const HMI_MESSAGE_NONE_MEASUREMENT[HMI_DATA_PAGES_DISPLAYED] = { "NONE", "MEASUREMENT", "ON THIS NODE" };
+static const char_t* const HMI_MESSAGE_READING_DATA[HMI_DATA_PAGES_DISPLAYED] = { "READING DATA", "...", STRING_NULL };
 
 static const uint8_t HMI_DATA_PAGE_ADDRESS[HMI_DATA_PAGES_DISPLAYED] = { HMI_PAGE_ADDRESS_DATA_1, HMI_PAGE_ADDRESS_DATA_2, HMI_PAGE_ADDRESS_DATA_3 };
 
-static HMI_context_t hmi_ctx;
+static HMI_context_t hmi_ctx = {
+    .status = HMI_SUCCESS,
+    .state = HMI_STATE_INIT,
+    .screen = HMI_SCREEN_OFF,
+    .irq_flags = 0,
+    .auto_power_off_timer_flag = 0,
+    .text_width = 0,
+    .data_depth = 0,
+    .data_index = 0,
+    .data_offset_index = 0,
+    .pointer_index = 0,
+    .node = {
+        .address = UNA_NODE_ADDRESS_ERROR,
+        .board_id = UNA_BOARD_ID_ERROR
+    }
+};
 
 /*** HMI local functions ***/
 

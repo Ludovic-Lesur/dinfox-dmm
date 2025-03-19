@@ -79,7 +79,9 @@ static const NODE_descriptor_t NODES[UNA_BOARD_ID_LAST] = {
     { NODE_PROTOCOL_UNA_R4S8CR, R4S8CR_REGISTER_ADDRESS_LAST, (uint32_t*) R4S8CR_REGISTER_ACCESS_TIMEOUT_MS }
 };
 
-static NODE_context_t node_ctx;
+static NODE_context_t node_ctx = {
+    .scan_next_time_seconds = 0
+};
 
 /*** NODE local functions ***/
 

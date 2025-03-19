@@ -59,6 +59,7 @@ static void _DMM_init_hw(void) {
     RCC_stack_error(ERROR_BASE_RCC);
     // Init GPIOs.
     GPIO_init();
+    POWER_init();
     EXTI_init();
 #ifndef DMM_DEBUG
     // Start independent watchdog.
@@ -78,7 +79,6 @@ static void _DMM_init_hw(void) {
     // Init delay timer.
     LPTIM_init(NVIC_PRIORITY_DELAY);
     // Init components.
-    POWER_init();
     led_status = LED_init();
     LED_stack_error(ERROR_BASE_LED);
     // Init nodes layer.

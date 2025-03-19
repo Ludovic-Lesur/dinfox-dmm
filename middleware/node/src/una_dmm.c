@@ -17,7 +17,6 @@
 #include "nvm_address.h"
 #include "power.h"
 #include "pwr.h"
-#include "rcc_registers.h"
 #include "swreg.h"
 #include "version.h"
 #include "una.h"
@@ -238,10 +237,11 @@ static UNA_DMM_status_t _UNA_DMM_check_register(uint8_t reg_addr, uint32_t reg_m
         if ((reg_mask & COMMON_REGISTER_CONTROL_0_MASK_BFC) != 0) {
             // Read bit.
             if (SWREG_read_field(reg_value, COMMON_REGISTER_CONTROL_0_MASK_BFC) != 0) {
-                // Clear request.
+                // Clear request and boot flag.
                 SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_CONTROL_0]), &unused_mask, 0b0, COMMON_REGISTER_CONTROL_0_MASK_BFC);
-                // Clear boot flag.
                 SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_STATUS_0]), &unused_mask, 0b0, COMMON_REGISTER_STATUS_0_MASK_BF);
+                // Clear MCU reset flags.
+                PWR_clear_reset_flags();
             }
         }
         break;
@@ -301,7 +301,7 @@ UNA_DMM_status_t UNA_DMM_init(void) {
     // SW version register 1.
     SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_SW_VERSION_1]), &unused_mask, GIT_COMMIT_ID, COMMON_REGISTER_SW_VERSION_1_MASK_COMMIT_ID);
     // Reset flags registers.
-    SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_STATUS_0]), &unused_mask, ((uint32_t) (((RCC->CSR) >> 24) & 0xFF)), COMMON_REGISTER_STATUS_0_MASK_RESET_FLAGS);
+    SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_STATUS_0]), &unused_mask, (uint32_t) PWR_get_reset_flags(), COMMON_REGISTER_STATUS_0_MASK_RESET_FLAGS);
     SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_STATUS_0]), &unused_mask, 0b1, COMMON_REGISTER_STATUS_0_MASK_BF);
     // Load default values.
     _UNA_DMM_load_dynamic_configuration();

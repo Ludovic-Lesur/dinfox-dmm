@@ -23,12 +23,20 @@
 #define I2C_INSTANCE_HMI            I2C_INSTANCE_I2C1
 
 #define TIM_INSTANCE_HMI            TIM_INSTANCE_TIM2
+
 #define TIM_INSTANCE_LED            TIM_INSTANCE_TIM3
+#define TIM_CHANNEL_LED_RED         TIM_CHANNEL_2
+#define TIM_CHANNEL_LED_GREEN       TIM_CHANNEL_3
+#define TIM_CHANNEL_LED_BLUE        TIM_CHANNEL_4
+
 #define TIM_INSTANCE_LED_DIMMING    TIM_INSTANCE_TIM22
 
 /*** MCU MAPPING structures ***/
 
-/*******************************************************************/
+/*!******************************************************************
+ * \enum ADC_channel_index_t
+ * \brief ADC channels index.
+ *******************************************************************/
 typedef enum {
     ADC_CHANNEL_INDEX_VRS_MEASURE = 0,
     ADC_CHANNEL_INDEX_VHMI_MEASURE,
@@ -36,13 +44,16 @@ typedef enum {
     ADC_CHANNEL_INDEX_LAST
 } ADC_channel_index_t;
 
-/*******************************************************************/
+/*!******************************************************************
+ * \enum TIM_channel_channel_led_t
+ * \brief TIM LED channels index.
+ *******************************************************************/
 typedef enum {
     TIM_CHANNEL_INDEX_LED_RED = 0,
     TIM_CHANNEL_INDEX_LED_GREEN,
     TIM_CHANNEL_INDEX_LED_BLUE,
     TIM_CHANNEL_INDEX_LED_LAST
-} GPIO_tim_channel_led_t;
+} TIM_channel_channel_led_t;
 
 /*** MCU MAPPING global variables ***/
 

@@ -7,6 +7,7 @@
 
 #include "radio.h"
 
+#include "bpsm_registers.h"
 #include "error.h"
 #include "error_base.h"
 #include "dmm_registers.h"
@@ -162,6 +163,9 @@ typedef struct {
     UNA_node_t* master_node_ptr;
     UNA_node_t* modem_node_ptr;
     UNA_node_t* mpmcm_node_ptr;
+    UNA_node_t* power_node_ptr;
+    uint8_t power_node_lvf_register;
+    uint8_t power_node_lvf_mask;
 } RADIO_context_t;
 
 /*** RADIO local global variables ***/
@@ -186,7 +190,10 @@ static RADIO_context_t radio_ctx = {
     .dl_next_time_seconds = 0,
     .master_node_ptr = NULL,
     .modem_node_ptr = NULL,
-    .mpmcm_node_ptr = NULL
+    .mpmcm_node_ptr = NULL,
+    .power_node_ptr = NULL,
+    .power_node_lvf_register = 0xFF,
+    .power_node_lvf_mask = UNA_REGISTER_MASK_NONE
 };
 
 /*** RADIO local functions ***/
@@ -212,6 +219,7 @@ static void _RADIO_synchronize_node_list(void) {
     radio_ctx.master_node_ptr = NULL;
     radio_ctx.modem_node_ptr = NULL;
     radio_ctx.mpmcm_node_ptr = NULL;
+    radio_ctx.power_node_ptr = NULL;
     // Reset temporary list.
     _RADIO_reset_node_list((RADIO_node_t*) tmp_node_list);
     // Copy all nodes from official list.
@@ -238,6 +246,11 @@ static void _RADIO_synchronize_node_list(void) {
         }
         if (NODE_LIST.list[new_idx].board_id == UNA_BOARD_ID_MPMCM) {
             radio_ctx.mpmcm_node_ptr = &(NODE_LIST.list[new_idx]);
+        }
+        if (NODE_LIST.list[new_idx].board_id == UNA_BOARD_ID_BPSM) {
+            radio_ctx.power_node_ptr = &(NODE_LIST.list[new_idx]);
+            radio_ctx.power_node_lvf_register = BPSM_REGISTER_ADDRESS_STATUS_1;
+            radio_ctx.power_node_lvf_mask = BPSM_REGISTER_STATUS_1_MASK_LVF;
         }
     }
     // Reset old list.
@@ -747,6 +760,9 @@ RADIO_status_t RADIO_init(void) {
     radio_ctx.master_node_ptr = NULL;
     radio_ctx.modem_node_ptr = NULL;
     radio_ctx.mpmcm_node_ptr = NULL;
+    radio_ctx.power_node_ptr = NULL;
+    radio_ctx.power_node_lvf_register = 0xFF;
+    radio_ctx.power_node_lvf_mask = UNA_REGISTER_MASK_NONE;
     // Reset actions list.
     for (idx = 0; idx < RADIO_ACTION_LIST_SIZE; idx++) {
         status = _RADIO_remove_action(idx);
@@ -784,14 +800,22 @@ RADIO_status_t RADIO_process(void) {
         _RADIO_synchronize_node_list();
         // Directly exit if there is no modem.
         if (radio_ctx.modem_node_ptr == NULL) goto errors;
+        // Turn bus interface on.
+        POWER_enable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
+        // Check power node.
+        if (radio_ctx.power_node_ptr != NULL) {
+            // Read low voltage flag.
+            node_status = NODE_read_register(radio_ctx.power_node_ptr, radio_ctx.power_node_lvf_register, &reg_value, &read_status);
+            NODE_stack_error(ERROR_BASE_RADIO + RADIO_ERROR_BASE_NODE);
+            // Check status and flag.
+            if ((node_status == NODE_SUCCESS) && (read_status.flags == 0) && (SWREG_read_field(reg_value, radio_ctx.power_node_lvf_mask)) != 0) goto errors;
+        }
         // Check downlink period.
         if (RTC_get_uptime_seconds() >= radio_ctx.dl_next_time_seconds) {
             // Next time update needed and set bidirectional flag.
             dl_next_time_update_required = 1;
             bidirectional_flag = 1;
         }
-        // Turn bus interface on.
-        POWER_enable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
         // Set radio times to now to compensate node update duration.
         if (ul_next_time_update_required != 0) {
             radio_ctx.ul_next_time_seconds = RTC_get_uptime_seconds();
@@ -800,7 +824,7 @@ RADIO_status_t RADIO_process(void) {
             radio_ctx.dl_next_time_seconds = RTC_get_uptime_seconds();
         }
         // Process MPMCM is needed.
-        if ((radio_ctx.mpmcm_node_ptr != NULL) && (radio_ctx.modem_node_ptr != NULL)) {
+        if (radio_ctx.mpmcm_node_ptr != NULL) {
             radio_status = RADIO_MPMCM_process(radio_ctx.mpmcm_node_ptr, &_RADIO_transmit);
             RADIO_stack_error(ERROR_BASE_RADIO);
         }
@@ -831,10 +855,10 @@ RADIO_status_t RADIO_process(void) {
             }
         }
     }
+errors:
     // Execute actions.
     radio_status = _RADIO_execute_actions();
     RADIO_stack_error(ERROR_BASE_RADIO);
-errors:
     // Update next radio times.
     node_status = NODE_read_register(radio_ctx.master_node_ptr, DMM_REGISTER_ADDRESS_CONFIGURATION_0, &reg_value, &read_status);
     NODE_stack_error(ERROR_BASE_RADIO + RADIO_ERROR_BASE_NODE);

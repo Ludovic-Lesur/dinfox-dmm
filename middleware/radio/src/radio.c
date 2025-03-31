@@ -7,11 +7,13 @@
 
 #include "radio.h"
 
+#include "bcm_registers.h"
 #include "bpsm_registers.h"
 #include "error.h"
 #include "error_base.h"
 #include "dmm_registers.h"
 #include "node.h"
+#include "radio_bcm.h"
 #include "radio_bpsm.h"
 #include "radio_common.h"
 #include "radio_ddrm.h"
@@ -165,7 +167,7 @@ typedef struct {
     UNA_node_t* mpmcm_node_ptr;
     UNA_node_t* power_node_ptr;
     uint8_t power_node_lvf_register;
-    uint8_t power_node_lvf_mask;
+    uint32_t power_node_lvf_mask;
 } RADIO_context_t;
 
 /*** RADIO local global variables ***/
@@ -181,7 +183,8 @@ static const RADIO_build_ul_node_payload_t RADIO_NODE_DESCRIPTOR[UNA_BOARD_ID_LA
     NULL,
     &RADIO_DMM_build_ul_node_payload,
     &RADIO_MPMCM_build_ul_node_payload,
-    &RADIO_R4S8CR_build_ul_node_payload
+    &RADIO_R4S8CR_build_ul_node_payload,
+    &RADIO_BCM_build_ul_node_payload
 };
 
 static RADIO_context_t radio_ctx = {
@@ -251,6 +254,11 @@ static void _RADIO_synchronize_node_list(void) {
             radio_ctx.power_node_ptr = &(NODE_LIST.list[new_idx]);
             radio_ctx.power_node_lvf_register = BPSM_REGISTER_ADDRESS_STATUS_1;
             radio_ctx.power_node_lvf_mask = BPSM_REGISTER_STATUS_1_MASK_LVF;
+        }
+        if ((NODE_LIST.list[new_idx].board_id == UNA_BOARD_ID_BCM) && (radio_ctx.power_node_ptr == NULL)) {
+            radio_ctx.power_node_ptr = &(NODE_LIST.list[new_idx]);
+            radio_ctx.power_node_lvf_register = BCM_REGISTER_ADDRESS_STATUS_1;
+            radio_ctx.power_node_lvf_mask = BCM_REGISTER_STATUS_1_MASK_LVF;
         }
     }
     // Reset old list.

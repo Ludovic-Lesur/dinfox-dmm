@@ -145,8 +145,8 @@ RADIO_status_t RADIO_BPSM_build_ul_node_payload(RADIO_ul_node_payload_t* node_pa
         ul_payload_electrical.vstr = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_ANALOG_DATA_1], BPSM_REGISTER_ANALOG_DATA_1_MASK_VSTR);
         ul_payload_electrical.vbkp = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_ANALOG_DATA_2], BPSM_REGISTER_ANALOG_DATA_2_MASK_VBKP);
         ul_payload_electrical.unused = 0;
-        ul_payload_electrical.chenst = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_CHENST);
         ul_payload_electrical.chrgst = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_CHRGST);
+        ul_payload_electrical.chenst = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_CHENST);
         ul_payload_electrical.bkenst = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_BKENST);
         // Copy payload.
         for (idx = 0; idx < RADIO_BPSM_UL_PAYLOAD_ELECTRICAL_SIZE; idx++) {

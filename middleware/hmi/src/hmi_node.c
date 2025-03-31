@@ -10,6 +10,7 @@
 #include "common_registers.h"
 #include "error.h"
 #include "hmi.h"
+#include "hmi_bcm.h"
 #include "hmi_bpsm.h"
 #include "hmi_ddrm.h"
 #include "hmi_dmm.h"
@@ -92,10 +93,12 @@ static const HMI_NODE_descriptor_t HMI_NODE_DESCRIPTOR[UNA_BOARD_ID_LAST] = {
     { (HMI_NODE_line_t*) HMI_UHFM_LINE, HMI_UHFM_LINE_INDEX_LAST },
     { (HMI_NODE_line_t*) HMI_GPSM_LINE, HMI_GPSM_LINE_INDEX_LAST },
     { (HMI_NODE_line_t*) HMI_SM_LINE, HMI_SM_LINE_INDEX_LAST },
-    { NULL, 0 }, { NULL, 0 },
+    { NULL, 0 },
+    { NULL, 0 },
     { (HMI_NODE_line_t*) HMI_DMM_LINE, HMI_DMM_LINE_INDEX_LAST },
     { (HMI_NODE_line_t*) HMI_MPMCM_LINE, HMI_MPMCM_LINE_INDEX_LAST },
-    { (HMI_NODE_line_t*) HMI_R4S8CR_LINE, HMI_R4S8CR_LINE_INDEX_LAST }
+    { (HMI_NODE_line_t*) HMI_R4S8CR_LINE, HMI_R4S8CR_LINE_INDEX_LAST },
+    { (HMI_NODE_line_t*) HMI_BCM_LINE, HMI_BCM_LINE_INDEX_LAST }
 };
 
 static HMI_NODE_context_t hmi_node_ctx;

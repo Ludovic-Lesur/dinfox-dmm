@@ -38,6 +38,8 @@
 
 #define NODE_SCAN_PERIOD_DEFAULT_SECONDS    86400
 
+#define NODE_ACCESS_RETRY_MAX               3
+
 /*** NODE local structures ***/
 
 /*******************************************************************/
@@ -139,6 +141,7 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     UNA_access_parameters_t write_params;
     uint8_t una_at_init = 0;
     uint8_t una_r4s8cr_init = 0;
+    uint8_t idx = 0;
     // Check parameters.
     _NODE_check_node_and_board_id();
     if (write_status == NULL) {
@@ -164,10 +167,17 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
         // Write UNA AT node register.
         una_at_init = 1;
         una_at_config.baud_rate = NODE_UNA_AT_BAUD_RATE;
+        // Init interface.
         una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-        una_at_status = UNA_AT_write_register(&write_params, reg_value, reg_mask, write_status);
-        UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
+        // Access retry loop.
+        for (idx = 0; idx < NODE_ACCESS_RETRY_MAX; idx++) {
+            una_at_status = UNA_AT_write_register(&write_params, reg_value, reg_mask, write_status);
+            UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
+            // Exit on first success.
+            if (write_status->flags == 0) break;
+        }
+        // Release interface.
         una_at_status = UNA_AT_de_init();
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_init = 0;
@@ -175,10 +185,17 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     case NODE_PROTOCOL_UNA_R4S8CR:
         // Write UNA R4S8CR node register.
         una_r4s8cr_init = 1;
+        // Init interface.
         una_r4s8cr_status = UNA_R4S8CR_init();
         UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
-        una_r4s8cr_status = UNA_R4S8CR_write_register(&write_params, reg_value, reg_mask, write_status);
-        UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
+        // Access retry loop.
+        for (idx = 0; idx < NODE_ACCESS_RETRY_MAX; idx++) {
+            una_r4s8cr_status = UNA_R4S8CR_write_register(&write_params, reg_value, reg_mask, write_status);
+            UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
+            // Exit on first success.
+            if (write_status->flags == 0) break;
+        }
+        // Release interface.
         una_r4s8cr_status = UNA_R4S8CR_de_init();
         UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
         una_r4s8cr_init = 0;
@@ -245,6 +262,7 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     UNA_access_parameters_t read_params;
     uint8_t una_at_init = 0;
     uint8_t una_r4s8cr_init = 0;
+    uint8_t idx = 0;
     // Check parameters.
     _NODE_check_node_and_board_id();
     if (read_status == NULL) {
@@ -270,10 +288,17 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
         // Write UNA AT node register.
         una_at_init = 1;
         una_at_config.baud_rate = NODE_UNA_AT_BAUD_RATE;
+        // Init interface.
         una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-        una_at_status = UNA_AT_read_register(&read_params, reg_value, read_status);
-        UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
+        // Access retry loop.
+        for (idx = 0; idx < NODE_ACCESS_RETRY_MAX; idx++) {
+            una_at_status = UNA_AT_read_register(&read_params, reg_value, read_status);
+            UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
+            // Exit on first success.
+            if (read_status->flags == 0) break;
+        }
+        // Release interface.
         una_at_status = UNA_AT_de_init();
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_init = 0;
@@ -281,10 +306,17 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     case NODE_PROTOCOL_UNA_R4S8CR:
         // Write UNA R4S8CR node register.
         una_r4s8cr_init = 1;
+        // Init interface.
         una_r4s8cr_status = UNA_R4S8CR_init();
         UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
-        una_r4s8cr_status = UNA_R4S8CR_read_register(&read_params, reg_value, read_status);
-        UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
+        // Access retry loop.
+        for (idx = 0; idx < NODE_ACCESS_RETRY_MAX; idx++) {
+            una_r4s8cr_status = UNA_R4S8CR_read_register(&read_params, reg_value, read_status);
+            UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
+            // Exit on first success.
+            if (read_status->flags == 0) break;
+        }
+        // Release interface.
         una_r4s8cr_status = UNA_R4S8CR_de_init();
         UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
         una_r4s8cr_init = 0;

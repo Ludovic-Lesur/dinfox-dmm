@@ -118,8 +118,8 @@ RADIO_status_t RADIO_UHFM_send_ul_message(UNA_node_t* uhfm_node, UHFM_ul_message
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
     UNA_access_status_t access_status;
-    uint32_t reg_control_1 = 0;
-    uint32_t reg_control_1_mask = 0;
+    uint32_t reg_configuration_0 = 0;
+    uint32_t reg_configuration_0_mask = 0;
     uint32_t ul_payload_x = 0;
     uint8_t reg_offset = 0;
     uint8_t idx = 0;
@@ -129,11 +129,14 @@ RADIO_status_t RADIO_UHFM_send_ul_message(UNA_node_t* uhfm_node, UHFM_ul_message
         goto errors;
     }
     // Configuration register.
-    SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) UHFM_UL_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REGISTER_CONTROL_1_MASK_MSGT);
-    SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) (ul_message->bidirectional_flag), UHFM_REGISTER_CONTROL_1_MASK_BF);
-    SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) (ul_message->ul_payload_size), UHFM_REGISTER_CONTROL_1_MASK_UL_PAYLOAD_SIZE);
+    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) (ul_message->ul_payload_size), UHFM_REGISTER_CONFIGURATION_0_MASK_UL_PAYLOAD_SIZE);
+    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) (ul_message->bidirectional_flag), UHFM_REGISTER_CONFIGURATION_0_MASK_BF);
+    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) UHFM_UL_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REGISTER_CONFIGURATION_0_MASK_MSGT);
+    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) 0, UHFM_REGISTER_CONFIGURATION_0_MASK_CMSG);
+    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) 0b11, UHFM_REGISTER_CONFIGURATION_0_MASK_NFR);
+    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) 0b01, UHFM_REGISTER_CONFIGURATION_0_MASK_BR);
     // Write register.
-    node_status = NODE_write_register(uhfm_node, UHFM_REGISTER_ADDRESS_CONTROL_1, reg_control_1, reg_control_1_mask, &access_status);
+    node_status = NODE_write_register(uhfm_node, UHFM_REGISTER_ADDRESS_CONFIGURATION_0, reg_configuration_0, reg_configuration_0_mask, &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     // Check access status.
     if ((access_status.flags) != 0) {

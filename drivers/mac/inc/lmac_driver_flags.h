@@ -19,4 +19,6 @@
 #define LMAC_DRIVER_MODE_MASTER
 //#define LMAC_DRIVER_MODE_SLAVE
 
+#define LMAC_DRIVER_BUFFER_SIZE                     64
+
 #endif /* __LMAC_DRIVER_FLAGS_H__ */

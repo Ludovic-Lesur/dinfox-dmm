@@ -28,3 +28,6 @@
 [submodule "una-r4s8cr"]
     path = middleware/node/una-r4s8cr
     url = https://github.com/Ludovic-Lesur/una-r4s8cr.git
+[submodule "dinfox-registers"]
+    path = middleware/node/dinfox-registers
+    url = https://github.com/Ludovic-Lesur/dinfox-registers.git

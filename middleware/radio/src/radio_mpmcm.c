@@ -398,13 +398,13 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
     status = radio_transmit_pfn(&node_payload, 0);
     if (status != RADIO_SUCCESS) goto errors;
     // Read node configuration.
-    node_status = NODE_read_register(mpmcm_node, MPMCM_REGISTER_ADDRESS_CONFIGURATION_0, &(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CONFIGURATION_0]), &access_status);
+    node_status = NODE_read_register(mpmcm_node, MPMCM_REGISTER_ADDRESS_FLAGS_1, &(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_FLAGS_1]), &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     if (access_status.flags != 0) goto errors;
     // Update local flags.
-    ame = (uint8_t) SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CONFIGURATION_0], MPMCM_REGISTER_CONFIGURATION_0_MASK_AME);
-    lte = (uint8_t) SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CONFIGURATION_0], MPMCM_REGISTER_CONFIGURATION_0_MASK_LTE);
-    ltm = (uint8_t) SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CONFIGURATION_0], MPMCM_REGISTER_CONFIGURATION_0_MASK_LTM);
+    ame = (uint8_t) SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_FLAGS_1], MPMCM_REGISTER_FLAGS_1_MASK_AME);
+    lte = (uint8_t) SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_FLAGS_1], MPMCM_REGISTER_FLAGS_1_MASK_LTE);
+    ltm = (uint8_t) SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_FLAGS_1], MPMCM_REGISTER_FLAGS_1_MASK_LTM);
     mvd = (uint8_t) SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_STATUS_1], MPMCM_REGISTER_STATUS_1_MASK_MVD);
     ticd = (uint8_t) SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_STATUS_1], MPMCM_REGISTER_STATUS_1_MASK_TICD);
     // Check MVD flag.

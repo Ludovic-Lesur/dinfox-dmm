@@ -131,11 +131,11 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payl
     // Directly exits if a common payload was computed.
     if ((node_payload->payload_size) > 0) goto errors;
     // Else use specific pattern of the node.
-    node_status = NODE_read_register((node_payload->node), SM_REGISTER_ADDRESS_CONFIGURATION_0, &(sm_registers[SM_REGISTER_ADDRESS_CONFIGURATION_0]), &access_status);
+    node_status = NODE_read_register((node_payload->node), SM_REGISTER_ADDRESS_FLAGS_1, &(sm_registers[SM_REGISTER_ADDRESS_FLAGS_1]), &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     if (access_status.flags != 0) goto errors;
     // Update local value.
-    reg_configuration = sm_registers[SM_REGISTER_ADDRESS_CONFIGURATION_0];
+    reg_configuration = sm_registers[SM_REGISTER_ADDRESS_FLAGS_1];
     // Payloads loop.
     do {
         switch (RADIO_SM_UL_PAYLOAD_PATTERN[node_payload->payload_type_counter]) {
@@ -160,7 +160,7 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payl
             break;
         case RADIO_SM_UL_PAYLOAD_TYPE_ELECTRICAL:
             // Check compilation flags.
-            if (((reg_configuration & SM_REGISTER_CONFIGURATION_0_MASK_AINF) == 0) && ((reg_configuration & SM_REGISTER_CONFIGURATION_0_MASK_DIOF) == 0)) break;
+            if (((reg_configuration & SM_REGISTER_FLAGS_1_MASK_AINF) == 0) && ((reg_configuration & SM_REGISTER_FLAGS_1_MASK_DIOF) == 0)) break;
             // Perform measurements.
             node_status = NODE_perform_measurements((node_payload->node), &access_status);
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
@@ -187,7 +187,7 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payl
             break;
         case RADIO_SM_UL_PAYLOAD_TYPE_SENSOR:
             // Check compilation flags.
-            if ((reg_configuration & SM_REGISTER_CONFIGURATION_0_MASK_DIGF) == 0) break;
+            if ((reg_configuration & SM_REGISTER_FLAGS_1_MASK_DIGF) == 0) break;
             // Perform measurements.
             node_status = NODE_perform_measurements((node_payload->node), &access_status);
             NODE_exit_error(RADIO_ERROR_BASE_NODE);

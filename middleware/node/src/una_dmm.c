@@ -72,7 +72,7 @@ static uint32_t _UNA_DMM_read_nvm_register(uint8_t reg_addr) {
 }
 
 /*******************************************************************/
-static void _UNA_DMM_load_dynamic_configuration(void) {
+static void _UNA_DMM_load_configuration(void) {
     // Local variables.
     uint8_t reg_addr = 0;
     uint32_t reg_value = 0;
@@ -300,11 +300,22 @@ UNA_DMM_status_t UNA_DMM_init(void) {
     SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_SW_VERSION_0]), &unused_mask, GIT_DIRTY_FLAG, COMMON_REGISTER_SW_VERSION_0_MASK_DTYF);
     // SW version register 1.
     SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_SW_VERSION_1]), &unused_mask, GIT_COMMIT_ID, COMMON_REGISTER_SW_VERSION_1_MASK_COMMIT_ID);
-    // Reset flags registers.
+    // Flags register 0.
+#ifdef DSM_DEBUG
+    SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_FLAGS_0]), &unused_mask, 0b1, COMMON_REGISTER_FLAGS_0_MASK_DF);
+#else
+    SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_FLAGS_0]), &unused_mask, 0b0, COMMON_REGISTER_FLAGS_0_MASK_DF);
+#endif
+#ifdef DSM_NVM_FACTORY_RESET
+    SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_FLAGS_0]), &unused_mask, 0b1, COMMON_REGISTER_FLAGS_0_MASK_NFRF);
+#else
+    SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_FLAGS_0]), &unused_mask, 0b0, COMMON_REGISTER_FLAGS_0_MASK_NFRF);
+#endif
+    // Status register 0.
     SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_STATUS_0]), &unused_mask, (uint32_t) PWR_get_reset_flags(), COMMON_REGISTER_STATUS_0_MASK_RESET_FLAGS);
     SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_STATUS_0]), &unused_mask, 0b1, COMMON_REGISTER_STATUS_0_MASK_BF);
     // Load default values.
-    _UNA_DMM_load_dynamic_configuration();
+    _UNA_DMM_load_configuration();
     _UNA_DMM_reset_analog_data();
     return status;
 }

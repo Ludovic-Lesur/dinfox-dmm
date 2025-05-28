@@ -47,15 +47,23 @@ typedef enum {
 } RADIO_status_t;
 
 /*!******************************************************************
- * \enum RADIO_ul_node_payload_t
- * \brief Node UL payload structure.
+ * \enum RADIO_node_t
+ * \brief Radio node structure.
  *******************************************************************/
 typedef struct {
     UNA_node_t* node;
     uint8_t payload_type_counter;
+    uint8_t error_stack_payload_counter;
+} RADIO_node_t;
+
+/*!******************************************************************
+ * \enum RADIO_ul_payload_t
+ * \brief Node uplink payload structure.
+ *******************************************************************/
+typedef struct {
     uint8_t* payload;
     uint8_t payload_size;
-} RADIO_ul_node_payload_t;
+} RADIO_ul_payload_t;
 
 /*!******************************************************************
  * \enum RADIO_node_action_t

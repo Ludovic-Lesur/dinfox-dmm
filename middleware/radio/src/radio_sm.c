@@ -98,7 +98,7 @@ static const RADIO_SM_ul_payload_type_t RADIO_SM_UL_PAYLOAD_PATTERN[] = {
 /*** RADIO SM functions ***/
 
 /*******************************************************************/
-RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload) {
+RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_ul_payload_t* node_payload) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -111,11 +111,11 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payl
     uint8_t idx = 0;
     uint32_t loop_count = 0;
     // Check parameters.
-    if (node_payload == NULL) {
+    if ((radio_node == NULL) || (node_payload == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    if (((node_payload->node) == NULL) || ((node_payload->payload) == NULL)) {
+    if (((radio_node->node) == NULL) || ((node_payload->payload) == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
@@ -126,27 +126,27 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payl
     // Reset payload size.
     node_payload->payload_size = 0;
     // Check event driven payloads.
-    status = RADIO_COMMON_check_event_driven_payloads(node_payload, (uint32_t*) sm_registers);
+    status = RADIO_COMMON_check_event_driven_payloads(radio_node, node_payload, (uint32_t*) sm_registers);
     if (status != RADIO_SUCCESS) goto errors;
     // Directly exits if a common payload was computed.
     if ((node_payload->payload_size) > 0) goto errors;
     // Else use specific pattern of the node.
-    node_status = NODE_read_register((node_payload->node), SM_REGISTER_ADDRESS_FLAGS_1, &(sm_registers[SM_REGISTER_ADDRESS_FLAGS_1]), &access_status);
+    node_status = NODE_read_register((radio_node->node), SM_REGISTER_ADDRESS_FLAGS_1, &(sm_registers[SM_REGISTER_ADDRESS_FLAGS_1]), &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     if (access_status.flags != 0) goto errors;
     // Update local value.
     reg_configuration = sm_registers[SM_REGISTER_ADDRESS_FLAGS_1];
     // Payloads loop.
     do {
-        switch (RADIO_SM_UL_PAYLOAD_PATTERN[node_payload->payload_type_counter]) {
+        switch (RADIO_SM_UL_PAYLOAD_PATTERN[radio_node->payload_type_counter]) {
         case RADIO_SM_UL_PAYLOAD_TYPE_MONITORING:
             // Perform measurements.
-            node_status = NODE_perform_measurements((node_payload->node), &access_status);
+            node_status = NODE_perform_measurements((radio_node->node), &access_status);
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
             // Check write status.
             if (access_status.flags == 0) {
                 // Read related registers.
-                node_status = NODE_read_registers((node_payload->node), (uint8_t*) RADIO_SM_REGISTERS_MONITORING, sizeof(RADIO_SM_REGISTERS_MONITORING), (uint32_t*) sm_registers, &access_status);
+                node_status = NODE_read_registers((radio_node->node), (uint8_t*) RADIO_SM_REGISTERS_MONITORING, sizeof(RADIO_SM_REGISTERS_MONITORING), (uint32_t*) sm_registers, &access_status);
                 NODE_exit_error(RADIO_ERROR_BASE_NODE);
             }
             // Build data payload.
@@ -162,12 +162,12 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payl
             // Check compilation flags.
             if (((reg_configuration & SM_REGISTER_FLAGS_1_MASK_AINF) == 0) && ((reg_configuration & SM_REGISTER_FLAGS_1_MASK_DIOF) == 0)) break;
             // Perform measurements.
-            node_status = NODE_perform_measurements((node_payload->node), &access_status);
+            node_status = NODE_perform_measurements((radio_node->node), &access_status);
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
             // Check write status.
             if (access_status.flags == 0) {
                 // Read related registers.
-                node_status = NODE_read_registers((node_payload->node), (uint8_t*) RADIO_SM_REGISTERS_ELECTRICAL, sizeof(RADIO_SM_REGISTERS_ELECTRICAL), (uint32_t*) sm_registers, &access_status);
+                node_status = NODE_read_registers((radio_node->node), (uint8_t*) RADIO_SM_REGISTERS_ELECTRICAL, sizeof(RADIO_SM_REGISTERS_ELECTRICAL), (uint32_t*) sm_registers, &access_status);
                 NODE_exit_error(RADIO_ERROR_BASE_NODE);
             }
             // Build data payload.
@@ -189,12 +189,12 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payl
             // Check compilation flags.
             if ((reg_configuration & SM_REGISTER_FLAGS_1_MASK_DIGF) == 0) break;
             // Perform measurements.
-            node_status = NODE_perform_measurements((node_payload->node), &access_status);
+            node_status = NODE_perform_measurements((radio_node->node), &access_status);
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
             // Check write status.
             if (access_status.flags == 0) {
                 // Read related registers.
-                node_status = NODE_read_registers((node_payload->node), (uint8_t*) RADIO_SM_REGISTERS_SENSOR, sizeof(RADIO_SM_REGISTERS_SENSOR), (uint32_t*) sm_registers, &access_status);
+                node_status = NODE_read_registers((radio_node->node), (uint8_t*) RADIO_SM_REGISTERS_SENSOR, sizeof(RADIO_SM_REGISTERS_SENSOR), (uint32_t*) sm_registers, &access_status);
                 NODE_exit_error(RADIO_ERROR_BASE_NODE);
             }
             // Build data payload.
@@ -211,7 +211,7 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payl
             goto errors;
         }
         // Increment payload type counter.
-        node_payload->payload_type_counter = (((node_payload->payload_type_counter) + 1) % sizeof(RADIO_SM_UL_PAYLOAD_PATTERN));
+        radio_node->payload_type_counter = (((radio_node->payload_type_counter) + 1) % sizeof(RADIO_SM_UL_PAYLOAD_PATTERN));
         // Exit in case of loop error.
         loop_count++;
         if (loop_count > RADIO_SM_UL_PAYLOAD_LOOP_MAX) goto errors;

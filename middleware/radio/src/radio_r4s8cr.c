@@ -44,7 +44,7 @@ static const uint8_t R4S8CR_REGISTER_LIST_UL_PAYLOAD_ELECTRICAL[] = {
 /*** RADIO R4S8CR functions ***/
 
 /*******************************************************************/
-RADIO_status_t RADIO_R4S8CR_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload) {
+RADIO_status_t RADIO_R4S8CR_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_ul_payload_t* node_payload) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -53,11 +53,11 @@ RADIO_status_t RADIO_R4S8CR_build_ul_node_payload(RADIO_ul_node_payload_t* node_
     R4S8CR_ul_payload_data_t ul_payload_data;
     uint8_t idx = 0;
     // Check parameters.
-    if (node_payload == NULL) {
+    if ((radio_node == NULL) || (node_payload == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    if (((node_payload->node) == NULL) || ((node_payload->payload) == NULL)) {
+    if (((radio_node->node) == NULL) || ((node_payload->payload) == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
@@ -68,7 +68,7 @@ RADIO_status_t RADIO_R4S8CR_build_ul_node_payload(RADIO_ul_node_payload_t* node_
     // Reset payload size.
     node_payload->payload_size = 0;
     // Read related registers.
-    node_status = NODE_read_registers((node_payload->node), (uint8_t*) R4S8CR_REGISTER_LIST_UL_PAYLOAD_ELECTRICAL, sizeof(R4S8CR_REGISTER_LIST_UL_PAYLOAD_ELECTRICAL), (uint32_t*) r4s8cr_registers, &access_status);
+    node_status = NODE_read_registers((radio_node->node), (uint8_t*) R4S8CR_REGISTER_LIST_UL_PAYLOAD_ELECTRICAL, sizeof(R4S8CR_REGISTER_LIST_UL_PAYLOAD_ELECTRICAL), (uint32_t*) r4s8cr_registers, &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     // Build data payload.
     ul_payload_data.r1stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R1STST);

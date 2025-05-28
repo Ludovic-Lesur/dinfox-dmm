@@ -81,7 +81,7 @@ static const RADIO_BCM_ul_payload_type_t RADIO_BCM_UL_PAYLOAD_PATTERN[] = {
 /*** RADIO BCM functions ***/
 
 /*******************************************************************/
-RADIO_status_t RADIO_BCM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload) {
+RADIO_status_t RADIO_BCM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_ul_payload_t* node_payload) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -91,11 +91,11 @@ RADIO_status_t RADIO_BCM_build_ul_node_payload(RADIO_ul_node_payload_t* node_pay
     RADIO_BCM_ul_payload_electrical_t ul_payload_electrical;
     uint8_t idx = 0;
     // Check parameters.
-    if (node_payload == NULL) {
+    if ((radio_node == NULL) || (node_payload == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    if (((node_payload->node) == NULL) || ((node_payload->payload) == NULL)) {
+    if (((radio_node->node) == NULL) || ((node_payload->payload) == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
@@ -106,20 +106,20 @@ RADIO_status_t RADIO_BCM_build_ul_node_payload(RADIO_ul_node_payload_t* node_pay
     // Reset payload size.
     node_payload->payload_size = 0;
     // Check event driven payloads.
-    status = RADIO_COMMON_check_event_driven_payloads(node_payload, (uint32_t*) bcm_registers);
+    status = RADIO_COMMON_check_event_driven_payloads(radio_node, node_payload, (uint32_t*) bcm_registers);
     if (status != RADIO_SUCCESS) goto errors;
     // Directly exits if a common payload was computed.
     if ((node_payload->payload_size) > 0) goto errors;
     // Else use specific pattern of the node.
-    switch (RADIO_BCM_UL_PAYLOAD_PATTERN[node_payload->payload_type_counter]) {
+    switch (RADIO_BCM_UL_PAYLOAD_PATTERN[radio_node->payload_type_counter]) {
     case RADIO_BCM_UL_PAYLOAD_TYPE_MONITORING:
         // Perform measurements.
-        node_status = NODE_perform_measurements((node_payload->node), &access_status);
+        node_status = NODE_perform_measurements((radio_node->node), &access_status);
         NODE_exit_error(RADIO_ERROR_BASE_NODE);
         // Check write status.
         if (access_status.flags == 0) {
             // Read related registers.
-            node_status = NODE_read_registers((node_payload->node), (uint8_t*) RADIO_BCM_REGISTERS_MONITORING, sizeof(RADIO_BCM_REGISTERS_MONITORING), (uint32_t*) bcm_registers, &access_status);
+            node_status = NODE_read_registers((radio_node->node), (uint8_t*) RADIO_BCM_REGISTERS_MONITORING, sizeof(RADIO_BCM_REGISTERS_MONITORING), (uint32_t*) bcm_registers, &access_status);
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
         }
         // Build monitoring payload.
@@ -133,12 +133,12 @@ RADIO_status_t RADIO_BCM_build_ul_node_payload(RADIO_ul_node_payload_t* node_pay
         break;
     case RADIO_BCM_UL_PAYLOAD_TYPE_ELECTRICAL:
         // Perform measurements.
-        node_status = NODE_perform_measurements((node_payload->node), &access_status);
+        node_status = NODE_perform_measurements((radio_node->node), &access_status);
         NODE_exit_error(RADIO_ERROR_BASE_NODE);
         // Check write status.
         if (access_status.flags == 0) {
             // Read related registers.
-            node_status = NODE_read_registers((node_payload->node), (uint8_t*) RADIO_BCM_REGISTERS_ELECTRICAL, sizeof(RADIO_BCM_REGISTERS_ELECTRICAL), (uint32_t*) bcm_registers, &access_status);
+            node_status = NODE_read_registers((radio_node->node), (uint8_t*) RADIO_BCM_REGISTERS_ELECTRICAL, sizeof(RADIO_BCM_REGISTERS_ELECTRICAL), (uint32_t*) bcm_registers, &access_status);
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
         }
         // Build data payload.
@@ -161,7 +161,7 @@ RADIO_status_t RADIO_BCM_build_ul_node_payload(RADIO_ul_node_payload_t* node_pay
         goto errors;
     }
     // Increment payload type counter.
-    node_payload->payload_type_counter = (((node_payload->payload_type_counter) + 1) % sizeof(RADIO_BCM_UL_PAYLOAD_PATTERN));
+    radio_node->payload_type_counter = (((radio_node->payload_type_counter) + 1) % sizeof(RADIO_BCM_UL_PAYLOAD_PATTERN));
 errors:
     return status;
 }

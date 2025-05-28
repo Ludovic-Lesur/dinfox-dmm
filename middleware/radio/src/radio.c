@@ -53,16 +53,10 @@ typedef union {
         unsigned board_id :8;
         uint8_t node_payload[RADIO_UL_NODE_PAYLOAD_MAX_SIZE_BYTES];
     } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
-} RADIO_ul_payload_t;
+} RADIO_ul_payload_format_t;
 
 /*******************************************************************/
-typedef RADIO_status_t (*RADIO_build_ul_node_payload_t)(RADIO_ul_node_payload_t* node_payload);
-
-/*******************************************************************/
-typedef struct {
-    UNA_node_t* node;
-    uint8_t payload_type_counter;
-} RADIO_node_t;
+typedef RADIO_status_t (*RADIO_build_ul_node_payload_t)(RADIO_node_t* radio_node, RADIO_ul_payload_t* node_payload);
 
 /*******************************************************************/
 typedef enum {
@@ -209,6 +203,7 @@ static void _RADIO_reset_node_list(RADIO_node_t* node_list) {
     for (idx = 0; idx < NODE_LIST_SIZE; idx++) {
         node_list[idx].node = NULL;
         node_list[idx].payload_type_counter = RADIO_UL_PAYLOAD_TYPE_COUNTER_ERROR_VALUE;
+        node_list[idx].error_stack_payload_counter = 0;
     }
 }
 
@@ -230,6 +225,7 @@ static void _RADIO_synchronize_node_list(void) {
         // Update pointer.
         tmp_node_list[new_idx].node = &(NODE_LIST.list[new_idx]);
         tmp_node_list[new_idx].payload_type_counter = 0;
+        tmp_node_list[new_idx].error_stack_payload_counter = 0;
         // Restore previous payload type counters based on address.
         for (old_idx = 0; old_idx < NODE_LIST_SIZE; old_idx++) {
             // Check pointer.
@@ -237,6 +233,7 @@ static void _RADIO_synchronize_node_list(void) {
                 // Compare address.
                 if (((tmp_node_list[new_idx].node)->address) == ((radio_ctx.node_list[old_idx].node)->address)) {
                     tmp_node_list[new_idx].payload_type_counter = radio_ctx.node_list[old_idx].payload_type_counter;
+                    tmp_node_list[new_idx].error_stack_payload_counter = radio_ctx.node_list[old_idx].error_stack_payload_counter;
                 }
             }
         }
@@ -267,6 +264,7 @@ static void _RADIO_synchronize_node_list(void) {
     for (new_idx = 0; new_idx < NODE_LIST.count; new_idx++) {
         radio_ctx.node_list[new_idx].node = tmp_node_list[new_idx].node;
         radio_ctx.node_list[new_idx].payload_type_counter = tmp_node_list[new_idx].payload_type_counter;
+        radio_ctx.node_list[new_idx].error_stack_payload_counter = tmp_node_list[new_idx].error_stack_payload_counter;
     }
 }
 
@@ -298,18 +296,18 @@ errors:
 }
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_transmit(RADIO_ul_node_payload_t* node_payload, uint8_t bidirectional_flag) {
+static RADIO_status_t _RADIO_transmit(UNA_node_t* node, RADIO_ul_payload_t* node_payload, uint8_t bidirectional_flag) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
-    RADIO_ul_payload_t ul_payload;
+    RADIO_ul_payload_format_t ul_payload;
     UHFM_ul_message_t uhfm_message;
     uint8_t idx = 0;
     // Check parameters.
-    if (node_payload == NULL) {
+    if ((node == NULL) || (node_payload == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    if (((node_payload->node) == NULL) || (node_payload->payload == NULL)) {
+    if (node_payload->payload == NULL) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
@@ -331,8 +329,8 @@ static RADIO_status_t _RADIO_transmit(RADIO_ul_node_payload_t* node_payload, uin
         ul_payload.frame[idx] = 0x00;
     }
     // Add board ID and node address.
-    ul_payload.board_id = (node_payload->node->board_id);
-    ul_payload.node_addr = (node_payload->node->address);
+    ul_payload.board_id = (node->board_id);
+    ul_payload.node_addr = (node->address);
     // Add node payload.
     for (idx = 0; idx < (node_payload->payload_size); idx++) {
         ul_payload.node_payload[idx] = (node_payload->payload)[idx];
@@ -379,7 +377,7 @@ errors:
 static RADIO_status_t _RADIO_process_uplink(uint8_t bidirectional_flag, uint8_t* message_sent) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
-    RADIO_ul_node_payload_t node_payload;
+    RADIO_ul_payload_t node_payload;
     uint8_t node_payload_bytes[RADIO_UL_NODE_PAYLOAD_MAX_SIZE_BYTES];
     uint8_t node_idx = radio_ctx.ul_node_list_index;
     uint8_t idx = 0;
@@ -390,22 +388,21 @@ static RADIO_status_t _RADIO_process_uplink(uint8_t bidirectional_flag, uint8_t*
     // Reset output flag.
     (*message_sent) = 0;
     // Build payload structure.
-    node_payload.node = radio_ctx.node_list[node_idx].node;
     node_payload.payload = (uint8_t*) node_payload_bytes;
     node_payload.payload_size = 0;
-    node_payload.payload_type_counter = radio_ctx.node_list[node_idx].payload_type_counter;
+    // Check function pointer.
+    if (RADIO_NODE_DESCRIPTOR[(radio_ctx.node_list[node_idx].node)->board_id] == NULL) goto errors;
     // Execute function of the corresponding board ID.
-    status = RADIO_NODE_DESCRIPTOR[(radio_ctx.node_list[node_idx].node)->board_id](&node_payload);
+    status = RADIO_NODE_DESCRIPTOR[(radio_ctx.node_list[node_idx].node)->board_id](&(radio_ctx.node_list[node_idx]), &node_payload);
     if (status != RADIO_SUCCESS) goto errors;
     // Exit directly if node has no data to send.
     if (node_payload.payload_size == 0) goto errors;
     // Transmit message.
-    status = _RADIO_transmit(&node_payload, bidirectional_flag);
+    status = _RADIO_transmit(radio_ctx.node_list[node_idx].node, &node_payload, bidirectional_flag);
     if (status != RADIO_SUCCESS) goto errors;
     // Update output flag.
     (*message_sent) = 1;
 errors:
-    radio_ctx.node_list[node_idx].payload_type_counter = node_payload.payload_type_counter;
     return status;
 }
 
@@ -703,7 +700,7 @@ static RADIO_status_t _RADIO_execute_actions(void) {
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
     uint8_t node_payload_bytes[RADIO_UL_NODE_PAYLOAD_MAX_SIZE_BYTES];
-    RADIO_ul_node_payload_t node_payload;
+    RADIO_ul_payload_t node_payload;
     RADIO_node_action_t node_action;
     uint8_t idx = 0;
     // Loop on action table.
@@ -733,15 +730,13 @@ static RADIO_status_t _RADIO_execute_actions(void) {
                 NODE_exit_error(RADIO_ERROR_BASE_NODE);
             }
             // Build payload structure.
-            node_payload.node = node_action.node;
             node_payload.payload = (uint8_t*) node_payload_bytes;
             node_payload.payload_size = 0;
-            node_payload.payload_type_counter = 0;
             // Build frame.
-            status = RADIO_COMMON_build_ul_node_payload_action_log(&node_payload, &node_action);
+            status = RADIO_COMMON_build_ul_node_payload_action_log(&node_action, &node_payload);
             if (status != RADIO_SUCCESS) goto errors;
             // Send action log message.
-            status = _RADIO_transmit(&node_payload, 0);
+            status = _RADIO_transmit(node_action.node, &node_payload, 0);
             if (status != RADIO_SUCCESS) goto errors;
         }
     }

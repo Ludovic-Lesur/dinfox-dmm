@@ -19,9 +19,11 @@
 
 /*** RADIO COMMON local macros ***/
 
-#define RADIO_COMMON_UL_PAYLOAD_ACTION_LOG_SIZE     8
-#define RADIO_COMMON_UL_PAYLOAD_STARTUP_SIZE        8
-#define RADIO_COMMON_UL_PAYLOAD_ERROR_STACK_SIZE    10
+#define RADIO_COMMON_UL_PAYLOAD_ACTION_LOG_SIZE         8
+#define RADIO_COMMON_UL_PAYLOAD_STARTUP_SIZE            8
+#define RADIO_COMMON_UL_PAYLOAD_ERROR_STACK_SIZE        10
+
+#define RADIO_COMMON_UL_PAYLOAD_ERROR_STACK_MAX_COUNT   4
 
 /*** RADIO COMMON local structures ***/
 
@@ -61,7 +63,7 @@ static const uint8_t RADIO_COMMON_REGISTERS_STARTUP[] = {
 /*** RADIO COMMON local functions ***/
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_COMMON_build_ul_node_payload_startup(RADIO_ul_node_payload_t* node_payload, uint32_t* node_registers) {
+static RADIO_status_t _RADIO_COMMON_build_ul_node_payload_startup(RADIO_node_t* radio_node, RADIO_ul_payload_t* node_payload, uint32_t* node_registers) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -71,7 +73,7 @@ static RADIO_status_t _RADIO_COMMON_build_ul_node_payload_startup(RADIO_ul_node_
     // Reset payload size.
     node_payload->payload_size = 0;
     // Read related registers.
-    node_status = NODE_read_registers((node_payload->node), (uint8_t*) RADIO_COMMON_REGISTERS_STARTUP, sizeof(RADIO_COMMON_REGISTERS_STARTUP), node_registers, &access_status);
+    node_status = NODE_read_registers((radio_node->node), (uint8_t*) RADIO_COMMON_REGISTERS_STARTUP, sizeof(RADIO_COMMON_REGISTERS_STARTUP), node_registers, &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     // Check read status.
     if (access_status.flags != 0) goto errors;
@@ -92,7 +94,7 @@ errors:
 }
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_COMMON_build_ul_node_payload_error_stack(RADIO_ul_node_payload_t* node_payload, uint32_t* node_registers) {
+static RADIO_status_t _RADIO_COMMON_build_ul_node_payload_error_stack(RADIO_node_t* radio_node, RADIO_ul_payload_t* node_payload, uint32_t* node_registers) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -104,7 +106,7 @@ static RADIO_status_t _RADIO_COMMON_build_ul_node_payload_error_stack(RADIO_ul_n
     // Read error stack register.
     for (idx = 0; idx < (RADIO_COMMON_UL_PAYLOAD_ERROR_STACK_SIZE >> 1); idx++) {
         // Read error stack register.
-        node_status = NODE_read_register((node_payload->node), COMMON_REGISTER_ADDRESS_ERROR_STACK, &(node_registers[COMMON_REGISTER_ADDRESS_ERROR_STACK]), &access_status);
+        node_status = NODE_read_register((radio_node->node), COMMON_REGISTER_ADDRESS_ERROR_STACK, &(node_registers[COMMON_REGISTER_ADDRESS_ERROR_STACK]), &access_status);
         NODE_exit_error(RADIO_ERROR_BASE_NODE);
         // Check read status.
         if (access_status.flags != 0) goto errors;
@@ -124,25 +126,25 @@ errors:
 /*** RADIO COMMON functions ***/
 
 /*******************************************************************/
-RADIO_status_t RADIO_COMMON_check_event_driven_payloads(RADIO_ul_node_payload_t* node_payload, uint32_t* node_registers) {
+RADIO_status_t RADIO_COMMON_check_event_driven_payloads(RADIO_node_t* radio_node, RADIO_ul_payload_t* node_payload, uint32_t* node_registers) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
     uint32_t reg_status_0 = 0;
     UNA_access_status_t access_status;
     // Check parameters.
-    if ((node_payload == NULL) || (node_registers == NULL)) {
+    if ((radio_node == NULL) || (node_payload == NULL) || (node_registers == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    if (((node_payload->node) == NULL) || ((node_payload->payload) == NULL)) {
+    if (((radio_node->node) == NULL) || ((node_payload->payload) == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
     // Reset payload size.
     node_payload->payload_size = 0;
     // Read status register.
-    node_status = NODE_read_register((node_payload->node), COMMON_REGISTER_ADDRESS_STATUS_0, &(node_registers[COMMON_REGISTER_ADDRESS_STATUS_0]), &access_status);
+    node_status = NODE_read_register((radio_node->node), COMMON_REGISTER_ADDRESS_STATUS_0, &(node_registers[COMMON_REGISTER_ADDRESS_STATUS_0]), &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     // Check read status.
     if (access_status.flags != 0) goto errors;
@@ -151,17 +153,29 @@ RADIO_status_t RADIO_COMMON_check_event_driven_payloads(RADIO_ul_node_payload_t*
     // Read boot flag.
     if (SWREG_read_field(reg_status_0, COMMON_REGISTER_STATUS_0_MASK_BF) != 0) {
         // Compute startup payload.
-        status = _RADIO_COMMON_build_ul_node_payload_startup(node_payload, node_registers);
+        status = _RADIO_COMMON_build_ul_node_payload_startup(radio_node, node_payload, node_registers);
         if (status != RADIO_SUCCESS) goto errors;
         // Clear boot flag.
-        node_status = NODE_write_register((node_payload->node), COMMON_REGISTER_ADDRESS_CONTROL_0, COMMON_REGISTER_CONTROL_0_MASK_BFC, COMMON_REGISTER_CONTROL_0_MASK_BFC, &access_status);
+        node_status = NODE_write_register((radio_node->node), COMMON_REGISTER_ADDRESS_CONTROL_0, COMMON_REGISTER_CONTROL_0_MASK_BFC, COMMON_REGISTER_CONTROL_0_MASK_BFC, &access_status);
         NODE_exit_error(RADIO_ERROR_BASE_NODE);
     }
     else {
         if (SWREG_read_field(reg_status_0, COMMON_REGISTER_STATUS_0_MASK_ESF) != 0) {
-            // Compute error stack payload.
-            status = _RADIO_COMMON_build_ul_node_payload_error_stack(node_payload, node_registers);
-            if (status != RADIO_SUCCESS) goto errors;
+            // Manage counter.
+            radio_node->error_stack_payload_counter++;
+            // Check counter.
+            if ((radio_node->error_stack_payload_counter) > RADIO_COMMON_UL_PAYLOAD_ERROR_STACK_MAX_COUNT) {
+                // Disable error stack message for this slot if there has been too many consecutive occurrences.
+                radio_node->error_stack_payload_counter = 0;
+            }
+            else {
+                // Compute error stack payload.
+                status = _RADIO_COMMON_build_ul_node_payload_error_stack(radio_node, node_payload, node_registers);
+                if (status != RADIO_SUCCESS) goto errors;
+            }
+        }
+        else {
+            radio_node->error_stack_payload_counter = 0;
         }
     }
 errors:
@@ -169,7 +183,7 @@ errors:
 }
 
 /*******************************************************************/
-RADIO_status_t RADIO_COMMON_build_ul_node_payload_action_log(RADIO_ul_node_payload_t* node_payload, RADIO_node_action_t* node_action) {
+RADIO_status_t RADIO_COMMON_build_ul_node_payload_action_log(RADIO_node_action_t* node_action, RADIO_ul_payload_t* node_payload) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     RADIO_COMMON_ul_payload_action_log_t ul_payload_action_log;
@@ -179,7 +193,7 @@ RADIO_status_t RADIO_COMMON_build_ul_node_payload_action_log(RADIO_ul_node_paylo
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    if (((node_payload->node) == NULL) || ((node_payload->payload) == NULL)) {
+    if ((node_payload->payload) == NULL) {
         status = RADIO_ERROR_NULL_PARAMETER;
         goto errors;
     }

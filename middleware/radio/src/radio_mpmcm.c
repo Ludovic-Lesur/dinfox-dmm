@@ -153,7 +153,7 @@ static RADIO_MPMCM_context_t radio_mpmcm_ctx = { .flags.por = 1, .flags.mvd = 0,
 /*** MPMCM local functions ***/
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_status(UNA_node_t* mpmcm_node, RADIO_ul_node_payload_t* node_payload) {
+static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_status(UNA_node_t* mpmcm_node, RADIO_ul_payload_t* node_payload) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -176,7 +176,7 @@ errors:
 }
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_frequency(UNA_node_t* mpmcm_node, RADIO_ul_node_payload_t* node_payload) {
+static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_frequency(UNA_node_t* mpmcm_node, RADIO_ul_payload_t* node_payload) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -201,7 +201,7 @@ errors:
 }
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_voltage(UNA_node_t* mpmcm_node, RADIO_ul_node_payload_t* node_payload, uint8_t channel_index) {
+static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_voltage(UNA_node_t* mpmcm_node, RADIO_ul_payload_t* node_payload, uint8_t channel_index) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -234,7 +234,7 @@ errors:
 }
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_power(UNA_node_t* mpmcm_node, RADIO_ul_node_payload_t* node_payload, uint8_t channel_index) {
+static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_power(UNA_node_t* mpmcm_node, RADIO_ul_payload_t* node_payload, uint8_t channel_index) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -268,7 +268,7 @@ errors:
 }
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_power_factor(UNA_node_t* mpmcm_node, RADIO_ul_node_payload_t* node_payload, uint8_t channel_index) {
+static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_power_factor(UNA_node_t* mpmcm_node, RADIO_ul_payload_t* node_payload, uint8_t channel_index) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -301,7 +301,7 @@ errors:
 }
 
 /*******************************************************************/
-static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_energy(UNA_node_t* mpmcm_node, RADIO_ul_node_payload_t* node_payload, uint8_t channel_index) {
+static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_energy(UNA_node_t* mpmcm_node, RADIO_ul_payload_t* node_payload, uint8_t channel_index) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
@@ -335,16 +335,25 @@ errors:
 /*** RADIO MPMCM functions ***/
 
 /*******************************************************************/
-RADIO_status_t RADIO_MPMCM_build_ul_node_payload(RADIO_ul_node_payload_t* node_payload) {
+RADIO_status_t RADIO_MPMCM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_ul_payload_t* node_payload) {
     // Local variables.
     RADIO_status_t status = RADIO_SUCCESS;
     uint8_t idx = 0;
+    // Check parameters.
+    if ((radio_node == NULL) || (node_payload == NULL)) {
+        status = RADIO_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
+    if (((radio_node->node) == NULL) || ((node_payload->payload) == NULL)) {
+        status = RADIO_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
     // Reset registers.
     for (idx = 0; idx < MPMCM_REGISTER_ADDRESS_LAST; idx++) {
         radio_mpmcm_ctx.registers[idx] = MPMCM_REGISTER_ERROR_VALUE[idx];
     }
     // Check event driven payloads.
-    status = RADIO_COMMON_check_event_driven_payloads(node_payload, (uint32_t*) radio_mpmcm_ctx.registers);
+    status = RADIO_COMMON_check_event_driven_payloads(radio_node, node_payload, (uint32_t*) radio_mpmcm_ctx.registers);
     if (status != RADIO_SUCCESS) goto errors;
 errors:
     return status;
@@ -356,7 +365,7 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
     UNA_access_status_t access_status;
-    RADIO_ul_node_payload_t node_payload;
+    RADIO_ul_payload_t node_payload;
     uint8_t node_payload_bytes[UHFM_UL_PAYLOAD_MAX_SIZE_BYTES];
     uint8_t ame = 0;
     uint8_t lte = 0;
@@ -377,10 +386,8 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
         radio_mpmcm_ctx.registers[idx] = MPMCM_REGISTER_ERROR_VALUE[idx];
     }
     // Build node payload structure.
-    node_payload.node = mpmcm_node;
     node_payload.payload = (uint8_t*) node_payload_bytes;
     node_payload.payload_size = 0;
-    node_payload.payload_type_counter = 0;
     // Store accumulated data of all channels (synchronization reset in case of POR).
     reg_control_1 |= MPMCM_REGISTER_CONTROL_1_MASK_CH1S;
     reg_control_1 |= MPMCM_REGISTER_CONTROL_1_MASK_CH2S;
@@ -395,7 +402,7 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
     // Send status frame.
     status = _RADIO_MPMCM_build_ul_node_payload_status(mpmcm_node, &node_payload);
     if (status != RADIO_SUCCESS) goto errors;
-    status = radio_transmit_pfn(&node_payload, 0);
+    status = radio_transmit_pfn(mpmcm_node, &node_payload, 0);
     if (status != RADIO_SUCCESS) goto errors;
     // Read node configuration.
     node_status = NODE_read_register(mpmcm_node, MPMCM_REGISTER_ADDRESS_FLAGS_1, &(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_FLAGS_1]), &access_status);
@@ -412,7 +419,7 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
         // Send frequency frame.
         status = _RADIO_MPMCM_build_ul_node_payload_frequency(mpmcm_node, &node_payload);
         if (status != RADIO_SUCCESS) goto errors;
-        status = radio_transmit_pfn(&node_payload, 0);
+        status = radio_transmit_pfn(mpmcm_node, &node_payload, 0);
         if (status != RADIO_SUCCESS) goto errors;
     }
     // Channels loop.
@@ -428,7 +435,7 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
                 // Send voltage frame.
                 status = _RADIO_MPMCM_build_ul_node_payload_voltage(mpmcm_node, &node_payload, channel_idx);
                 if (status != RADIO_SUCCESS) goto errors;
-                status = radio_transmit_pfn(&node_payload, 0);
+                status = radio_transmit_pfn(mpmcm_node, &node_payload, 0);
                 if (status != RADIO_SUCCESS) goto errors;
                 // Update flag.
                 mains_voltage_chx_sent = 1;
@@ -440,7 +447,7 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
                 // Send voltage frame.
                 status = _RADIO_MPMCM_build_ul_node_payload_voltage(mpmcm_node, &node_payload, channel_idx);
                 if (status != RADIO_SUCCESS) goto errors;
-                status = radio_transmit_pfn(&node_payload, 0);
+                status = radio_transmit_pfn(mpmcm_node, &node_payload, 0);
                 if (status != RADIO_SUCCESS) goto errors;
             }
         }
@@ -449,20 +456,20 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
         // Mains power.
         status = _RADIO_MPMCM_build_ul_node_payload_power(mpmcm_node, &node_payload, channel_idx);
         if (status != RADIO_SUCCESS) goto errors;
-        status = radio_transmit_pfn(&node_payload, 0);
+        status = radio_transmit_pfn(mpmcm_node, &node_payload, 0);
         if (status != RADIO_SUCCESS) goto errors;
         // Mains power factor.
         if ((channel_idx <= MPMCM_CHANNEL_INDEX_ACI3) || (ltm != 0)) {
             // Send power factor frame.
             status = _RADIO_MPMCM_build_ul_node_payload_power_factor(mpmcm_node, &node_payload, channel_idx);
             if (status != RADIO_SUCCESS) goto errors;
-            status = radio_transmit_pfn(&node_payload, 0);
+            status = radio_transmit_pfn(mpmcm_node, &node_payload, 0);
             if (status != RADIO_SUCCESS) goto errors;
         }
         // Mains energy.
         status = _RADIO_MPMCM_build_ul_node_payload_energy(mpmcm_node, &node_payload, channel_idx);
         if (status != RADIO_SUCCESS) goto errors;
-        status = radio_transmit_pfn(&node_payload, 0);
+        status = radio_transmit_pfn(mpmcm_node, &node_payload, 0);
         if (status != RADIO_SUCCESS) goto errors;
     }
 errors:

@@ -30,7 +30,7 @@ The board is based on the **STM32L081CBT6** microcontroller of the STMicroelectr
 ## Architecture
 
 <p align="center">
-<img src="https://github.com/Ludovic-Lesur/dmm/wiki/images/dmm_sw_architecture.drawio.png" width="600"/>
+<img src="https://github.com/Ludovic-Lesur/dinfox-doc/blob/master/images/dmm-sw-architecture.drawio.png" width="600"/>
 </p>
 
 ## Structure

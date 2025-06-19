@@ -160,8 +160,8 @@ typedef struct {
     UNA_node_t* modem_node_ptr;
     UNA_node_t* mpmcm_node_ptr;
     UNA_node_t* power_node_ptr;
-    uint8_t power_node_lvf_register;
-    uint32_t power_node_lvf_mask;
+    uint8_t power_node_cvf_register;
+    uint32_t power_node_cvf_mask;
 } RADIO_context_t;
 
 /*** RADIO local global variables ***/
@@ -189,8 +189,8 @@ static RADIO_context_t radio_ctx = {
     .modem_node_ptr = NULL,
     .mpmcm_node_ptr = NULL,
     .power_node_ptr = NULL,
-    .power_node_lvf_register = 0xFF,
-    .power_node_lvf_mask = UNA_REGISTER_MASK_NONE
+    .power_node_cvf_register = 0xFF,
+    .power_node_cvf_mask = UNA_REGISTER_MASK_NONE
 };
 
 /*** RADIO local functions ***/
@@ -249,13 +249,13 @@ static void _RADIO_synchronize_node_list(void) {
         }
         if (NODE_LIST.list[new_idx].board_id == UNA_BOARD_ID_BPSM) {
             radio_ctx.power_node_ptr = &(NODE_LIST.list[new_idx]);
-            radio_ctx.power_node_lvf_register = BPSM_REGISTER_ADDRESS_STATUS_1;
-            radio_ctx.power_node_lvf_mask = BPSM_REGISTER_STATUS_1_MASK_LVF;
+            radio_ctx.power_node_cvf_register = BPSM_REGISTER_ADDRESS_STATUS_1;
+            radio_ctx.power_node_cvf_mask = BPSM_REGISTER_STATUS_1_MASK_CVF;
         }
         if ((NODE_LIST.list[new_idx].board_id == UNA_BOARD_ID_BCM) && (radio_ctx.power_node_ptr == NULL)) {
             radio_ctx.power_node_ptr = &(NODE_LIST.list[new_idx]);
-            radio_ctx.power_node_lvf_register = BCM_REGISTER_ADDRESS_STATUS_1;
-            radio_ctx.power_node_lvf_mask = BCM_REGISTER_STATUS_1_MASK_LVF;
+            radio_ctx.power_node_cvf_register = BCM_REGISTER_ADDRESS_STATUS_1;
+            radio_ctx.power_node_cvf_mask = BCM_REGISTER_STATUS_1_MASK_CVF;
         }
     }
     // Reset old list.
@@ -764,8 +764,8 @@ RADIO_status_t RADIO_init(void) {
     radio_ctx.modem_node_ptr = NULL;
     radio_ctx.mpmcm_node_ptr = NULL;
     radio_ctx.power_node_ptr = NULL;
-    radio_ctx.power_node_lvf_register = 0xFF;
-    radio_ctx.power_node_lvf_mask = UNA_REGISTER_MASK_NONE;
+    radio_ctx.power_node_cvf_register = 0xFF;
+    radio_ctx.power_node_cvf_mask = UNA_REGISTER_MASK_NONE;
     // Reset actions list.
     for (idx = 0; idx < RADIO_ACTION_LIST_SIZE; idx++) {
         status = _RADIO_remove_action(idx);
@@ -808,10 +808,10 @@ RADIO_status_t RADIO_process(void) {
         // Check power node.
         if (radio_ctx.power_node_ptr != NULL) {
             // Read low voltage flag.
-            node_status = NODE_read_register(radio_ctx.power_node_ptr, radio_ctx.power_node_lvf_register, &reg_value, &read_status);
+            node_status = NODE_read_register(radio_ctx.power_node_ptr, radio_ctx.power_node_cvf_register, &reg_value, &read_status);
             NODE_stack_error(ERROR_BASE_RADIO + RADIO_ERROR_BASE_NODE);
             // Check status and flag.
-            if ((node_status == NODE_SUCCESS) && (read_status.flags == 0) && (SWREG_read_field(reg_value, radio_ctx.power_node_lvf_mask)) != 0) goto errors;
+            if ((node_status == NODE_SUCCESS) && (read_status.flags == 0) && (SWREG_read_field(reg_value, radio_ctx.power_node_cvf_mask)) != 0) goto errors;
         }
         // Check downlink period.
         if (RTC_get_uptime_seconds() >= radio_ctx.dl_next_time_seconds) {

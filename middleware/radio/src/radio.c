@@ -792,13 +792,20 @@ RADIO_status_t RADIO_process(void) {
     uint8_t message_sent = 0;
     uint32_t reg_value = 0;
     uint8_t bidirectional_flag = 0;
+    uint32_t uptime_seconds = RTC_get_uptime_seconds();
     uint8_t ul_next_time_update_required = 0;
     uint8_t dl_next_time_update_required = 0;
     uint8_t ul_loop = 0;
     // Check uplink period.
-    if (RTC_get_uptime_seconds() >= radio_ctx.ul_next_time_seconds) {
+    if (uptime_seconds >= radio_ctx.ul_next_time_seconds) {
         // Next time update needed.
         ul_next_time_update_required = 1;
+        // Check downlink period.
+        if (uptime_seconds >= radio_ctx.dl_next_time_seconds) {
+            // Next time update needed and set bidirectional flag.
+            dl_next_time_update_required = 1;
+            bidirectional_flag = 1;
+        }
         // Synchronize nodes list.
         _RADIO_synchronize_node_list();
         // Directly exit if there is no modem.
@@ -812,19 +819,6 @@ RADIO_status_t RADIO_process(void) {
             NODE_stack_error(ERROR_BASE_RADIO + RADIO_ERROR_BASE_NODE);
             // Check status and flag.
             if ((node_status == NODE_SUCCESS) && (read_status.flags == 0) && (SWREG_read_field(reg_value, radio_ctx.power_node_cvf_mask)) != 0) goto errors;
-        }
-        // Check downlink period.
-        if (RTC_get_uptime_seconds() >= radio_ctx.dl_next_time_seconds) {
-            // Next time update needed and set bidirectional flag.
-            dl_next_time_update_required = 1;
-            bidirectional_flag = 1;
-        }
-        // Set radio times to now to compensate node update duration.
-        if (ul_next_time_update_required != 0) {
-            radio_ctx.ul_next_time_seconds = RTC_get_uptime_seconds();
-        }
-        if (dl_next_time_update_required != 0) {
-            radio_ctx.dl_next_time_seconds = RTC_get_uptime_seconds();
         }
         // Process MPMCM is needed.
         if (radio_ctx.mpmcm_node_ptr != NULL) {
@@ -867,10 +861,10 @@ errors:
     NODE_stack_error(ERROR_BASE_RADIO + RADIO_ERROR_BASE_NODE);
     // This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
     if (ul_next_time_update_required != 0) {
-        radio_ctx.ul_next_time_seconds += UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_UL_PERIOD));
+        radio_ctx.ul_next_time_seconds = (uptime_seconds + UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_UL_PERIOD)));
     }
     if (dl_next_time_update_required != 0) {
-        radio_ctx.dl_next_time_seconds += UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_DL_PERIOD));
+        radio_ctx.dl_next_time_seconds = (uptime_seconds + UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_DL_PERIOD)));
     }
     // Turn bus interface off.
     POWER_disable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485);

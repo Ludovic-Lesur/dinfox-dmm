@@ -20,10 +20,9 @@
     <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN_SYMBOL" value="main"/>
     <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="-speed 4000&#10;-device STM32L071CB&#10;-If SWD&#10;script/dmm_hw1-0.jlink"/>
     <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="${env_var:HOME}/jlink/JLinkExe"/>
-    <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="dmm"/>
+    <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="dinfox-dmm"/>
     <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="false"/>
     <stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value=""/>
-    <stringAttribute key="org.eclipse.cdt.launch.WORKING_DIRECTORY" value="${project_loc}"/>
     <booleanAttribute key="org.eclipse.debug.core.ATTR_FORCE_SYSTEM_CONSOLE_ENCODING" value="false"/>
     <listAttribute key="org.eclipse.debug.ui.favoriteGroups">
         <listEntry value="org.eclipse.debug.ui.launchGroup.run"/>

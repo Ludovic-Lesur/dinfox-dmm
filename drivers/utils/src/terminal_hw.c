@@ -13,6 +13,7 @@
 #include "error.h"
 #include "error_base.h"
 #include "lmac.h"
+#include "terminal.h"
 #include "terminal_instance.h"
 #include "types.h"
 

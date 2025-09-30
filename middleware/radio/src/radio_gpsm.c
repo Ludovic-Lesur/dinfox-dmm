@@ -34,7 +34,7 @@ typedef union {
         unsigned tmcu :8;
         unsigned vgps :16;
         unsigned vant :16;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_GPSM_ul_payload_monitoring_t;
 
 /*** GPSM local global variables ***/

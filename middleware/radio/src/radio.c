@@ -52,7 +52,7 @@ typedef union {
         unsigned node_addr :8;
         unsigned board_id :8;
         uint8_t node_payload[RADIO_UL_NODE_PAYLOAD_MAX_SIZE_BYTES];
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_ul_payload_format_t;
 
 /*******************************************************************/
@@ -85,27 +85,27 @@ typedef union {
                 unsigned reg_addr :8;
                 unsigned unused_0 :32;
                 unsigned unused_1 :8;
-            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) single_full_read;
+            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) single_full_read;
             struct {
                 unsigned node_addr :8;
                 unsigned reg_addr :8;
                 unsigned reg_value :32;
                 unsigned duration :8; // Unused in single.
-            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) full_write;
+            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) full_write;
             struct {
                 unsigned node_addr :8;
                 unsigned reg_addr :8;
                 unsigned reg_mask :16;
                 unsigned reg_value :16;
                 unsigned duration :8; // Unused in single.
-            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) masked_write;
+            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) masked_write;
             struct {
                 unsigned node_addr :8;
                 unsigned reg_addr :8;
                 unsigned reg_value_1 :16;
                 unsigned reg_value_2 :16;
                 unsigned duration :8;
-            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) successive_full_write;
+            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) successive_full_write;
             struct {
                 unsigned node_addr :8;
                 unsigned reg_addr :8;
@@ -114,14 +114,14 @@ typedef union {
                 unsigned reg_value_2 :8;
                 unsigned duration :8;
                 unsigned unused :8;
-            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) successive_masked_write;
+            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) successive_masked_write;
             struct {
                 unsigned node_addr :8;
                 unsigned reg_1_addr :8;
                 unsigned reg_1_value :16;
                 unsigned reg_2_addr :8;
                 unsigned reg_2_value :16;
-            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) dual_full_write;
+            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) dual_full_write;
             struct {
                 unsigned node_addr :8;
                 unsigned reg_1_addr :8;
@@ -130,7 +130,7 @@ typedef union {
                 unsigned reg_2_value :8;
                 unsigned reg_3_addr :8;
                 unsigned reg_3_value :8;
-            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) triple_full_write;
+            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) triple_full_write;
             struct {
                 unsigned node_1_addr :8;
                 unsigned reg_1_addr :8;
@@ -139,9 +139,9 @@ typedef union {
                 unsigned reg_2_addr :8;
                 unsigned reg_2_value :8;
                 unsigned unused :8;
-            } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed)) dual_node_write;
+            } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed)) dual_node_write;
         };
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_dl_payload_t;
 
 /*******************************************************************/

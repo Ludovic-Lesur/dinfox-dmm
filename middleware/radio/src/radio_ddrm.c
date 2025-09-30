@@ -34,7 +34,7 @@ typedef union {
     struct {
         unsigned vmcu :16;
         unsigned tmcu :8;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_DDRM_ul_payload_monitoring_t;
 
 /*******************************************************************/
@@ -46,7 +46,7 @@ typedef union {
         unsigned iout :16;
         unsigned unused :6;
         unsigned ddenst :2;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_DDRM_ul_payload_electrical_t;
 
 /*** RADIO DDRM local global variables ***/

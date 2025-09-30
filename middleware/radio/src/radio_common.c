@@ -36,7 +36,7 @@ typedef union {
         unsigned reg_addr :8;
         unsigned reg_value :32;
         unsigned node_access_status :8;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_COMMON_ul_payload_action_log_t;
 
 /*******************************************************************/
@@ -49,7 +49,7 @@ typedef union {
         unsigned commit_index :8;
         unsigned commit_id :28;
         unsigned dirty_flag :4;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_COMMON_ul_payload_startup_t;
 
 /*** COMMON local global variables ***/

@@ -34,7 +34,7 @@ typedef union {
         unsigned vhmi :16;
         unsigned vusb :16;
         unsigned nodes_count :8;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_DMM_ul_payload_monitoring_t;
 
 /*** RADIO DMM local global variables ***/

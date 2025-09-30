@@ -38,7 +38,7 @@ typedef union {
     struct {
         unsigned vmcu :16;
         unsigned tmcu :8;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_SM_ul_payload_monitoring_t;
 
 /*******************************************************************/
@@ -53,7 +53,7 @@ typedef union {
         unsigned dio2 :2;
         unsigned dio1 :2;
         unsigned dio0 :2;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_SM_ul_payload_electrical_t;
 
 /*******************************************************************/
@@ -62,7 +62,7 @@ typedef union {
     struct {
         unsigned tamb :8;
         unsigned hamb :8;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_SM_ul_payload_sensor_t;
 
 /*** SM local global variables ***/

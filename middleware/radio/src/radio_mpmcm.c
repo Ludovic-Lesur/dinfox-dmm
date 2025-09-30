@@ -38,7 +38,7 @@ typedef union {
         unsigned ch3d :1;
         unsigned ch2d :1;
         unsigned ch1d :1;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_status_t;
 
 /*******************************************************************/
@@ -50,7 +50,7 @@ typedef union {
         unsigned vrms_min :16;
         unsigned vrms_mean :16;
         unsigned vrms_max :16;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_voltage_t;
 
 /*******************************************************************/
@@ -60,7 +60,7 @@ typedef union {
         unsigned f_min :16;
         unsigned f_mean :16;
         unsigned f_max :16;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_frequency_t;
 
 /*******************************************************************/
@@ -73,7 +73,7 @@ typedef union {
         unsigned pact_max :16;
         unsigned papp_mean :16;
         unsigned papp_max :16;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_power_t;
 
 /*******************************************************************/
@@ -85,7 +85,7 @@ typedef union {
         unsigned pf_min :8;
         unsigned pf_mean :8;
         unsigned pf_max :8;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_power_factor_t;
 
 /*******************************************************************/
@@ -96,7 +96,7 @@ typedef union {
         unsigned channel_index :3;
         unsigned eact :16;
         unsigned eapp :16;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_energy_t;
 
 /*******************************************************************/

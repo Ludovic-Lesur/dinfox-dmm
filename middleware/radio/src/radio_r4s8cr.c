@@ -32,7 +32,7 @@ typedef union {
         unsigned r3stst :2;
         unsigned r2stst :2;
         unsigned r1stst :2;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } R4S8CR_ul_payload_data_t;
 
 /*** RADIO R4S8CR local global variables ***/

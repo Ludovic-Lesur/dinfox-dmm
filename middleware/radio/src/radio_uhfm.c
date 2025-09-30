@@ -34,7 +34,7 @@ typedef union {
         unsigned tmcu :8;
         unsigned vrf_tx :16;
         unsigned vrf_rx :16;
-    } __attribute__((scalar_storage_order("big-endian")))__attribute__((packed));
+    } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_UHFM_ul_payload_monitoring_t;
 
 /*** UHFM global variables ***/

@@ -73,7 +73,7 @@ static const HMI_NODE_data_format_t HMI_NODE_DATA_FORMAT[HMI_NODE_DATA_TYPE_LAST
     { NULL, NULL, STRING_FORMAT_DECIMAL, 0, NULL, UNA_BIT_ERROR },
     { &UNA_convert_seconds, &UNA_get_seconds, STRING_FORMAT_DECIMAL, 0, "s", UNA_TIME_ERROR_VALUE },
     { &UNA_convert_year, &UNA_get_year, STRING_FORMAT_DECIMAL, 0, NULL, UNA_YEAR_ERROR_VALUE },
-    { &UNA_convert_degrees, &UNA_get_degrees, STRING_FORMAT_DECIMAL, 0, "|C", UNA_TEMPERATURE_ERROR_VALUE },
+    { &UNA_convert_tenth_degrees, &UNA_get_tenth_degrees, STRING_FORMAT_DECIMAL, 0, "|C", UNA_TEMPERATURE_ERROR_VALUE },
     { NULL, NULL, STRING_FORMAT_DECIMAL, 0, "%", UNA_HUMIDITY_ERROR_VALUE },
     { &UNA_convert_mv, &UNA_get_mv, STRING_FORMAT_DECIMAL, 0, "V", UNA_VOLTAGE_ERROR_VALUE },
     { &UNA_convert_ua, &UNA_get_ua, STRING_FORMAT_DECIMAL, 0, "mA", UNA_CURRENT_ERROR_VALUE },
@@ -257,6 +257,13 @@ static HMI_status_t _HMI_build_line(uint8_t line_index, char_t* name, HMI_NODE_d
             if ((data_type == HMI_NODE_DATA_TYPE_VOLTAGE) || (data_type == HMI_NODE_DATA_TYPE_CURRENT)) {
                 // Convert to 5 digits string.
                 string_status = STRING_integer_to_floating_decimal_string(physical_data, 3, HMI_NODE_FIELD_SIZE_CHAR, physical_data_str);
+                STRING_exit_error(HMI_ERROR_BASE_STRING);
+                // Add output string.
+                _HMI_NODE_line_value_add_string(physical_data_str);
+            }
+            else if (data_type == HMI_NODE_DATA_TYPE_TEMPERATURE) {
+                // Convert to 4 digits string.
+                string_status = STRING_integer_to_floating_decimal_string(physical_data, 1, 4, physical_data_str);
                 STRING_exit_error(HMI_ERROR_BASE_STRING);
                 // Add output string.
                 _HMI_NODE_line_value_add_string(physical_data_str);

@@ -93,7 +93,7 @@ RADIO_status_t RADIO_GPSM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
         }
         // Build monitoring payload.
         ul_payload_monitoring.vmcu = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-        ul_payload_monitoring.tmcu = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
+        ul_payload_monitoring.tmcu = (SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU) / 10);
         ul_payload_monitoring.vgps = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_VGPS);
         ul_payload_monitoring.vant = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_VANT);
         // Copy payload.

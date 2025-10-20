@@ -116,7 +116,7 @@ static UNA_DMM_status_t _UNA_DMM_mtrg_callback(void) {
     // TMCU.
     analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_TMCU_DEGREES, &adc_data);
     ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);
-    SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0]), &unused_mask, UNA_convert_degrees(adc_data), COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
+    SWREG_write_field(&(UNA_DMM_REGISTERS[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0]), &unused_mask, UNA_convert_tenth_degrees(adc_data * 10), COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
     // VRS.
     analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VRS_MV, &adc_data);
     ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);

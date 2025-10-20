@@ -124,7 +124,7 @@ RADIO_status_t RADIO_BCM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_u
         }
         // Build monitoring payload.
         ul_payload_monitoring.vmcu = SWREG_read_field(bcm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-        ul_payload_monitoring.tmcu = SWREG_read_field(bcm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
+        ul_payload_monitoring.tmcu = (SWREG_read_field(bcm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU) / 10);
         // Copy payload.
         for (idx = 0; idx < RADIO_BCM_UL_PAYLOAD_MONITORING_SIZE; idx++) {
             (node_payload->payload)[idx] = ul_payload_monitoring.frame[idx];

@@ -93,7 +93,7 @@ RADIO_status_t RADIO_UHFM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
         }
         // Build monitoring payload.
         ul_payload_monitoring.vmcu = SWREG_read_field(uhfm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-        ul_payload_monitoring.tmcu = SWREG_read_field(uhfm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
+        ul_payload_monitoring.tmcu = (SWREG_read_field(uhfm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU) / 10);
         ul_payload_monitoring.vrf_tx = SWREG_read_field(uhfm_registers[UHFM_REGISTER_ADDRESS_ANALOG_DATA_1], UHFM_REGISTER_ANALOG_DATA_1_MASK_VRF_TX);
         ul_payload_monitoring.vrf_rx = SWREG_read_field(uhfm_registers[UHFM_REGISTER_ADDRESS_ANALOG_DATA_1], UHFM_REGISTER_ANALOG_DATA_1_MASK_VRF_RX);
         // Copy payload.

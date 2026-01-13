@@ -118,29 +118,14 @@ RADIO_status_t RADIO_UHFM_send_ul_message(UNA_node_t* uhfm_node, UHFM_ul_message
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
     UNA_access_status_t access_status;
-    uint32_t reg_configuration_0 = 0;
-    uint32_t reg_configuration_0_mask = 0;
+    uint32_t reg_control_1 = 0;
+    uint32_t reg_control_1_mask = 0;
     uint32_t ul_payload_x = 0;
     uint8_t reg_offset = 0;
     uint8_t idx = 0;
     // Check parameters.
     if ((uhfm_node == NULL) || (ul_message == NULL)) {
         status = RADIO_ERROR_NULL_PARAMETER;
-        goto errors;
-    }
-    // Configuration register.
-    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) (ul_message->ul_payload_size), UHFM_REGISTER_CONFIGURATION_0_MASK_UL_PAYLOAD_SIZE);
-    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) (ul_message->bidirectional_flag), UHFM_REGISTER_CONFIGURATION_0_MASK_BF);
-    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) UHFM_UL_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REGISTER_CONFIGURATION_0_MASK_MSGT);
-    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) 0, UHFM_REGISTER_CONFIGURATION_0_MASK_CMSG);
-    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) 0b11, UHFM_REGISTER_CONFIGURATION_0_MASK_NFR);
-    SWREG_write_field(&reg_configuration_0, &reg_configuration_0_mask, (uint32_t) 0b01, UHFM_REGISTER_CONFIGURATION_0_MASK_BR);
-    // Write register.
-    node_status = NODE_write_register(uhfm_node, UHFM_REGISTER_ADDRESS_CONFIGURATION_0, reg_configuration_0, reg_configuration_0_mask, &access_status);
-    NODE_exit_error(RADIO_ERROR_BASE_NODE);
-    // Check access status.
-    if ((access_status.flags) != 0) {
-        status = RADIO_ERROR_MODEM_UL_CONFIGURATION;
         goto errors;
     }
     // UL payload.
@@ -150,7 +135,7 @@ RADIO_status_t RADIO_UHFM_send_ul_message(UNA_node_t* uhfm_node, UHFM_ul_message
         // Check index.
         if ((((idx + 1) % 4) == 0) || (idx == ((ul_message->ul_payload_size) - 1))) {
             // Write register.
-            node_status = NODE_write_register(uhfm_node, (UHFM_REGISTER_ADDRESS_UL_PAYLOAD_0 + reg_offset), ul_payload_x, UNA_REGISTER_MASK_ALL, &access_status);
+            node_status = NODE_write_register(uhfm_node, (UHFM_REGISTER_ADDRESS_SIGFOX_UL_PAYLOAD_0 + reg_offset), ul_payload_x, UNA_REGISTER_MASK_ALL, &access_status);
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
             // Check access status.
             if ((access_status.flags) != 0) {
@@ -162,8 +147,14 @@ RADIO_status_t RADIO_UHFM_send_ul_message(UNA_node_t* uhfm_node, UHFM_ul_message
             ul_payload_x = 0;
         }
     }
+    // Control register.
+    SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) (ul_message->ul_payload_size), UHFM_REGISTER_CONTROL_1_MASK_SIGFOX_UL_PAYLOAD_SIZE);
+    SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) (ul_message->bidirectional_flag), UHFM_REGISTER_CONTROL_1_MASK_SBF);
+    SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) UHFM_UL_MESSAGE_TYPE_BYTE_ARRAY, UHFM_REGISTER_CONTROL_1_MASK_SIGFOX_MSGT);
+    SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) 0b0, UHFM_REGISTER_CONTROL_1_MASK_SCMF);
+    SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) 0b1, UHFM_REGISTER_CONTROL_1_MASK_STRG);
     // Send message.
-    node_status = NODE_write_register(uhfm_node, UHFM_REGISTER_ADDRESS_CONTROL_1, UHFM_REGISTER_CONTROL_1_MASK_STRG, UHFM_REGISTER_CONTROL_1_MASK_STRG, &access_status);
+    node_status = NODE_write_register(uhfm_node, UHFM_REGISTER_ADDRESS_CONTROL_1, reg_control_1, reg_control_1_mask, &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     // Check access status.
     if ((access_status.flags) != 0) {
@@ -182,7 +173,7 @@ RADIO_status_t RADIO_UHFM_get_dl_payload(UNA_node_t* uhfm_node, uint8_t* dl_payl
     UNA_access_status_t access_status;
     uint32_t uhfm_registers[UHFM_REGISTER_ADDRESS_LAST];
     UHFM_ul_message_status_t message_status;
-    uint8_t reg_addr = (UHFM_REGISTER_ADDRESS_DL_PAYLOAD_0 - 1);
+    uint8_t reg_addr = (UHFM_REGISTER_ADDRESS_SIGFOX_DL_PAYLOAD_0 - 1);
     uint8_t idx = 0;
     // Check parameters.
     if ((uhfm_node == NULL) || (dl_payload_available == NULL) || (dl_payload == NULL)) {
@@ -200,7 +191,7 @@ RADIO_status_t RADIO_UHFM_get_dl_payload(UNA_node_t* uhfm_node, uint8_t* dl_payl
         goto errors;
     }
     // Compute message status.
-    message_status.all = SWREG_read_field(uhfm_registers[UHFM_REGISTER_ADDRESS_STATUS_1], UHFM_REGISTER_STATUS_1_MASK_MESSAGE_STATUS);
+    message_status.all = SWREG_read_field(uhfm_registers[UHFM_REGISTER_ADDRESS_STATUS_1], UHFM_REGISTER_STATUS_1_MASK_SIGFOX_MESSAGE_STATUS);
     // Check DL flag.
     if (message_status.field.dl_frame == 0) goto errors;
     // Byte loop.
@@ -247,7 +238,7 @@ RADIO_status_t RADIO_UHFM_get_last_bidirectional_mc(UNA_node_t* uhfm_node, uint3
         goto errors;
     }
     // Compute message counter.
-    (*last_bidirectional_mc) = SWREG_read_field(reg_status_1, UHFM_REGISTER_STATUS_1_MASK_BIDIRECTIONAL_MC);
+    (*last_bidirectional_mc) = SWREG_read_field(reg_status_1, UHFM_REGISTER_STATUS_1_MASK_SIGFOX_BIDIRECTIONAL_MC);
 errors:
     return status;
 }

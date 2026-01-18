@@ -813,7 +813,7 @@ RADIO_status_t RADIO_process(void) {
         // Turn bus interface on.
         POWER_enable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_STOP);
         // Check power node.
-        if (radio_ctx.power_node_ptr != NULL) {
+        if ((bidirectional_flag == 0) && (radio_ctx.power_node_ptr != NULL)) {
             // Read low voltage flag.
             node_status = NODE_read_register(radio_ctx.power_node_ptr, radio_ctx.power_node_cvf_register, &reg_value, &read_status);
             NODE_stack_error(ERROR_BASE_RADIO + RADIO_ERROR_BASE_NODE);

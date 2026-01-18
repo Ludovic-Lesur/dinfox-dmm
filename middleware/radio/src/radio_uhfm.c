@@ -118,10 +118,14 @@ RADIO_status_t RADIO_UHFM_send_ul_message(UNA_node_t* uhfm_node, UHFM_ul_message
     RADIO_status_t status = RADIO_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
     UNA_access_status_t access_status;
+    uint32_t reg_config_0_initial = 0;
+    uint32_t reg_config_0 = 0;
+    uint32_t reg_config_0_mask = 0;
     uint32_t reg_control_1 = 0;
     uint32_t reg_control_1_mask = 0;
     uint32_t ul_payload_x = 0;
     uint8_t reg_offset = 0;
+    uint8_t dump_valid = 0;
     uint8_t idx = 0;
     // Check parameters.
     if ((uhfm_node == NULL) || (ul_message == NULL)) {
@@ -147,6 +151,30 @@ RADIO_status_t RADIO_UHFM_send_ul_message(UNA_node_t* uhfm_node, UHFM_ul_message
             ul_payload_x = 0;
         }
     }
+    if ((ul_message->bidirectional_flag) != 0) {
+        // Dump radio settings.
+        node_status = NODE_read_register(uhfm_node, UHFM_REGISTER_ADDRESS_CONFIGURATION_0, &reg_config_0_initial, &access_status);
+        NODE_exit_error(RADIO_ERROR_BASE_NODE);
+        // Check access status.
+        if ((access_status.flags) != 0) {
+            status = RADIO_ERROR_MODEL_UL_CONFIGURATION;
+            goto errors;
+        }
+        dump_valid = 1;
+        reg_config_0 = reg_config_0_initial;
+        // Switch to optimal transmission settings.
+        SWREG_write_field(&reg_config_0, &reg_config_0_mask, UNA_convert_dbm(14), UHFM_REGISTER_CONFIGURATION_0_MASK_SIGFOX_TX_POWER);
+        SWREG_write_field(&reg_config_0, &reg_config_0_mask, 0b0, UHFM_REGISTER_CONFIGURATION_0_MASK_SBR);
+        SWREG_write_field(&reg_config_0, &reg_config_0_mask, 0b11, UHFM_REGISTER_CONFIGURATION_0_MASK_SNFR);
+        // Write register.
+        node_status = NODE_write_register(uhfm_node, UHFM_REGISTER_ADDRESS_CONFIGURATION_0, reg_config_0, reg_config_0_mask, &access_status);
+        NODE_exit_error(RADIO_ERROR_BASE_NODE);
+        // Check access status.
+        if ((access_status.flags) != 0) {
+            status = RADIO_ERROR_MODEL_UL_CONFIGURATION;
+            goto errors;
+        }
+    }
     // Control register.
     SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) (ul_message->ul_payload_size), UHFM_REGISTER_CONTROL_1_MASK_SIGFOX_UL_PAYLOAD_SIZE);
     SWREG_write_field(&reg_control_1, &reg_control_1_mask, (uint32_t) (ul_message->bidirectional_flag), UHFM_REGISTER_CONTROL_1_MASK_SBF);
@@ -162,6 +190,10 @@ RADIO_status_t RADIO_UHFM_send_ul_message(UNA_node_t* uhfm_node, UHFM_ul_message
         goto errors;
     }
 errors:
+    if (((ul_message->bidirectional_flag) != 0) && (dump_valid != 0)) {
+        // Restore radio settings.
+        NODE_write_register(uhfm_node, UHFM_REGISTER_ADDRESS_CONFIGURATION_0, reg_config_0_initial, reg_config_0_mask, &access_status);
+    }
     return status;
 }
 

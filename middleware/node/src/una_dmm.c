@@ -71,7 +71,7 @@ static UNA_DMM_context_t una_dmm_ctx = {
 /*******************************************************************/
 static UNA_DMM_status_t _UNA_DMM_load_register(uint8_t reg_addr, uint32_t* reg_value) {
     // Local variables.
-    UNA_DMM_status_t status = NODE_SUCCESS;
+    UNA_DMM_status_t status = UNA_DMM_SUCCESS;
     NVM_status_t nvm_status = NVM_SUCCESS;
     uint8_t nvm_byte = 0;
     uint8_t idx = 0;

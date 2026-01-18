@@ -70,7 +70,7 @@ RADIO_status_t RADIO_GPSM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
     }
     // Reset registers.
     for (idx = 0; idx < GPSM_REGISTER_ADDRESS_LAST; idx++) {
-        gpsm_registers[idx] = GPSM_REGISTER_ERROR_VALUE[idx];
+        gpsm_registers[idx] = GPSM_REGISTER[idx].error_value;
     }
     // Reset payload size.
     node_payload->payload_size = 0;

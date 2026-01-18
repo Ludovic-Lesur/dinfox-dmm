@@ -121,7 +121,7 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_ul
     }
     // Reset registers.
     for (idx = 0; idx < SM_REGISTER_ADDRESS_LAST; idx++) {
-        sm_registers[idx] = SM_REGISTER_ERROR_VALUE[idx];
+        sm_registers[idx] = SM_REGISTER[idx].error_value;
     }
     // Reset payload size.
     node_payload->payload_size = 0;

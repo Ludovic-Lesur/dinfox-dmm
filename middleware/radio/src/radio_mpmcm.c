@@ -350,7 +350,7 @@ RADIO_status_t RADIO_MPMCM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO
     }
     // Reset registers.
     for (idx = 0; idx < MPMCM_REGISTER_ADDRESS_LAST; idx++) {
-        radio_mpmcm_ctx.registers[idx] = MPMCM_REGISTER_ERROR_VALUE[idx];
+        radio_mpmcm_ctx.registers[idx] = MPMCM_REGISTER[idx].error_value;
     }
     // Check event driven payloads.
     status = RADIO_COMMON_check_event_driven_payloads(radio_node, node_payload, (uint32_t*) radio_mpmcm_ctx.registers);
@@ -383,7 +383,7 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
     }
     // Reset registers.
     for (idx = 0; idx < MPMCM_REGISTER_ADDRESS_LAST; idx++) {
-        radio_mpmcm_ctx.registers[idx] = MPMCM_REGISTER_ERROR_VALUE[idx];
+        radio_mpmcm_ctx.registers[idx] = MPMCM_REGISTER[idx].error_value;
     }
     // Build node payload structure.
     node_payload.payload = (uint8_t*) node_payload_bytes;

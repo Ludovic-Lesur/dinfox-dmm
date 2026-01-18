@@ -52,7 +52,7 @@ typedef enum {
 typedef struct {
     NODE_protocol_t protocol;
     uint8_t register_address_last;
-    uint32_t* register_write_timeout_ms;
+    UNA_register_t* register_table;
 } NODE_descriptor_t;
 
 /*******************************************************************/
@@ -67,18 +67,18 @@ UNA_node_list_t NODE_LIST;
 /*** NODE local global variables ***/
 
 static const NODE_descriptor_t NODES[UNA_BOARD_ID_LAST] = {
-    { NODE_PROTOCOL_UNA_AT, LVRM_REGISTER_ADDRESS_LAST, (uint32_t*) LVRM_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_AT, BPSM_REGISTER_ADDRESS_LAST, (uint32_t*) BPSM_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_AT, DDRM_REGISTER_ADDRESS_LAST, (uint32_t*) DDRM_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_AT, UHFM_REGISTER_ADDRESS_LAST, (uint32_t*) UHFM_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_AT, GPSM_REGISTER_ADDRESS_LAST, (uint32_t*) GPSM_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_AT, SM_REGISTER_ADDRESS_LAST, (uint32_t*) SM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, LVRM_REGISTER_ADDRESS_LAST, (UNA_register_t*) LVRM_REGISTER },
+    { NODE_PROTOCOL_UNA_AT, BPSM_REGISTER_ADDRESS_LAST, (UNA_register_t*) BPSM_REGISTER },
+    { NODE_PROTOCOL_UNA_AT, DDRM_REGISTER_ADDRESS_LAST, (UNA_register_t*) DDRM_REGISTER },
+    { NODE_PROTOCOL_UNA_AT, UHFM_REGISTER_ADDRESS_LAST, (UNA_register_t*) UHFM_REGISTER },
+    { NODE_PROTOCOL_UNA_AT, GPSM_REGISTER_ADDRESS_LAST, (UNA_register_t*) GPSM_REGISTER },
+    { NODE_PROTOCOL_UNA_AT, SM_REGISTER_ADDRESS_LAST, (UNA_register_t*) SM_REGISTER },
     { NODE_PROTOCOL_UNA_AT, 0, NULL },
-    { NODE_PROTOCOL_UNA_AT, RRM_REGISTER_ADDRESS_LAST, (uint32_t*) RRM_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_DMM, DMM_REGISTER_ADDRESS_LAST, (uint32_t*) DMM_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_AT, MPMCM_REGISTER_ADDRESS_LAST, (uint32_t*) MPMCM_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_R4S8CR, R4S8CR_REGISTER_ADDRESS_LAST, (uint32_t*) R4S8CR_REGISTER_ACCESS_TIMEOUT_MS },
-    { NODE_PROTOCOL_UNA_AT, BCM_REGISTER_ADDRESS_LAST, (uint32_t*) BCM_REGISTER_ACCESS_TIMEOUT_MS },
+    { NODE_PROTOCOL_UNA_AT, RRM_REGISTER_ADDRESS_LAST, (UNA_register_t*) RRM_REGISTER },
+    { NODE_PROTOCOL_UNA_DMM, DMM_REGISTER_ADDRESS_LAST, (UNA_register_t*) DMM_REGISTER },
+    { NODE_PROTOCOL_UNA_AT, MPMCM_REGISTER_ADDRESS_LAST, (UNA_register_t*) MPMCM_REGISTER },
+    { NODE_PROTOCOL_UNA_R4S8CR, R4S8CR_REGISTER_ADDRESS_LAST, (UNA_register_t*) R4S8CR_REGISTER },
+    { NODE_PROTOCOL_UNA_AT, BCM_REGISTER_ADDRESS_LAST, (UNA_register_t*) BCM_REGISTER },
 };
 
 static NODE_context_t node_ctx = {
@@ -151,7 +151,7 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     // Common write parameters.
     write_params.node_addr = (node->address);
     write_params.reg_addr = reg_addr;
-    write_params.reply_params.timeout_ms = NODES[node->board_id].register_write_timeout_ms[reg_addr];
+    write_params.reply_params.timeout_ms = NODES[node->board_id].register_table[reg_addr].timeout_ms;
     write_params.reply_params.type = UNA_REPLY_TYPE_OK;
     // Check protocol.
     switch (NODES[node->board_id].protocol) {
@@ -259,7 +259,7 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     // Write parameters.
     read_params.node_addr = (node->address);
     read_params.reg_addr = reg_addr;
-    read_params.reply_params.timeout_ms = NODES[node->board_id].register_write_timeout_ms[reg_addr];
+    read_params.reply_params.timeout_ms = NODES[node->board_id].register_table[reg_addr].timeout_ms;
     read_params.reply_params.type = UNA_REPLY_TYPE_VALUE;
     // Check protocol.
     switch (NODES[node->board_id].protocol) {

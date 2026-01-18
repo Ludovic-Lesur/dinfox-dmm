@@ -70,7 +70,7 @@ RADIO_status_t RADIO_UHFM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
     }
     // Reset registers.
     for (idx = 0; idx < UHFM_REGISTER_ADDRESS_LAST; idx++) {
-        uhfm_registers[idx] = UHFM_REGISTER_ERROR_VALUE[idx];
+        uhfm_registers[idx] = UHFM_REGISTER[idx].error_value;
     }
     // Reset payload size.
     node_payload->payload_size = 0;

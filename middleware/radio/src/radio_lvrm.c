@@ -98,7 +98,7 @@ RADIO_status_t RADIO_LVRM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
     }
     // Reset registers.
     for (idx = 0; idx < LVRM_REGISTER_ADDRESS_LAST; idx++) {
-        lvrm_registers[idx] = LVRM_REGISTER_ERROR_VALUE[idx];
+        lvrm_registers[idx] = LVRM_REGISTER[idx].error_value;
     }
     // Reset payload size.
     node_payload->payload_size = 0;

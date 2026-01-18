@@ -861,10 +861,10 @@ errors:
     NODE_stack_error(ERROR_BASE_RADIO + RADIO_ERROR_BASE_NODE);
     // This is done here in case the downlink modified one of the periods (in order to take it into account directly for next radio wake-up).
     if (ul_next_time_update_required != 0) {
-        radio_ctx.ul_next_time_seconds = (uptime_seconds + UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_UL_PERIOD)));
+        radio_ctx.ul_next_time_seconds = (uptime_seconds + UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD)));
     }
     if (dl_next_time_update_required != 0) {
-        radio_ctx.dl_next_time_seconds = (uptime_seconds + UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_DL_PERIOD)));
+        radio_ctx.dl_next_time_seconds = (uptime_seconds + UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD)));
     }
     // Turn bus interface off.
     POWER_disable(POWER_REQUESTER_ID_RADIO, POWER_DOMAIN_RS485);

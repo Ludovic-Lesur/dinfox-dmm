@@ -101,7 +101,7 @@ RADIO_status_t RADIO_BCM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_u
     }
     // Reset registers.
     for (idx = 0; idx < BCM_REGISTER_ADDRESS_LAST; idx++) {
-        bcm_registers[idx] = BCM_REGISTER_ERROR_VALUE[idx];
+        bcm_registers[idx] = BCM_REGISTER[idx].error_value;
     }
     // Reset payload size.
     node_payload->payload_size = 0;

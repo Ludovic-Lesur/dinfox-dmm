@@ -63,7 +63,7 @@ RADIO_status_t RADIO_R4S8CR_build_ul_node_payload(RADIO_node_t* radio_node, RADI
     }
     // Reset registers.
     for (idx = 0; idx < R4S8CR_REGISTER_ADDRESS_LAST; idx++) {
-        r4s8cr_registers[idx] = R4S8CR_REGISTER_ERROR_VALUE[idx];
+        r4s8cr_registers[idx] = R4S8CR_REGISTER[idx].error_value;
     }
     // Reset payload size.
     node_payload->payload_size = 0;

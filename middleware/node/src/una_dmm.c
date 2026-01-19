@@ -75,6 +75,8 @@ static UNA_DMM_status_t _UNA_DMM_load_register(uint8_t reg_addr, uint32_t* reg_v
     NVM_status_t nvm_status = NVM_SUCCESS;
     uint8_t nvm_byte = 0;
     uint8_t idx = 0;
+    // Reset output.
+    (*reg_value) = 0;
     // Byte loop.
     for (idx = 0; idx < UNA_REGISTER_SIZE_BYTES; idx++) {
         // Read NVM.
@@ -96,7 +98,7 @@ static UNA_DMM_status_t _UNA_DMM_store_register(uint8_t reg_addr) {
     uint8_t nvm_byte = 0;
     uint8_t idx = 0;
     // Byte loop.
-    for (idx = 0; idx < 4; idx++) {
+    for (idx = 0; idx < UNA_REGISTER_SIZE_BYTES; idx++) {
         // Compute byte.
         nvm_byte = (uint8_t) (((UNA_DMM_RAM_REGISTER[reg_addr]) >> (idx << 3)) & 0x000000FF);
         // Write NVM.
@@ -181,16 +183,16 @@ static UNA_DMM_status_t _UNA_DMM_secure_register(uint8_t reg_addr, uint32_t new_
     case COMMON_REGISTER_ADDRESS_NODE_ID:
         SWREG_secure_field(
             COMMON_REGISTER_NODE_ID_MASK_NODE_ADDR,,,
-            <= UNA_NODE_ADDRESS_RS485_BRIDGE,
-            >= UNA_NODE_ADDRESS_R4S8CR_START,
-            UNA_NODE_ADDRESS_ERROR,
+            != UNA_NODE_ADDRESS_MASTER,
+            != UNA_NODE_ADDRESS_MASTER,
+            UNA_NODE_ADDRESS_MASTER,
             status = UNA_DMM_ERROR_REGISTER_FIELD_VALUE
         );
         SWREG_secure_field(
             COMMON_REGISTER_NODE_ID_MASK_BOARD_ID,,,
-            >= UNA_BOARD_ID_LAST,
-            >= UNA_BOARD_ID_LAST,
-            UNA_BOARD_ID_ERROR,
+            != UNA_BOARD_ID_DMM,
+            != UNA_BOARD_ID_DMM,
+            UNA_BOARD_ID_DMM,
             status = UNA_DMM_ERROR_REGISTER_FIELD_VALUE
         );
         break;

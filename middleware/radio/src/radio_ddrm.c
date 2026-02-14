@@ -16,7 +16,7 @@
 
 /*** RADIO DDRM local macros ***/
 
-#define RADIO_DDRM_UL_PAYLOAD_MONITORING_SIZE   3
+#define RADIO_DDRM_UL_PAYLOAD_MONITORING_SIZE   4
 #define RADIO_DDRM_UL_PAYLOAD_ELECTRICAL_SIZE   7
 
 /*** RADIO DDRM local structures ***/
@@ -33,7 +33,7 @@ typedef union {
     uint8_t frame[RADIO_DDRM_UL_PAYLOAD_MONITORING_SIZE];
     struct {
         unsigned vmcu :16;
-        unsigned tmcu :8;
+        unsigned tmcu :16;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_DDRM_ul_payload_monitoring_t;
 
@@ -121,7 +121,7 @@ RADIO_status_t RADIO_DDRM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
         }
         // Build monitoring payload.
         ul_payload_monitoring.vmcu = SWREG_read_field(ddrm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-        ul_payload_monitoring.tmcu = (SWREG_read_field(ddrm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU) / 10);
+        ul_payload_monitoring.tmcu = SWREG_read_field(ddrm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
         // Copy payload.
         for (idx = 0; idx < RADIO_DDRM_UL_PAYLOAD_MONITORING_SIZE; idx++) {
             (node_payload->payload)[idx] = ul_payload_monitoring.frame[idx];

@@ -16,9 +16,9 @@
 
 /*** RADIO SM local macros ***/
 
-#define RADIO_SM_UL_PAYLOAD_MONITORING_SIZE     3
+#define RADIO_SM_UL_PAYLOAD_MONITORING_SIZE     4
 #define RADIO_SM_UL_PAYLOAD_ELECTRICAL_SIZE     9
-#define RADIO_SM_UL_PAYLOAD_SENSOR_SIZE         2
+#define RADIO_SM_UL_PAYLOAD_SENSOR_SIZE         3
 
 #define RADIO_SM_UL_PAYLOAD_LOOP_MAX            5
 
@@ -37,7 +37,7 @@ typedef union {
     uint8_t frame[RADIO_SM_UL_PAYLOAD_MONITORING_SIZE];
     struct {
         unsigned vmcu :16;
-        unsigned tmcu :8;
+        unsigned tmcu :16;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_SM_ul_payload_monitoring_t;
 
@@ -60,7 +60,7 @@ typedef union {
 typedef union {
     uint8_t frame[RADIO_SM_UL_PAYLOAD_SENSOR_SIZE];
     struct {
-        unsigned tamb :8;
+        unsigned tamb :16;
         unsigned hamb :8;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_SM_ul_payload_sensor_t;
@@ -151,7 +151,7 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_ul
             }
             // Build data payload.
             ul_payload_monitoring.vmcu = SWREG_read_field(sm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-            ul_payload_monitoring.tmcu = (SWREG_read_field(sm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU) / 10);
+            ul_payload_monitoring.tmcu = SWREG_read_field(sm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
             // Copy payload.
             for (idx = 0; idx < RADIO_SM_UL_PAYLOAD_MONITORING_SIZE; idx++) {
                 (node_payload->payload)[idx] = ul_payload_monitoring.frame[idx];
@@ -198,7 +198,7 @@ RADIO_status_t RADIO_SM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_ul
                 NODE_exit_error(RADIO_ERROR_BASE_NODE);
             }
             // Build data payload.
-            ul_payload_sensor.tamb = (SWREG_read_field(sm_registers[SM_REGISTER_ADDRESS_ANALOG_DATA_3], SM_REGISTER_ANALOG_DATA_3_MASK_TAMB) / 10);
+            ul_payload_sensor.tamb = SWREG_read_field(sm_registers[SM_REGISTER_ADDRESS_ANALOG_DATA_3], SM_REGISTER_ANALOG_DATA_3_MASK_TAMB);
             ul_payload_sensor.hamb = SWREG_read_field(sm_registers[SM_REGISTER_ADDRESS_ANALOG_DATA_3], SM_REGISTER_ANALOG_DATA_3_MASK_HAMB);
             // Copy payload.
             for (idx = 0; idx < RADIO_SM_UL_PAYLOAD_SENSOR_SIZE; idx++) {

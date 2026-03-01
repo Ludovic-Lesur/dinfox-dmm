@@ -21,9 +21,9 @@
  *******************************************************************/
 typedef enum {
     HMI_COMMON_LINE_INDEX(UHFM)
-    HMI_UHFM_LINE_INDEX_EP_ID,
-    HMI_UHFM_LINE_INDEX_VRF_TX,
-    HMI_UHFM_LINE_INDEX_VRF_RX,
+    HMI_UHFM_LINE_INDEX_SIGFOX_EP_ID,
+    HMI_UHFM_LINE_INDEX_RADIO_TX_VOLTAGE,
+    HMI_UHFM_LINE_INDEX_RADIO_RX_VOLTAGE,
     HMI_UHFM_LINE_INDEX_LAST,
 } HMI_UHFM_line_index_t;
 

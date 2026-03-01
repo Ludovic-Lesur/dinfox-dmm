@@ -32,12 +32,12 @@ typedef union {
     uint8_t frame[RADIO_MPMCM_UL_PAYLOAD_STATUS_SIZE];
     struct {
         unsigned unused :2;
-        unsigned mvd :1;
-        unsigned ticd :1;
-        unsigned ch4d :1;
-        unsigned ch3d :1;
-        unsigned ch2d :1;
-        unsigned ch1d :1;
+        unsigned mains_voltage_detect :1;
+        unsigned mains_linky_tic_detect :1;
+        unsigned mains_current_detect_ch4 :1;
+        unsigned mains_current_detect_ch3 :1;
+        unsigned mains_current_detect_ch2 :1;
+        unsigned mains_current_detect_ch1 :1;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_status_t;
 
@@ -47,9 +47,9 @@ typedef union {
     struct {
         unsigned unused :5;
         unsigned channel_index :3;
-        unsigned vrms_min :16;
-        unsigned vrms_mean :16;
-        unsigned vrms_max :16;
+        unsigned mains_voltage_rms_min :16;
+        unsigned mains_voltage_rms_mean :16;
+        unsigned mains_voltage_rms_max :16;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_voltage_t;
 
@@ -57,9 +57,9 @@ typedef union {
 typedef union {
     uint8_t frame[RADIO_MPMCM_UL_PAYLOAD_MAINS_FREQUENCY_SIZE];
     struct {
-        unsigned f_min :16;
-        unsigned f_mean :16;
-        unsigned f_max :16;
+        unsigned mains_frequency_min :16;
+        unsigned mains_frequency_mean :16;
+        unsigned mains_frequency_max :16;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_frequency_t;
 
@@ -69,10 +69,10 @@ typedef union {
     struct {
         unsigned unused :5;
         unsigned channel_index :3;
-        unsigned pact_mean :16;
-        unsigned pact_max :16;
-        unsigned papp_mean :16;
-        unsigned papp_max :16;
+        unsigned mains_active_power_mean :16;
+        unsigned mains_active_power_max :16;
+        unsigned mains_apparent_power_mean :16;
+        unsigned mains_apparent_power_max :16;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_power_t;
 
@@ -82,9 +82,9 @@ typedef union {
     struct {
         unsigned unused :5;
         unsigned channel_index :3;
-        unsigned pf_min :8;
-        unsigned pf_mean :8;
-        unsigned pf_max :8;
+        unsigned mains_power_factor_min :8;
+        unsigned mains_power_factor_mean :8;
+        unsigned mains_power_factor_max :8;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_power_factor_t;
 
@@ -94,8 +94,8 @@ typedef union {
     struct {
         unsigned unused :5;
         unsigned channel_index :3;
-        unsigned eact :16;
-        unsigned eapp :16;
+        unsigned mains_active_energy :16;
+        unsigned mains_apparent_energy :16;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_MPMCM_ul_payload_mains_energy_t;
 
@@ -103,8 +103,8 @@ typedef union {
 typedef union {
     struct {
         unsigned por :1;
-        unsigned mvd :1;
-        unsigned ticd :1;
+        unsigned mains_voltage_detect :1;
+        unsigned mains_linky_tic_detect :1;
     };
     uint8_t all;
 } RADIO_MPMCM_flags_t;
@@ -148,7 +148,7 @@ static const uint8_t RADIO_MPMCM_REGISTERS_MAINS_ENERGY[] = {
     MPMCM_REGISTER_ADDRESS_CH1_ENERGY
 };
 
-static RADIO_MPMCM_context_t radio_mpmcm_ctx = { .flags.por = 1, .flags.mvd = 0, .flags.ticd = 0, };
+static RADIO_MPMCM_context_t radio_mpmcm_ctx = { .flags.por = 1, .flags.mains_voltage_detect = 0, .flags.mains_linky_tic_detect = 0, };
 
 /*** MPMCM local functions ***/
 
@@ -188,9 +188,9 @@ static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_frequency(UNA_node_t* m
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     if (access_status.flags != 0) goto errors;
     // Build mains frequency frame.
-    ul_payload_mains_frequency.f_min = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_MAINS_FREQUENCY_1], MPMCM_REGISTER_MASK_MIN);
-    ul_payload_mains_frequency.f_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_MAINS_FREQUENCY_0], MPMCM_REGISTER_MASK_MEAN);
-    ul_payload_mains_frequency.f_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_MAINS_FREQUENCY_1], MPMCM_REGISTER_MASK_MAX);
+    ul_payload_mains_frequency.mains_frequency_min = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_MAINS_FREQUENCY_1], MPMCM_REGISTER_MASK_MIN);
+    ul_payload_mains_frequency.mains_frequency_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_MAINS_FREQUENCY_0], MPMCM_REGISTER_MASK_MEAN);
+    ul_payload_mains_frequency.mains_frequency_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_MAINS_FREQUENCY_1], MPMCM_REGISTER_MASK_MAX);
     // Copy payload.
     for (idx = 0; idx < RADIO_MPMCM_UL_PAYLOAD_MAINS_FREQUENCY_SIZE; idx++) {
         (node_payload->payload)[idx] = ul_payload_mains_frequency.frame[idx];
@@ -221,9 +221,9 @@ static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_voltage(UNA_node_t* mpm
     // Build mains voltage frame.
     ul_payload_mains_voltage.unused = 0;
     ul_payload_mains_voltage.channel_index = channel_index;
-    ul_payload_mains_voltage.vrms_min = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REGISTER_MASK_MIN);
-    ul_payload_mains_voltage.vrms_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_RMS_VOLTAGE_0 + reg_offset], MPMCM_REGISTER_MASK_MEAN);
-    ul_payload_mains_voltage.vrms_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REGISTER_MASK_MAX);
+    ul_payload_mains_voltage.mains_voltage_rms_min = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REGISTER_MASK_MIN);
+    ul_payload_mains_voltage.mains_voltage_rms_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_RMS_VOLTAGE_0 + reg_offset], MPMCM_REGISTER_MASK_MEAN);
+    ul_payload_mains_voltage.mains_voltage_rms_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_RMS_VOLTAGE_1 + reg_offset], MPMCM_REGISTER_MASK_MAX);
     // Copy payload.
     for (idx = 0; idx < RADIO_MPMCM_UL_PAYLOAD_MAINS_VOLTAGE_SIZE; idx++) {
         (node_payload->payload)[idx] = ul_payload_mains_voltage.frame[idx];
@@ -254,10 +254,10 @@ static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_power(UNA_node_t* mpmcm
     // Build mains power frame.
     ul_payload_mains_power.unused = 0;
     ul_payload_mains_power.channel_index = channel_index;
-    ul_payload_mains_power.pact_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_ACTIVE_POWER_0 + reg_offset], MPMCM_REGISTER_MASK_MEAN);
-    ul_payload_mains_power.pact_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_ACTIVE_POWER_1 + reg_offset], MPMCM_REGISTER_MASK_MAX);
-    ul_payload_mains_power.papp_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_APPARENT_POWER_0 + reg_offset], MPMCM_REGISTER_MASK_MEAN);
-    ul_payload_mains_power.papp_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_APPARENT_POWER_1 + reg_offset], MPMCM_REGISTER_MASK_MAX);
+    ul_payload_mains_power.mains_active_power_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_ACTIVE_POWER_0 + reg_offset], MPMCM_REGISTER_MASK_MEAN);
+    ul_payload_mains_power.mains_active_power_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_ACTIVE_POWER_1 + reg_offset], MPMCM_REGISTER_MASK_MAX);
+    ul_payload_mains_power.mains_apparent_power_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_APPARENT_POWER_0 + reg_offset], MPMCM_REGISTER_MASK_MEAN);
+    ul_payload_mains_power.mains_apparent_power_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_APPARENT_POWER_1 + reg_offset], MPMCM_REGISTER_MASK_MAX);
     // Copy payload.
     for (idx = 0; idx < RADIO_MPMCM_UL_PAYLOAD_MAINS_POWER_SIZE; idx++) {
         (node_payload->payload)[idx] = ul_payload_mains_power.frame[idx];
@@ -288,9 +288,9 @@ static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_power_factor(UNA_node_t
     // Build mains power factor frame.
     ul_payload_mains_power_factor.unused = 0;
     ul_payload_mains_power_factor.channel_index = channel_index;
-    ul_payload_mains_power_factor.pf_min = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_POWER_FACTOR_1 + reg_offset], MPMCM_REGISTER_MASK_MIN);
-    ul_payload_mains_power_factor.pf_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_POWER_FACTOR_0 + reg_offset], MPMCM_REGISTER_MASK_MEAN);
-    ul_payload_mains_power_factor.pf_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_POWER_FACTOR_1 + reg_offset], MPMCM_REGISTER_MASK_MAX);
+    ul_payload_mains_power_factor.mains_power_factor_min = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_POWER_FACTOR_1 + reg_offset], MPMCM_REGISTER_MASK_MIN);
+    ul_payload_mains_power_factor.mains_power_factor_mean = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_POWER_FACTOR_0 + reg_offset], MPMCM_REGISTER_MASK_MEAN);
+    ul_payload_mains_power_factor.mains_power_factor_max = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_POWER_FACTOR_1 + reg_offset], MPMCM_REGISTER_MASK_MAX);
     // Copy payload.
     for (idx = 0; idx < RADIO_MPMCM_UL_PAYLOAD_MAINS_POWER_FACTOR_SIZE; idx++) {
         (node_payload->payload)[idx] = ul_payload_mains_power_factor.frame[idx];
@@ -321,8 +321,8 @@ static RADIO_status_t _RADIO_MPMCM_build_ul_node_payload_energy(UNA_node_t* mpmc
     // Build mains energy frame.
     ul_payload_mains_energy.unused = 0;
     ul_payload_mains_energy.channel_index = channel_index;
-    ul_payload_mains_energy.eact = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_ENERGY + reg_offset], MPMCM_REGISTER_MASK_ACTIVE_ENERGY);
-    ul_payload_mains_energy.eapp = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_ENERGY + reg_offset], MPMCM_REGISTER_MASK_APPARENT_ENERGY);
+    ul_payload_mains_energy.mains_active_energy = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_ENERGY + reg_offset], MPMCM_REGISTER_MASK_ACTIVE_ENERGY);
+    ul_payload_mains_energy.mains_apparent_energy = SWREG_read_field(radio_mpmcm_ctx.registers[MPMCM_REGISTER_ADDRESS_CH1_ENERGY + reg_offset], MPMCM_REGISTER_MASK_APPARENT_ENERGY);
     // Copy payload.
     for (idx = 0; idx < RADIO_MPMCM_UL_PAYLOAD_MAINS_ENERGY_SIZE; idx++) {
         (node_payload->payload)[idx] = ul_payload_mains_energy.frame[idx];
@@ -425,9 +425,9 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
     // Channels loop.
     for (channel_idx = 0; channel_idx < MPMCM_CHANNEL_INDEX_LAST; channel_idx++) {
         // Do not send any other frame if mains voltage was not present 2 consecutive times.
-        if ((channel_idx <= MPMCM_CHANNEL_INDEX_ACI3) && (((mvd == 0) && (radio_mpmcm_ctx.flags.mvd == 0)) || (ame == 0))) continue;
+        if ((channel_idx <= MPMCM_CHANNEL_INDEX_ACI3) && (((mvd == 0) && (radio_mpmcm_ctx.flags.mains_voltage_detect == 0)) || (ame == 0))) continue;
         // Do not send any frame if TIC was not detected 2 consecutive times.
-        if ((channel_idx == MPMCM_CHANNEL_INDEX_TIC) && (((ticd == 0) && (radio_mpmcm_ctx.flags.ticd == 0)) || (lte == 0))) continue;
+        if ((channel_idx == MPMCM_CHANNEL_INDEX_TIC) && (((ticd == 0) && (radio_mpmcm_ctx.flags.mains_linky_tic_detect == 0)) || (lte == 0))) continue;
         // Mains voltage.
         if (channel_idx <= MPMCM_CHANNEL_INDEX_ACI3) {
             // Check if voltage has already been sent from another channel.
@@ -475,7 +475,7 @@ RADIO_status_t RADIO_MPMCM_process(UNA_node_t* mpmcm_node, RADIO_MPMCM_radio_tra
 errors:
     // Clear POR flag and update MVD and TICD flags.
     radio_mpmcm_ctx.flags.por = 0;
-    radio_mpmcm_ctx.flags.mvd = mvd;
-    radio_mpmcm_ctx.flags.ticd = ticd;
+    radio_mpmcm_ctx.flags.mains_voltage_detect = mvd;
+    radio_mpmcm_ctx.flags.mains_linky_tic_detect = ticd;
     return status;
 }

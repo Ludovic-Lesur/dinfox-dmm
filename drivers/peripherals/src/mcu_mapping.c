@@ -17,11 +17,11 @@
 /*** MCU MAPPING local global variables ***/
 
 // Analog inputs.
-static const GPIO_pin_t GPIO_ADC_VRS_MEASURE = { GPIOA, 0, 6, 0 };
-static const GPIO_pin_t GPIO_ADC_VHMI_MEASURE = { GPIOA, 0, 4, 0 };
-static const GPIO_pin_t GPIO_ADC_VUSB_MEASURE = { GPIOA, 0, 1, 0 };
+static const GPIO_pin_t GPIO_ADC_RS485_BUS_VOLTAGE = { GPIOA, 0, 6, 0 };
+static const GPIO_pin_t GPIO_ADC_HMI_VOLTAGE = { GPIOA, 0, 4, 0 };
+static const GPIO_pin_t GPIO_ADC_USB_VOLTAGE = { GPIOA, 0, 1, 0 };
 // Analog inputs list.
-static const GPIO_pin_t* const GPIO_ADC_PINS_LIST[ADC_CHANNEL_INDEX_LAST] = { &GPIO_ADC_VRS_MEASURE, &GPIO_ADC_VHMI_MEASURE, &GPIO_ADC_VUSB_MEASURE };
+static const GPIO_pin_t* const GPIO_ADC_PINS_LIST[ADC_CHANNEL_INDEX_LAST] = { &GPIO_ADC_RS485_BUS_VOLTAGE, &GPIO_ADC_HMI_VOLTAGE, &GPIO_ADC_USB_VOLTAGE };
 // LPUART1.
 static const GPIO_pin_t GPIO_LPUART1_TX = { GPIOB, 1, 10, 4 };
 static const GPIO_pin_t GPIO_LPUART1_RX = { GPIOB, 1, 11, 4 };

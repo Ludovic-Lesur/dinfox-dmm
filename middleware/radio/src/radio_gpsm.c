@@ -30,10 +30,10 @@ typedef enum {
 typedef union {
     uint8_t frame[RADIO_GPSM_UL_PAYLOAD_MONITORING_SIZE];
     struct {
-        unsigned vmcu :16;
-        unsigned tmcu :16;
-        unsigned vgps :16;
-        unsigned vant :16;
+        unsigned mcu_voltage :16;
+        unsigned mcu_temperature :16;
+        unsigned gps_voltage :16;
+        unsigned antenna_voltage :16;
         unsigned unused :8;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_GPSM_ul_payload_monitoring_t;
@@ -93,10 +93,10 @@ RADIO_status_t RADIO_GPSM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
         }
         // Build monitoring payload.
-        ul_payload_monitoring.vmcu = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-        ul_payload_monitoring.tmcu = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
-        ul_payload_monitoring.vgps = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_VGPS);
-        ul_payload_monitoring.vant = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_VANT);
+        ul_payload_monitoring.mcu_voltage = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_MCU_VOLTAGE);
+        ul_payload_monitoring.mcu_temperature = SWREG_read_field(gpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_MCU_TEMPERATURE);
+        ul_payload_monitoring.gps_voltage = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_GPS_VOLTAGE);
+        ul_payload_monitoring.antenna_voltage = SWREG_read_field(gpsm_registers[GPSM_REGISTER_ADDRESS_ANALOG_DATA_1], GPSM_REGISTER_ANALOG_DATA_1_MASK_ANTENNA_VOLTAGE);
         ul_payload_monitoring.unused = 0;
         // Copy payload.
         for (idx = 0; idx < RADIO_GPSM_UL_PAYLOAD_MONITORING_SIZE; idx++) {

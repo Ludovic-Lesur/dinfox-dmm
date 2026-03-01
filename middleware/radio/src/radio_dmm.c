@@ -30,10 +30,10 @@ typedef enum {
 typedef union {
     uint8_t frame[RADIO_DMM_UL_PAYLOAD_MONITORING_SIZE];
     struct {
-        unsigned vrs :16;
-        unsigned vhmi :16;
-        unsigned vusb :16;
-        unsigned nodes_count :8;
+        unsigned rs485_bus_voltage :16;
+        unsigned hmi_voltage :16;
+        unsigned usb_voltage :16;
+        unsigned node_count :8;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_DMM_ul_payload_monitoring_t;
 
@@ -93,10 +93,10 @@ RADIO_status_t RADIO_DMM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_u
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
         }
         // Build monitoring payload.
-        ul_payload_monitoring.vrs = SWREG_read_field(dmm_registers[DMM_REGISTER_ADDRESS_ANALOG_DATA_1], DMM_REGISTER_ANALOG_DATA_1_MASK_VRS);
-        ul_payload_monitoring.vhmi = SWREG_read_field(dmm_registers[DMM_REGISTER_ADDRESS_ANALOG_DATA_1], DMM_REGISTER_ANALOG_DATA_1_MASK_VHMI);
-        ul_payload_monitoring.vusb = SWREG_read_field(dmm_registers[DMM_REGISTER_ADDRESS_ANALOG_DATA_2], DMM_REGISTER_ANALOG_DATA_2_MASK_VUSB);
-        ul_payload_monitoring.nodes_count = SWREG_read_field(dmm_registers[DMM_REGISTER_ADDRESS_STATUS_1], DMM_REGISTER_STATUS_1_MASK_NODES_COUNT);
+        ul_payload_monitoring.rs485_bus_voltage = SWREG_read_field(dmm_registers[DMM_REGISTER_ADDRESS_ANALOG_DATA_1], DMM_REGISTER_ANALOG_DATA_1_MASK_RS485_BUS_VOLTAGE);
+        ul_payload_monitoring.hmi_voltage = SWREG_read_field(dmm_registers[DMM_REGISTER_ADDRESS_ANALOG_DATA_1], DMM_REGISTER_ANALOG_DATA_1_MASK_HMI_VOLTAGE);
+        ul_payload_monitoring.usb_voltage = SWREG_read_field(dmm_registers[DMM_REGISTER_ADDRESS_ANALOG_DATA_2], DMM_REGISTER_ANALOG_DATA_2_MASK_USB_VOLTAGE);
+        ul_payload_monitoring.node_count = SWREG_read_field(dmm_registers[DMM_REGISTER_ADDRESS_STATUS_1], DMM_REGISTER_STATUS_1_MASK_NODE_COUNT);
         // Copy payload.
         for (idx = 0; idx < RADIO_DMM_UL_PAYLOAD_MONITORING_SIZE; idx++) {
             (node_payload->payload)[idx] = ul_payload_monitoring.frame[idx];

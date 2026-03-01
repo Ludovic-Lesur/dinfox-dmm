@@ -32,8 +32,8 @@ typedef enum {
 typedef union {
     uint8_t frame[RADIO_DDRM_UL_PAYLOAD_MONITORING_SIZE];
     struct {
-        unsigned vmcu :16;
-        unsigned tmcu :16;
+        unsigned mcu_voltage :16;
+        unsigned mcu_temperature :16;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_DDRM_ul_payload_monitoring_t;
 
@@ -41,11 +41,11 @@ typedef union {
 typedef union {
     uint8_t frame[RADIO_DDRM_UL_PAYLOAD_ELECTRICAL_SIZE];
     struct {
-        unsigned vin :16;
-        unsigned vout :16;
-        unsigned iout :16;
+        unsigned input_voltage :16;
+        unsigned output_voltage :16;
+        unsigned output_current :16;
         unsigned unused :6;
-        unsigned ddenst :2;
+        unsigned regulator_control_state :2;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_DDRM_ul_payload_electrical_t;
 
@@ -120,8 +120,8 @@ RADIO_status_t RADIO_DDRM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
         }
         // Build monitoring payload.
-        ul_payload_monitoring.vmcu = SWREG_read_field(ddrm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-        ul_payload_monitoring.tmcu = SWREG_read_field(ddrm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
+        ul_payload_monitoring.mcu_voltage = SWREG_read_field(ddrm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_MCU_VOLTAGE);
+        ul_payload_monitoring.mcu_temperature = SWREG_read_field(ddrm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_MCU_TEMPERATURE);
         // Copy payload.
         for (idx = 0; idx < RADIO_DDRM_UL_PAYLOAD_MONITORING_SIZE; idx++) {
             (node_payload->payload)[idx] = ul_payload_monitoring.frame[idx];
@@ -139,11 +139,11 @@ RADIO_status_t RADIO_DDRM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
         }
         // Build data payload.
-        ul_payload_electrical.vin = SWREG_read_field(ddrm_registers[DDRM_REGISTER_ADDRESS_ANALOG_DATA_1], DDRM_REGISTER_ANALOG_DATA_1_MASK_VIN);
-        ul_payload_electrical.vout = SWREG_read_field(ddrm_registers[DDRM_REGISTER_ADDRESS_ANALOG_DATA_1], DDRM_REGISTER_ANALOG_DATA_1_MASK_VOUT);
-        ul_payload_electrical.iout = SWREG_read_field(ddrm_registers[DDRM_REGISTER_ADDRESS_ANALOG_DATA_2], DDRM_REGISTER_ANALOG_DATA_2_MASK_IOUT);
+        ul_payload_electrical.input_voltage = SWREG_read_field(ddrm_registers[DDRM_REGISTER_ADDRESS_ANALOG_DATA_1], DDRM_REGISTER_ANALOG_DATA_1_MASK_INPUT_VOLTAGE);
+        ul_payload_electrical.output_voltage = SWREG_read_field(ddrm_registers[DDRM_REGISTER_ADDRESS_ANALOG_DATA_1], DDRM_REGISTER_ANALOG_DATA_1_MASK_OUTPUT_VOLTAGE);
+        ul_payload_electrical.output_current = SWREG_read_field(ddrm_registers[DDRM_REGISTER_ADDRESS_ANALOG_DATA_2], DDRM_REGISTER_ANALOG_DATA_2_MASK_OUTPUT_CURRENT);
         ul_payload_electrical.unused = 0;
-        ul_payload_electrical.ddenst = SWREG_read_field(ddrm_registers[DDRM_REGISTER_ADDRESS_STATUS_1], DDRM_REGISTER_STATUS_1_MASK_DDENST);
+        ul_payload_electrical.regulator_control_state = SWREG_read_field(ddrm_registers[DDRM_REGISTER_ADDRESS_STATUS_1], DDRM_REGISTER_STATUS_1_MASK_RCS);
         // Copy payload.
         for (idx = 0; idx < RADIO_DDRM_UL_PAYLOAD_ELECTRICAL_SIZE; idx++) {
             (node_payload->payload)[idx] = ul_payload_electrical.frame[idx];

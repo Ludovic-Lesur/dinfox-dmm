@@ -354,7 +354,7 @@ NODE_status_t NODE_scan(void) {
     UNA_access_status_t read_status;
     uint32_t reg_value = 0;
     uint32_t scan_period_seconds = NODE_SCAN_PERIOD_DEFAULT_SECONDS;
-    uint8_t nodes_count = 0;
+    uint8_t node_count = 0;
     uint8_t una_at_init = 0;
     uint8_t una_r4s8cr_init = 0;
     // Reset list.
@@ -370,24 +370,24 @@ NODE_status_t NODE_scan(void) {
     una_at_config.baud_rate = NODE_UNA_AT_BAUD_RATE;
     una_at_status = UNA_AT_init(&una_at_config);
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-    una_at_status = UNA_AT_scan(&(NODE_LIST.list[NODE_LIST.count]), (NODE_LIST_SIZE - NODE_LIST.count), &nodes_count);
+    una_at_status = UNA_AT_scan(&(NODE_LIST.list[NODE_LIST.count]), (NODE_LIST_SIZE - NODE_LIST.count), &node_count);
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
     una_at_status = UNA_AT_de_init();
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
     una_at_init = 0;
     // Update count.
-    NODE_LIST.count += nodes_count;
+    NODE_LIST.count += node_count;
     // Scan R4S8CR nodes.
     una_r4s8cr_init = 1;
     una_r4s8cr_status = UNA_R4S8CR_init();
     UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
-    una_r4s8cr_status = UNA_R4S8CR_scan(&(NODE_LIST.list[NODE_LIST.count]), (NODE_LIST_SIZE - NODE_LIST.count), &nodes_count);
+    una_r4s8cr_status = UNA_R4S8CR_scan(&(NODE_LIST.list[NODE_LIST.count]), (NODE_LIST_SIZE - NODE_LIST.count), &node_count);
     UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
     una_r4s8cr_status = UNA_R4S8CR_de_init();
     UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
     una_r4s8cr_init = 0;
     // Update count.
-    NODE_LIST.count += nodes_count;
+    NODE_LIST.count += node_count;
 errors:
     // Force release in case of error.
     if (una_at_init != 0) {
@@ -407,7 +407,7 @@ errors:
     UNA_DMM_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_UNA_DMM);
     // Check access status.
     if ((una_dmm_status == UNA_DMM_SUCCESS) && (read_status.all == 0)) {
-        scan_period_seconds = UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD));
+        scan_period_seconds = UNA_get_seconds((uint32_t) SWREG_read_field(reg_value, DMM_REGISTER_CONFIGURATION_0_MASK_NODE_SCAN_PERIOD));
     }
     // Update next scan time.
     node_ctx.scan_next_time_seconds += scan_period_seconds;

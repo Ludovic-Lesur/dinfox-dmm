@@ -32,8 +32,8 @@ typedef enum {
 typedef union {
     uint8_t frame[RADIO_BPSM_UL_PAYLOAD_MONITORING_SIZE];
     struct {
-        unsigned vmcu :16;
-        unsigned tmcu :16;
+        unsigned mcu_voltage :16;
+        unsigned mcu_temperature :16;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_BPSM_ul_payload_monitoring_t;
 
@@ -41,13 +41,13 @@ typedef union {
 typedef union {
     uint8_t frame[RADIO_BPSM_UL_PAYLOAD_ELECTRICAL_SIZE];
     struct {
-        unsigned vsrc :16;
-        unsigned vstr :16;
-        unsigned vbkp :16;
+        unsigned source_voltage :16;
+        unsigned storage_voltage :16;
+        unsigned backup_voltage :16;
         unsigned unused :2;
-        unsigned chrgst :2;
-        unsigned chenst :2;
-        unsigned bkenst :2;
+        unsigned charge_status :2;
+        unsigned charge_control_state :2;
+        unsigned backup_control_state :2;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } RADIO_BPSM_ul_payload_electrical_t;
 
@@ -122,8 +122,8 @@ RADIO_status_t RADIO_BPSM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
         }
         // Build monitoring payload.
-        ul_payload_monitoring.vmcu = SWREG_read_field(bpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-        ul_payload_monitoring.tmcu = SWREG_read_field(bpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
+        ul_payload_monitoring.mcu_voltage = SWREG_read_field(bpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_MCU_VOLTAGE);
+        ul_payload_monitoring.mcu_temperature = SWREG_read_field(bpsm_registers[COMMON_REGISTER_ADDRESS_ANALOG_DATA_0], COMMON_REGISTER_ANALOG_DATA_0_MASK_MCU_TEMPERATURE);
         // Copy payload.
         for (idx = 0; idx < RADIO_BPSM_UL_PAYLOAD_MONITORING_SIZE; idx++) {
             (node_payload->payload)[idx] = ul_payload_monitoring.frame[idx];
@@ -141,13 +141,13 @@ RADIO_status_t RADIO_BPSM_build_ul_node_payload(RADIO_node_t* radio_node, RADIO_
             NODE_exit_error(RADIO_ERROR_BASE_NODE);
         }
         // Build data payload.
-        ul_payload_electrical.vsrc = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_ANALOG_DATA_1], BPSM_REGISTER_ANALOG_DATA_1_MASK_VSRC);
-        ul_payload_electrical.vstr = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_ANALOG_DATA_1], BPSM_REGISTER_ANALOG_DATA_1_MASK_VSTR);
-        ul_payload_electrical.vbkp = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_ANALOG_DATA_2], BPSM_REGISTER_ANALOG_DATA_2_MASK_VBKP);
+        ul_payload_electrical.source_voltage = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_ANALOG_DATA_1], BPSM_REGISTER_ANALOG_DATA_1_MASK_SOURCE_VOLTAGE);
+        ul_payload_electrical.storage_voltage = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_ANALOG_DATA_1], BPSM_REGISTER_ANALOG_DATA_1_MASK_STORAGE_VOLTAGE);
+        ul_payload_electrical.backup_voltage = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_ANALOG_DATA_2], BPSM_REGISTER_ANALOG_DATA_2_MASK_BACKUP_VOLTAGE);
         ul_payload_electrical.unused = 0;
-        ul_payload_electrical.chrgst = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_CHRGST);
-        ul_payload_electrical.chenst = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_CHENST);
-        ul_payload_electrical.bkenst = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_BKENST);
+        ul_payload_electrical.charge_status = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_CHST);
+        ul_payload_electrical.charge_control_state = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_CHCS);
+        ul_payload_electrical.backup_control_state = SWREG_read_field(bpsm_registers[BPSM_REGISTER_ADDRESS_STATUS_1], BPSM_REGISTER_STATUS_1_MASK_BKCS);
         // Copy payload.
         for (idx = 0; idx < RADIO_BPSM_UL_PAYLOAD_ELECTRICAL_SIZE; idx++) {
             (node_payload->payload)[idx] = ul_payload_electrical.frame[idx];

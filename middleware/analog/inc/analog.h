@@ -35,11 +35,11 @@ typedef enum {
  * \brief ANALOG channels list.
  *******************************************************************/
 typedef enum {
-    ANALOG_CHANNEL_VMCU_MV = 0,
-    ANALOG_CHANNEL_TMCU_DEGREES,
-    ANALOG_CHANNEL_VRS_MV,
-    ANALOG_CHANNEL_VHMI_MV,
-    ANALOG_CHANNEL_VUSB_MV,
+    ANALOG_CHANNEL_MCU_VOLTAGE_MV = 0,
+    ANALOG_CHANNEL_MCU_TEMPERATURE_DEGREES,
+    ANALOG_CHANNEL_RS485_BUS_VOLTAGE_MV,
+    ANALOG_CHANNEL_HMI_VOLTAGE_MV,
+    ANALOG_CHANNEL_USB_VOLTAGE_MV,
     ANALOG_CHANNEL_LAST
 } ANALOG_channel_t;
 

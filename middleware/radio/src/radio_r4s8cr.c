@@ -24,14 +24,14 @@
 typedef union {
     uint8_t frame[R4S8CR_UL_PAYLOAD_ELECTRICAL_SIZE];
     struct {
-        unsigned r8stst :2;
-        unsigned r7stst :2;
-        unsigned r6stst :2;
-        unsigned r5stst :2;
-        unsigned r4stst :2;
-        unsigned r3stst :2;
-        unsigned r2stst :2;
-        unsigned r1stst :2;
+        unsigned relay8_status :2;
+        unsigned relay7_status :2;
+        unsigned relay6_status :2;
+        unsigned relay5_status :2;
+        unsigned relay4_status :2;
+        unsigned relay3_status :2;
+        unsigned relay2_status :2;
+        unsigned relay1_status :2;
     } __attribute__((scalar_storage_order("big-endian"))) __attribute__((packed));
 } R4S8CR_ul_payload_data_t;
 
@@ -71,14 +71,14 @@ RADIO_status_t RADIO_R4S8CR_build_ul_node_payload(RADIO_node_t* radio_node, RADI
     node_status = NODE_read_registers((radio_node->node), (uint8_t*) R4S8CR_REGISTER_LIST_UL_PAYLOAD_ELECTRICAL, sizeof(R4S8CR_REGISTER_LIST_UL_PAYLOAD_ELECTRICAL), (uint32_t*) r4s8cr_registers, &access_status);
     NODE_exit_error(RADIO_ERROR_BASE_NODE);
     // Build data payload.
-    ul_payload_data.r1stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R1STST);
-    ul_payload_data.r2stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R2STST);
-    ul_payload_data.r3stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R3STST);
-    ul_payload_data.r4stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R4STST);
-    ul_payload_data.r5stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R5STST);
-    ul_payload_data.r6stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R6STST);
-    ul_payload_data.r7stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R7STST);
-    ul_payload_data.r8stst = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R8STST);
+    ul_payload_data.relay1_status = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R1ST);
+    ul_payload_data.relay2_status = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R2ST);
+    ul_payload_data.relay3_status = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R3ST);
+    ul_payload_data.relay4_status = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R4ST);
+    ul_payload_data.relay5_status = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R5ST);
+    ul_payload_data.relay6_status = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R6ST);
+    ul_payload_data.relay7_status = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R7ST);
+    ul_payload_data.relay8_status = SWREG_read_field(r4s8cr_registers[R4S8CR_REGISTER_ADDRESS_STATUS], R4S8CR_REGISTER_STATUS_MASK_R8ST);
     // Copy payload.
     for (idx = 0; idx < R4S8CR_UL_PAYLOAD_ELECTRICAL_SIZE; idx++) {
         (node_payload->payload)[idx] = ul_payload_data.frame[idx];

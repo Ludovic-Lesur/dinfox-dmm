@@ -166,7 +166,7 @@ static void _UNA_DMM_refresh_register(uint8_t reg_addr) {
         SWREG_write_field(reg_ptr, &unused_mask, ((ERROR_stack_is_empty() == 0) ? 0b1 : 0b0), COMMON_REGISTER_STATUS_0_MASK_ESF);
         break;
     case DMM_REGISTER_ADDRESS_STATUS_1:
-        SWREG_write_field(reg_ptr, &unused_mask, (uint32_t) (NODE_LIST.count), DMM_REGISTER_STATUS_1_MASK_NODES_COUNT);
+        SWREG_write_field(reg_ptr, &unused_mask, (uint32_t) (NODE_LIST.count), DMM_REGISTER_STATUS_1_MASK_NODE_COUNT);
         break;
     default:
         break;
@@ -177,6 +177,7 @@ static void _UNA_DMM_refresh_register(uint8_t reg_addr) {
 static UNA_DMM_status_t _UNA_DMM_secure_register(uint8_t reg_addr, uint32_t new_reg_value, uint32_t* reg_mask, uint32_t* reg_value) {
     // Local variables.
     UNA_DMM_status_t status = UNA_DMM_SUCCESS;
+    int32_t generic_s32 = 0;
     uint32_t generic_u32 = 0;
     // Check address.
     switch (reg_addr) {
@@ -198,7 +199,7 @@ static UNA_DMM_status_t _UNA_DMM_secure_register(uint8_t reg_addr, uint32_t new_
         break;
     case DMM_REGISTER_ADDRESS_CONFIGURATION_0:
         SWREG_secure_field(
-            DMM_REGISTER_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD,
+            DMM_REGISTER_CONFIGURATION_0_MASK_NODE_SCAN_PERIOD,
             UNA_get_seconds,
             UNA_convert_seconds,
             < UNA_DMM_NODE_SCAN_PERIOD_SECONDS_MIN,
@@ -248,26 +249,26 @@ static UNA_DMM_status_t _UNA_DMM_mtrg_callback(void) {
     // Turn ADC and HMI on.
     POWER_enable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_HMI, LPTIM_DELAY_MODE_STOP);
     POWER_enable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
-    // VMCU.
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VMCU_MV, &adc_data);
+    // MCU voltage.
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_MCU_VOLTAGE_MV, &adc_data);
     ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);
-    SWREG_write_field(reg_analog_data_0_ptr, &unused_mask, UNA_convert_mv(adc_data), COMMON_REGISTER_ANALOG_DATA_0_MASK_VMCU);
-    // TMCU.
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_TMCU_DEGREES, &adc_data);
+    SWREG_write_field(reg_analog_data_0_ptr, &unused_mask, UNA_convert_mv(adc_data), COMMON_REGISTER_ANALOG_DATA_0_MASK_MCU_VOLTAGE);
+    // MCU temperature.
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_MCU_TEMPERATURE_DEGREES, &adc_data);
     ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);
-    SWREG_write_field(reg_analog_data_0_ptr, &unused_mask, UNA_convert_tenth_degrees(adc_data * 10), COMMON_REGISTER_ANALOG_DATA_0_MASK_TMCU);
-    // VRS.
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VRS_MV, &adc_data);
+    SWREG_write_field(reg_analog_data_0_ptr, &unused_mask, UNA_convert_tenth_degrees(adc_data * 10), COMMON_REGISTER_ANALOG_DATA_0_MASK_MCU_TEMPERATURE);
+    // RS485 bus voltage.
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_RS485_BUS_VOLTAGE_MV, &adc_data);
     ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);
-    SWREG_write_field(reg_analog_data_1_ptr, &unused_mask, UNA_convert_mv(adc_data), DMM_REGISTER_ANALOG_DATA_1_MASK_VRS);
-    // VHMI.
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VHMI_MV, &adc_data);
+    SWREG_write_field(reg_analog_data_1_ptr, &unused_mask, UNA_convert_mv(adc_data), DMM_REGISTER_ANALOG_DATA_1_MASK_RS485_BUS_VOLTAGE);
+    // HMI voltage.
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_HMI_VOLTAGE_MV, &adc_data);
     ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);
-    SWREG_write_field(reg_analog_data_1_ptr, &unused_mask, UNA_convert_mv(adc_data), DMM_REGISTER_ANALOG_DATA_1_MASK_VHMI);
-    // VUSB.
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VUSB_MV, &adc_data);
+    SWREG_write_field(reg_analog_data_1_ptr, &unused_mask, UNA_convert_mv(adc_data), DMM_REGISTER_ANALOG_DATA_1_MASK_HMI_VOLTAGE);
+    // USB voltage.
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_USB_VOLTAGE_MV, &adc_data);
     ANALOG_exit_error(NODE_ERROR_BASE_ANALOG);
-    SWREG_write_field(reg_analog_data_2_ptr, &unused_mask, UNA_convert_mv(adc_data), DMM_REGISTER_ANALOG_DATA_2_MASK_VUSB);
+    SWREG_write_field(reg_analog_data_2_ptr, &unused_mask, UNA_convert_mv(adc_data), DMM_REGISTER_ANALOG_DATA_2_MASK_USB_VOLTAGE);
 errors:
     // Turn power block off.
     POWER_disable(POWER_REQUESTER_ID_DMM, POWER_DOMAIN_HMI);

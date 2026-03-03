@@ -142,7 +142,7 @@ static void _UNA_DMM_init_register(uint8_t reg_addr, uint32_t* reg_value) {
         break;
 #ifdef DMM_NVM_FACTORY_RESET
     case DMM_REGISTER_ADDRESS_CONFIGURATION_0:
-        SWREG_write_field(reg_value, &unused_mask, UNA_convert_seconds(DMM_NODES_SCAN_PERIOD_SECONDS), DMM_REGISTER_CONFIGURATION_0_MASK_NODES_SCAN_PERIOD);
+        SWREG_write_field(reg_value, &unused_mask, UNA_convert_seconds(DMM_NODE_SCAN_PERIOD_SECONDS), DMM_REGISTER_CONFIGURATION_0_MASK_NODE_SCAN_PERIOD);
         SWREG_write_field(reg_value, &unused_mask, UNA_convert_seconds(DMM_SIGFOX_UL_PERIOD_SECONDS), DMM_REGISTER_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD);
         SWREG_write_field(reg_value, &unused_mask, UNA_convert_seconds(DMM_SIGFOX_DL_PERIOD_SECONDS), DMM_REGISTER_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD);
         break;

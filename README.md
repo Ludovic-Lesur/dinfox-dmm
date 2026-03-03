@@ -10,9 +10,9 @@ The **DMM** is the master board of the DINFox project. It embeds the following f
 
 The board was designed on **Circuit Maker V2.0**. Below is the list of hardware revisions:
 
-| Hardware revision | Description | Status |
-|:---:|:---:|:---:|
-| [DMM HW1.0](https://365.altium.com/files/ED83B6F3-90FC-4C58-A588-77DC635C6A63) | Initial version. | :white_check_mark: |
+| Hardware revision | Description | `cmake_hw_version` | Status |
+|:---:|:---:|:---:|:---:|
+| [DMM HW1.0](https://365.altium.com/files/ED83B6F3-90FC-4C58-A588-77DC635C6A63) | Initial version. | `HW1_0` | :white_check_mark: |
 
 # Embedded software
 
@@ -51,3 +51,21 @@ The project is organized as follow:
     * `power` : Board **power tree** manager.
     * `radio` : Nodes access through radio.
 * `application` : Main **application**.
+
+## Build
+
+The project can be compiled by command line with `cmake`.
+
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_TOOLCHAIN_FILE="script/cmake-arm-none-eabi/toolchain.cmake" \
+      -DTOOLCHAIN_PATH="<arm_none_eabi_gcc_path>" \
+      -DDMM_HW_VERSION="<cmake_hw_version>" \
+      -DDMM_NVM_FACTORY_RESET=OFF \
+      -DDMM_NODE_SCAN_PERIOD_SECONDS=86400 \
+      -DDMM_SIGFOX_UL_PERIOD_SECONDS=300 \
+      -DDMM_SIGFOX_DL_PERIOD_SECONDS=21600 \
+      -G "Unix Makefiles" ..
+make all
+```

@@ -1,0 +1,19 @@
+{
+    "hw_configuration_list": [
+        {
+            "hw_flags": {
+                "DMM_HW_VERSION": "HW1_0"
+            },
+            "sw_configuration_list": [
+                {
+                    "sw_flags": {
+                        "DMM_NVM_FACTORY_RESET": "OFF",
+                        "DMM_NODE_SCAN_PERIOD_SECONDS" : 86400,
+                        "DMM_SIGFOX_UL_PERIOD_SECONDS": 300,
+                        "DMM_SIGFOX_DL_PERIOD_SECONDS": 21600
+                    }
+                }
+            ]
+        }
+    ]
+}

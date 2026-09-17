@@ -73,18 +73,9 @@ static UNA_DMM_status_t _UNA_DMM_load_register(uint8_t reg_addr, uint32_t* reg_v
     // Local variables.
     UNA_DMM_status_t status = UNA_DMM_SUCCESS;
     NVM_status_t nvm_status = NVM_SUCCESS;
-    uint8_t nvm_byte = 0;
-    uint8_t idx = 0;
-    // Reset output.
-    (*reg_value) = 0;
-    // Byte loop.
-    for (idx = 0; idx < UNA_REGISTER_SIZE_BYTES; idx++) {
-        // Read NVM.
-        nvm_status = NVM_read_byte((NVM_ADDRESS_UNA_REGISTERS + (reg_addr << 2) + idx), &nvm_byte);
-        NVM_exit_error(UNA_DMM_ERROR_BASE_NVM);
-        // Update output value.
-        (*reg_value) |= ((uint32_t) nvm_byte) << (idx << 3);
-    }
+    // Read register.
+    nvm_status = NVM_read((NVM_ADDRESS_UNA_REGISTERS + (reg_addr << 2)), reg_value, 1, NVM_DATA_TYPE_LONG);
+    NVM_exit_error(UNA_DMM_ERROR_BASE_NVM);
 errors:
     return status;
 }
@@ -95,16 +86,9 @@ static UNA_DMM_status_t _UNA_DMM_store_register(uint8_t reg_addr) {
     // Local variables.
     UNA_DMM_status_t status = UNA_DMM_SUCCESS;
     NVM_status_t nvm_status = NVM_SUCCESS;
-    uint8_t nvm_byte = 0;
-    uint8_t idx = 0;
-    // Byte loop.
-    for (idx = 0; idx < UNA_REGISTER_SIZE_BYTES; idx++) {
-        // Compute byte.
-        nvm_byte = (uint8_t) (((UNA_DMM_RAM_REGISTER[reg_addr]) >> (idx << 3)) & 0x000000FF);
-        // Write NVM.
-        nvm_status = NVM_write_byte((NVM_ADDRESS_UNA_REGISTERS + (reg_addr << 2) + idx), nvm_byte);
-        NVM_exit_error(UNA_DMM_ERROR_BASE_NVM);
-    }
+    // Write register.
+    nvm_status = NVM_write((NVM_ADDRESS_UNA_REGISTERS + (reg_addr << 2)), &(UNA_DMM_RAM_REGISTER[reg_addr]), 1, NVM_DATA_TYPE_LONG);
+    NVM_exit_error(UNA_DMM_ERROR_BASE_NVM);
 errors:
     return status;
 }

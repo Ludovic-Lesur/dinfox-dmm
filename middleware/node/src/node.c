@@ -36,7 +36,7 @@
 #define NODE_LIST_DMM_NODE_INDEX            0
 #define NODE_UNA_AT_BAUD_RATE               1200
 
-#define NODE_SCAN_PERIOD_DEFAULT_SECONDS    86400
+#define NODE_SCAN_PERIOD_DEFAULT_SECONDS    (1 * MATH_SECONDS_PER_DAY)
 
 /*** NODE local structures ***/
 

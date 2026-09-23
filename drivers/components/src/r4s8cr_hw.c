@@ -98,7 +98,7 @@ R4S8CR_status_t R4S8CR_HW_delay_milliseconds(uint32_t delay_ms) {
     // Reload watchdog.
     IWDG_reload();
     // Perform delay.
-    lptim_status = LPTIM_delay_milliseconds(delay_ms, LPTIM_DELAY_MODE_SLEEP);
+    lptim_status = LPTIM_delay_milliseconds(delay_ms, LPTIM_DELAY_MODE_STOP);
     LPTIM_exit_error(R4S8CR_ERROR_BASE_DELAY);
 errors:
     return status;

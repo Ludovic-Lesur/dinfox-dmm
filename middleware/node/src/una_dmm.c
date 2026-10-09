@@ -376,8 +376,9 @@ UNA_DMM_status_t UNA_DMM_write_register(UNA_access_parameters_t* write_params, u
     UNA_DMM_status_t status = UNA_DMM_SUCCESS;
     UNA_DMM_status_t una_dmm_status = UNA_DMM_SUCCESS;
     uint8_t reg_addr = (write_params->reg_addr);
+    uint32_t* reg_pointer = NULL;
     uint32_t safe_reg_mask = reg_mask;
-    uint32_t safe_reg_value = reg_value;
+    uint32_t safe_reg_value = 0;
     // Check parameters.
     if ((write_params == NULL) || (write_status == NULL)) {
         status = UNA_DMM_ERROR_NULL_PARAMETER;
@@ -404,13 +405,19 @@ UNA_DMM_status_t UNA_DMM_write_register(UNA_access_parameters_t* write_params, u
         (*write_status).error_received = 1;
         goto errors;
     }
-    // Check input value.
-    una_dmm_status = _UNA_DMM_secure_register(reg_addr, reg_value, &safe_reg_mask, &safe_reg_value);
+    // Update register pointer.
+    reg_pointer = (uint32_t*) &(UNA_DMM_RAM_REGISTER[reg_addr]);
+    // Init safe value with current register content.
+    safe_reg_value = (*reg_pointer);
+    // Apply modification.
+    SWREG_modify_register(&safe_reg_value, reg_value, reg_mask);
+    // Check modification.
+    una_dmm_status = _UNA_DMM_secure_register(reg_addr, safe_reg_value, &safe_reg_mask, &safe_reg_value);
     UNA_DMM_stack_error(ERROR_BASE_UNA_DMM);
     // Write RAM register.
-    SWREG_modify_register((uint32_t*) &(UNA_DMM_RAM_REGISTER[reg_addr]), reg_value, safe_reg_mask);
+    SWREG_modify_register(reg_pointer, reg_value, safe_reg_mask);
     // Secure register.
-    una_dmm_status = _UNA_DMM_secure_register(reg_addr, UNA_DMM_RAM_REGISTER[reg_addr], &safe_reg_mask, &(UNA_DMM_RAM_REGISTER[reg_addr]));
+    una_dmm_status = _UNA_DMM_secure_register(reg_addr, (*reg_pointer), &safe_reg_mask, reg_pointer);
     UNA_DMM_stack_error(ERROR_BASE_UNA_DMM);
     // Store value in NVM if needed.
     if (DMM_REGISTER[reg_addr].reset_value == UNA_REGISTER_RESET_VALUE_NVM) {

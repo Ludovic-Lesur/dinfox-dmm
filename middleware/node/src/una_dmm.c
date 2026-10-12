@@ -159,25 +159,23 @@ static void _UNA_DMM_refresh_register(uint8_t reg_addr) {
 }
 
 /*******************************************************************/
-static UNA_DMM_status_t _UNA_DMM_secure_register(uint8_t reg_addr, uint32_t new_reg_value, uint32_t* reg_mask, uint32_t* reg_value) {
+static UNA_DMM_status_t _UNA_DMM_secure_register(uint8_t reg_addr, uint32_t* reg_value, uint32_t* reg_mask) {
     // Local variables.
     UNA_DMM_status_t status = UNA_DMM_SUCCESS;
-    int32_t generic_s32 = 0;
-    uint32_t generic_u32 = 0;
+    int32_t field_value = 0;
+    uint32_t unused_mask = 0;
     // Check address.
     switch (reg_addr) {
     case COMMON_REGISTER_ADDRESS_NODE_ID:
         SWREG_secure_field(
             COMMON_REGISTER_NODE_ID_MASK_NODE_ADDR,,,
-            != UNA_NODE_ADDRESS_MASTER,
-            != UNA_NODE_ADDRESS_MASTER,
+            (field_value != UNA_NODE_ADDRESS_MASTER),
             UNA_NODE_ADDRESS_MASTER,
             status = UNA_DMM_ERROR_REGISTER_FIELD_VALUE
         );
         SWREG_secure_field(
             COMMON_REGISTER_NODE_ID_MASK_BOARD_ID,,,
-            != UNA_BOARD_ID_DMM,
-            != UNA_BOARD_ID_DMM,
+            (field_value != UNA_BOARD_ID_DMM),
             UNA_BOARD_ID_DMM,
             status = UNA_DMM_ERROR_REGISTER_FIELD_VALUE
         );
@@ -187,8 +185,7 @@ static UNA_DMM_status_t _UNA_DMM_secure_register(uint8_t reg_addr, uint32_t new_
             DMM_REGISTER_CONFIGURATION_0_MASK_NODE_SCAN_PERIOD,
             UNA_get_seconds,
             UNA_convert_seconds,
-            < UNA_DMM_NODE_SCAN_PERIOD_SECONDS_MIN,
-            > UNA_DMM_NODE_SCAN_PERIOD_SECONDS_MAX,
+            (field_value < UNA_DMM_NODE_SCAN_PERIOD_SECONDS_MIN) || (field_value > UNA_DMM_NODE_SCAN_PERIOD_SECONDS_MAX),
             UNA_DMM_NODE_SCAN_PERIOD_SECONDS_DEFAULT,
             status = UNA_DMM_ERROR_REGISTER_FIELD_VALUE
         );
@@ -196,8 +193,7 @@ static UNA_DMM_status_t _UNA_DMM_secure_register(uint8_t reg_addr, uint32_t new_
             DMM_REGISTER_CONFIGURATION_0_MASK_SIGFOX_UL_PERIOD,
             UNA_get_seconds,
             UNA_convert_seconds,
-            < UNA_DMM_SIGFOX_UL_PERIOD_SECONDS_MIN,
-            > UNA_DMM_SIGFOX_UL_PERIOD_SECONDS_MAX,
+            (field_value < UNA_DMM_SIGFOX_UL_PERIOD_SECONDS_MIN) || (field_value > UNA_DMM_SIGFOX_UL_PERIOD_SECONDS_MAX),
             UNA_DMM_SIGFOX_UL_PERIOD_SECONDS_DEFAULT,
             status = UNA_DMM_ERROR_REGISTER_FIELD_VALUE
         );
@@ -205,8 +201,7 @@ static UNA_DMM_status_t _UNA_DMM_secure_register(uint8_t reg_addr, uint32_t new_
             DMM_REGISTER_CONFIGURATION_0_MASK_SIGFOX_DL_PERIOD,
             UNA_get_seconds,
             UNA_convert_seconds,
-            < UNA_DMM_SIGFOX_DL_PERIOD_SECONDS_MIN,
-            > UNA_DMM_SIGFOX_DL_PERIOD_SECONDS_MAX,
+            (field_value < UNA_DMM_SIGFOX_DL_PERIOD_SECONDS_MIN) || (field_value > UNA_DMM_SIGFOX_DL_PERIOD_SECONDS_MAX),
             UNA_DMM_SIGFOX_DL_PERIOD_SECONDS_DEFAULT,
             status = UNA_DMM_ERROR_REGISTER_FIELD_VALUE
         );
@@ -376,7 +371,7 @@ UNA_DMM_status_t UNA_DMM_write_register(UNA_access_parameters_t* write_params, u
     UNA_DMM_status_t status = UNA_DMM_SUCCESS;
     UNA_DMM_status_t una_dmm_status = UNA_DMM_SUCCESS;
     uint8_t reg_addr = (write_params->reg_addr);
-    uint32_t* reg_pointer = NULL;
+    uint32_t* node_reg_pointer = NULL;
     uint32_t safe_reg_mask = reg_mask;
     uint32_t safe_reg_value = 0;
     // Check parameters.
@@ -406,18 +401,18 @@ UNA_DMM_status_t UNA_DMM_write_register(UNA_access_parameters_t* write_params, u
         goto errors;
     }
     // Update register pointer.
-    reg_pointer = (uint32_t*) &(UNA_DMM_RAM_REGISTER[reg_addr]);
+    node_reg_pointer = (uint32_t*) &(UNA_DMM_RAM_REGISTER[reg_addr]);
     // Init safe value with current register content.
-    safe_reg_value = (*reg_pointer);
+    safe_reg_value = (*node_reg_pointer);
     // Apply modification.
     SWREG_modify_register(&safe_reg_value, reg_value, reg_mask);
     // Check modification.
-    una_dmm_status = _UNA_DMM_secure_register(reg_addr, safe_reg_value, &safe_reg_mask, &safe_reg_value);
+    una_dmm_status = _UNA_DMM_secure_register(reg_addr, &safe_reg_value, &safe_reg_mask);
     UNA_DMM_stack_error(ERROR_BASE_UNA_DMM);
     // Write RAM register.
-    SWREG_modify_register(reg_pointer, reg_value, safe_reg_mask);
+    SWREG_modify_register(node_reg_pointer, reg_value, safe_reg_mask);
     // Secure register.
-    una_dmm_status = _UNA_DMM_secure_register(reg_addr, (*reg_pointer), &safe_reg_mask, reg_pointer);
+    una_dmm_status = _UNA_DMM_secure_register(reg_addr, node_reg_pointer, &safe_reg_mask);
     UNA_DMM_stack_error(ERROR_BASE_UNA_DMM);
     // Store value in NVM if needed.
     if (DMM_REGISTER[reg_addr].reset_value == UNA_REGISTER_RESET_VALUE_NVM) {
